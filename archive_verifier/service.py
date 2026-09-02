@@ -39,7 +39,8 @@ def read_payload_text(parts: list[Path]) -> str:
     try:
         return "".join(part.read_text(encoding="utf-8").strip() for part in parts)
     except OSError as exc:
-        raise ArchiveVerificationError(f"unable to read payload part: {exc.__class__.__name__}") from exc
+        error_type = exc.__class__.__name__
+        raise ArchiveVerificationError(f"unable to read payload part: {error_type}") from exc
 
 
 def decode_archive(payload_text: str) -> bytes:
@@ -60,7 +61,8 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
             )
             return list(reader)
     except OSError as exc:
-        raise ArchiveVerificationError(f"unable to read manifest: {exc.__class__.__name__}") from exc
+        error_type = exc.__class__.__name__
+        raise ArchiveVerificationError(f"unable to read manifest: {error_type}") from exc
     except csv.Error as exc:
         raise ArchiveVerificationError("manifest CSV parse failed") from exc
 
@@ -126,9 +128,11 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
         for row in rows:
             name = row["repository_filename"]
             member = by_basename.get(name)
-            _require(member is not None, f"manifest file missing from archive: {name}")
+            if member is None:
+                raise ArchiveVerificationError(f"manifest file missing from archive: {name}")
             extracted = tar_handle.extractfile(member)
-            _require(extracted is not None, f"unable to read archive member: {name}")
+            if extracted is None:
+                raise ArchiveVerificationError(f"unable to read archive member: {name}")
             data = extracted.read()
             digest = hashlib.sha256(data).hexdigest()
             actual_hashes[name] = digest
