@@ -1,0 +1,23 @@
+name: Verify legacy archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "legacy-html/archive/payload/**"
+      - "provenance/DRIVE_84_MANIFEST.csv"
+      - "scripts/verify_legacy_archive.py"
+      - ".github/workflows/verify-legacy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify 84-occurrence archive
+        run: python scripts/verify_legacy_archive.py
