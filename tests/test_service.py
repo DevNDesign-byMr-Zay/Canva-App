@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -96,7 +97,10 @@ def test_credential_pattern_fails(build_archive: Callable[..., Any]) -> None:
 
 def test_manifest_missing_required_column_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
-    built.manifest_path.write_text("occurrence,repository_filename\n1,state-a.html\n", encoding="utf-8")
+    built.manifest_path.write_text(
+        "occurrence,repository_filename\n1,state-a.html\n",
+        encoding="utf-8",
+    )
 
     with pytest.raises(ArchiveVerificationError, match="missing required columns"):
         read_manifest(built.manifest_path)
