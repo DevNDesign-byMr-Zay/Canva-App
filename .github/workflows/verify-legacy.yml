@@ -85,3 +85,15 @@ jobs:
           python-version: "3.12"
       - name: Verify 84-occurrence archive
         run: python scripts/verify_legacy_archive.py
+
+  container-verification:
+    name: Docker fresh-clone verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Build verifier image
+        run: docker build --pull -t canva-archive-verifier .
+      - name: Run verifier image
+        run: docker run --rm canva-archive-verifier
