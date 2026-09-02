@@ -2,92 +2,106 @@
 
 ## Purpose
 
-`Canva-App` contains two deliberately separate concerns:
+`Canva-App` now contains three deliberately separated layers:
 
-1. **Historical provenance** — authenticated, deidentified legacy HTML source occurrences and recovery metadata.
-2. **Maintained verification application** — executable Python code that reconstructs the archived payload, validates provenance, enforces deidentification/security rules, and emits a typed verification report.
+1. **Historical provenance** — the authenticated, deidentified 84-occurrence HTML lineage and recovery metadata.
+2. **Authenticated application surface** — the exact v115 final-fix application materialized at `app/authenticated-v115/index.html` from the committed archive.
+3. **Maintained verification/materialization application** — typed Python code that reconstructs the archive, validates provenance and safety rules, and proves that the committed v115 application bytes match the authenticated source.
 
-The maintained application does not pretend that missing historical React/TypeScript source exists. Historical artifacts are inputs to the verifier, not the verifier's implementation.
+No missing React/TypeScript tree is fabricated. The physical application surface is produced only from authenticated bytes already present in the repository's archive.
 
-## Layer map
+## Trust chain
 
 ```text
-CLI / module entrypoints
-        |
-        v
-archive_verifier.cli
-        |
-        v
-archive_verifier.service
-   |        |        |
-   v        v        v
-config    models   scanner
-   \        |        /
-    \       |       /
-     structured errors
-            |
-            v
-     JSON logging boundary
+legacy-html/archive/payload/part-*.b64
+                |
+                v
+       authenticated .tar.xz
+                |
+       archive SHA-256 check
+                |
+                v
+provenance/DRIVE_84_MANIFEST.csv
+                |
+   occurrence 44 + sanitized SHA
+                |
+                v
+archive_verifier.materializer
+                |
+                v
+app/authenticated-v115/index.html
+                |
+     git diff determinism gate
 ```
 
-### Command boundary
+The materialized v115 source member is `aetherv246_v115_depthpop_modeldrawer_FINALFIX.html`. Its required sanitized SHA-256 is `d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1`.
 
-`archive_verifier.cli` owns process-facing behavior. It translates a successful `VerificationReport` into a structured success event and converts expected verification/configuration failures into a non-zero exit code. Domain functions do not terminate the process.
+## Maintained layer map
 
-### Configuration boundary
+```text
+CLI/module entrypoints
+      |              |
+      v              v
+ verifier CLI   materializer CLI
+      |              |
+      v              v
+ service       materializer
+    |  |  |          |
+    v  v  v          v
+ config models     archive
+       scanner       bytes
+          \          /
+           typed errors
+                |
+                v
+         JSON logging
+```
 
-`archive_verifier.config.VerificationConfig` contains filesystem locations, authenticated archive expectations, identity rules, and credential-pattern rules. Its `__post_init__` method rejects internally inconsistent configuration before archive work begins.
+### Verification boundary
 
-### Domain/service layer
+`archive_verifier.service` discovers payload parts, reconstructs and hashes the archive, validates manifest structure/counts/hashes, reconciles HTML members, runs identity/credential scans, calculates distinct/duplicate states, and returns a typed immutable report.
 
-`archive_verifier.service` performs the verification pipeline:
+### Materialization boundary
 
-1. discover the expected payload parts;
-2. read and concatenate Base64 payload text;
-3. decode the archive;
-4. validate byte count and archive SHA-256;
-5. parse and validate required manifest columns;
-6. validate occurrence and unique-source counts;
-7. open the xz/tar archive;
-8. reconcile manifest rows with HTML members;
-9. validate each sanitized content SHA-256;
-10. run identity and credential scans;
-11. calculate distinct-state and duplicate-occurrence counts;
-12. return a typed immutable report.
+`archive_verifier.materializer` has one narrow responsibility: locate exactly one authenticated v115 member, verify its SHA-256 against the manifest-backed constant, and write those exact bytes to the physical `app/` surface. It does not transform, reformat, minify, or reinterpret the application source.
 
-### Scanner layer
+The thin `scripts/materialize_v115.py` entrypoint delegates to the typed package so static analysis, tests, and mypy cover the real implementation rather than a procedural script.
 
-`archive_verifier.scanner` is intentionally isolated from archive traversal. It accepts text and policy inputs and returns a `ScanResult`; this makes privacy/security rules independently testable.
+### Configuration and scanner boundaries
 
-### Models
-
-`archive_verifier.models` contains immutable dataclasses for scan and verification results. The CLI serializes report data without coupling the service layer to presentation logic.
+`VerificationConfig` owns filesystem locations, authenticated archive expectations, identity rules, and credential-pattern rules. `archive_verifier.scanner` remains isolated from archive traversal and returns typed scan results for independently testable privacy/security behavior.
 
 ### Error model
 
-Expected integrity or safety failures raise `ArchiveVerificationError`. Invalid configuration raises `ValueError`. Filesystem/CSV/tar/Base64 implementation errors are translated at the relevant boundary instead of leaking arbitrary internal exceptions to the process interface.
-
-The service layer never uses `print()` or `SystemExit` for domain control flow.
+Expected integrity/materialization failures raise `ArchiveVerificationError`; invalid configuration raises `ValueError`. Filesystem, CSV, tar, and Base64 implementation errors are translated at their boundaries. Domain code does not use process termination for control flow.
 
 ## Data integrity invariants
 
-Production configuration currently asserts the authenticated archive properties documented in the root README, including the payload-part count, reconstructed archive byte count and SHA-256, manifest occurrence count, distinct/duplicate state accounting, sanitized content hashes, and zero identity/credential scan hits.
+Production verification asserts the archive properties documented in the README: payload-part count, Base64 size, reconstructed byte count and SHA, occurrence count, source-name uniqueness, state/duplicate accounting, per-file sanitized hashes, and zero banned identity/credential hits.
 
-Tests use generated miniature archives rather than the production payload wherever possible. This keeps failure-path tests deterministic while the dedicated CI archive-verification job validates the full authenticated 84-occurrence archive.
+Application materialization adds two further invariants:
 
-## Quality boundaries
+- the target v115 member must occur exactly once in the authenticated archive;
+- the physical `app/authenticated-v115/index.html` must reproduce the authenticated v115 SHA exactly.
+
+CI reruns the materializer and requires `git diff --exit-code -- app/authenticated-v115`, proving the committed application has not drifted from its authenticated archive source.
+
+## Test strategy
+
+Generated miniature archives cover verifier failure paths cheaply and deterministically. Dedicated production-materializer tests additionally exercise the real committed archive to prove exact v115 extraction and SHA matching. Entrypoint tests pin process exit behavior.
 
 The maintained Python surface is subject to:
 
-- pytest behavioral and failure-path tests;
-- branch coverage with a 90% minimum;
+- pytest behavioral/failure-path tests;
+- branch-aware coverage with a 90% repository minimum;
 - Ruff lint and security-oriented rules;
-- strict mypy type checking;
+- strict mypy;
 - `pip check` and pip-audit;
 - CodeQL Python analysis;
-- reproducible dependency resolution through `requirements.lock.txt`;
-- containerized verification through the root Dockerfile.
+- reproducible dependencies via `requirements.lock.txt`;
+- Docker fresh-clone verification;
+- full archive + application determinism verification.
 
 ## Historical-source policy
 
-Files under `legacy-html/` and provenance records are not bulk reformatted, deduplicated, or rewritten simply to satisfy maintained-code style metrics. A historical source file becomes part of the maintained executable surface only through an explicit, reviewable promotion with corresponding tests and documentation.
+Historical files and provenance records are not bulk reformatted, deduplicated, or rewritten for style metrics. A historical state becomes a physical maintained/inspectable application surface only through explicit SHA-verified materialization. The original archived bytes remain the source of truth.
