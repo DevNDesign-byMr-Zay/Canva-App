@@ -5,9 +5,9 @@ import csv
 import hashlib
 import io
 import tarfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
@@ -46,7 +46,10 @@ def build_archive(tmp_path: Path) -> Callable[..., BuiltArchive]:
         encoded = base64.b64encode(archive_bytes).decode("ascii")
 
         chunk_size = (len(encoded) + payload_parts - 1) // payload_parts
-        chunks = [encoded[index : index + chunk_size] for index in range(0, len(encoded), chunk_size)]
+        chunks = [
+            encoded[index : index + chunk_size]
+            for index in range(0, len(encoded), chunk_size)
+        ]
         for index, chunk in enumerate(chunks, start=1):
             (payload_dir / f"part-{index:03d}.b64").write_text(chunk, encoding="utf-8")
 
@@ -66,7 +69,7 @@ def build_archive(tmp_path: Path) -> Callable[..., BuiltArchive]:
                     {
                         "occurrence": occurrence,
                         "source_filename_sha256": hashlib.sha256(
-                            f"source:{name}".encode("utf-8")
+                            f"source:{name}".encode()
                         ).hexdigest(),
                         "repository_filename": name,
                         "sanitized_sha256": hashlib.sha256(data).hexdigest(),
