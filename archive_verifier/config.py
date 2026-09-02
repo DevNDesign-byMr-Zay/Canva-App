@@ -54,11 +54,14 @@ class VerificationConfig:
             raise ValueError("expected_duplicate_occurrences must be non-negative")
         if len(self.expected_archive_sha256) != 64:
             raise ValueError("expected_archive_sha256 must be a 64-character SHA-256 digest")
-        if self.expected_distinct_states + self.expected_duplicate_occurrences != self.expected_occurrences:
-            raise ValueError("distinct states plus duplicate occurrences must equal expected occurrences")
+        state_total = self.expected_distinct_states + self.expected_duplicate_occurrences
+        if state_total != self.expected_occurrences:
+            raise ValueError(
+                "distinct states plus duplicate occurrences must equal expected occurrences"
+            )
 
     @classmethod
-    def production(cls) -> "VerificationConfig":
+    def production(cls) -> VerificationConfig:
         return cls(
             payload_dir=ROOT / "legacy-html" / "archive" / "payload",
             manifest_path=ROOT / "provenance" / "DRIVE_84_MANIFEST.csv",
