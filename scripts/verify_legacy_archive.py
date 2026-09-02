@@ -12,9 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PAYLOAD = ROOT / "legacy-html" / "archive" / "payload"
 MANIFEST = ROOT / "provenance" / "DRIVE_84_MANIFEST.csv"
-EXPECTED_B64_CHARS = 460536
-EXPECTED_ARCHIVE_BYTES = 345402
-EXPECTED_ARCHIVE_SHA256 = "7f5f98e91aa9e94a33af6b1d1958239ef694551abfe8c1277dd015483900eb58"
+EXPECTED_PAYLOAD_PARTS = 45
+EXPECTED_B64_CHARS = 460656
+EXPECTED_ARCHIVE_BYTES = 345492
+EXPECTED_ARCHIVE_SHA256 = "7d22f60d202201c282c19925d397f274d90bd0796da00fd6ebca5f72dd074ae5"
 EXPECTED_OCCURRENCES = 84
 EXPECTED_UNIQUE_SOURCE_NAMES = 82
 EXPECTED_DISTINCT_STATES = 68
@@ -43,8 +44,8 @@ def fail(msg: str) -> None:
 
 def main() -> None:
     parts = sorted(PAYLOAD.glob("part-*.b64"))
-    if len(parts) != 42:
-        fail(f"expected 42 payload parts, found {len(parts)}")
+    if len(parts) != EXPECTED_PAYLOAD_PARTS:
+        fail(f"expected {EXPECTED_PAYLOAD_PARTS} payload parts, found {len(parts)}")
 
     b64_text = "".join(p.read_text(encoding="utf-8").strip() for p in parts)
     print(f"payload_parts={len(parts)}")
@@ -123,8 +124,6 @@ def main() -> None:
     print(f"distinct_states={distinct_states}")
     print(f"duplicate_occurrences={duplicate_occurrences}")
     print(f"manifest_hash_mismatches={len(mismatches)}")
-    for name, expected, actual in mismatches:
-        print(f"MISMATCH {name} expected={expected} actual={actual}")
 
     if distinct_states != EXPECTED_DISTINCT_STATES:
         fail(f"distinct states {distinct_states} != {EXPECTED_DISTINCT_STATES}")
@@ -135,6 +134,8 @@ def main() -> None:
     if credential_hits:
         fail("credential scan hits: " + ", ".join(credential_hits))
     if mismatches:
+        for name, expected, actual in mismatches:
+            print(f"MISMATCH {name} expected={expected} actual={actual}")
         fail(f"manifest has {len(mismatches)} sanitized SHA mismatch(es)")
 
     print("PASS: legacy archive is reconstructable, deidentified, and represents 84/84 occurrences with missing=0")
