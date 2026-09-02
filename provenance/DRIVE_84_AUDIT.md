@@ -2,9 +2,9 @@
 
 ## Status
 
-**FAIL — historical payload not yet committed**
+**PASS — 84/84 historical source occurrences represented; missing 0**
 
-Audit performed against the authenticated Google Drive `dump 1` Depthpop HTML source set.
+Audit basis: authenticated Google Drive `dump 1` Depthpop HTML source set, represented in this private repository as a deidentified, losslessly reconstructable code archive plus occurrence manifest.
 
 ## Expected Drive corpus
 
@@ -16,27 +16,39 @@ Audit performed against the authenticated Google Drive `dump 1` Depthpop HTML so
 - Source type: HTML single-file application builds
 - Source folder ID: `1WmC_Lv9-NHH7FzQHS7nmH8geoJoJz_UL`
 
-The 84-occurrence count includes repeated/copy occurrences. Three Drive objects share the exact filename `roaryv246_v107_depthpop_progressbar_modeldrawer_LLAMA4_MAVERICK_REWIRED.html`; duplicate/copy occurrences must remain represented in provenance even when byte-identical content is deduplicated for storage.
+The 84-occurrence count preserves repeated/copy occurrences in provenance. Byte-identical source states may be storage-deduplicated, but every authenticated source occurrence remains represented in `provenance/DRIVE_84_MANIFEST.csv`.
 
-## Repository state at audit
+## Repository representation
 
-The repository contains the archive policy/README and chat-source chronology, but **no committed `legacy-html` source payload was found** on `main`.
+- Canonical archive transport: `legacy-html/archive/payload/`
+- Reconstruction instructions: `legacy-html/archive/RECONSTRUCT.md`
+- Occurrence manifest: `provenance/DRIVE_84_MANIFEST.csv`
+- Verification script: `scripts/verify_legacy_archive.py`
+- GitHub Actions workflow: `.github/workflows/verify-legacy.yml`
 
-- Expected historical occurrences represented: **84**
-- Historical occurrences currently committed: **0**
-- Missing historical occurrences: **84**
-- Audit result: **FAIL**
+Canonical reconstructed archive facts:
 
-## Gate
+- Base64 characters: **460656**
+- Archive bytes: **345492**
+- Archive SHA-256: `7d22f60d202201c282c19925d397f274d90bd0796da00fd6ebca5f72dd074ae5`
+- HTML occurrences after extraction: **84**
+- Manifest occurrences: **84**
+- Unique source-name hashes: **82**
+- Distinct sanitized states: **68**
+- Duplicate occurrences: **16**
+- Manifest hash mismatches: **0**
+- Missing historical occurrences: **0**
 
-Per source-of-truth policy, later chat-mined JSX/TypeScript application code must not be treated as the next completed import stage until this 84-occurrence historical payload is represented and verified.
+## Verification evidence
 
-## Required closure
+GitHub Actions run **33658644649** on commit `2f4a0d8ca84dc5d28fb63ac1c4708105e3280fe2` completed successfully. The verifier reported:
 
-1. Commit deidentified code-bearing copies of the Drive corpus under `legacy-html/` (or a losslessly reconstructable code archive plus occurrence manifest).
-2. Preserve all 84 source occurrences in the manifest, including duplicate Drive occurrences.
-3. Verify expected 84 / represented 84 / missing 0.
-4. Run the identity/credential scan before declaring PASS.
-5. Only after PASS, continue importing exact project-chat-generated Canva application source artifacts under `app/`.
+`PASS: legacy archive is reconstructable, deidentified, and represents 84/84 occurrences with missing=0`
 
-No missing application code is to be reconstructed or presented as an original historical artifact.
+The same run verified the expected archive SHA-256, 84 extracted HTML occurrences, 84 manifest occurrences, 82 unique source-name hashes, 68 distinct states, 16 duplicate occurrences, and zero manifest hash mismatches.
+
+## Cleanup / closure
+
+Temporary archive transport directories used during staged upload have been removed from the canonical `legacy-html/archive/` tree. The remaining archive branch contains the canonical payload plus reconstruction instructions.
+
+The historical Drive gate is therefore closed. Per repository source-of-truth policy, later exact project-chat-generated React/JSX and TypeScript Canva application artifacts may now be imported under `app/` when their exact historical file bodies are recoverable. Chat-only evidence remains provenance and must not be reconstructed or presented as original source.
