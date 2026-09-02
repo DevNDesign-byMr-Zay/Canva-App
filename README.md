@@ -16,6 +16,8 @@ The maintained Python application is `archive_verifier/`, a layered archive-inte
 - `cli.py` / `__main__.py` — command boundary and exit-code handling.
 - `scripts/verify_legacy_archive.py` — backward-compatible thin CLI wrapper.
 
+See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy.
+
 The historical application material remains under `legacy-html/`. The previously documented `app/` React/TypeScript tree is **not currently present as authenticated physical source in this repository**. If exact recoverable application source is added later, it should be introduced incrementally with its own package manifest, lockfile, tests, and CI checks.
 
 ## Archive scope and provenance
@@ -161,4 +163,4 @@ The maintained scanner enforces banned identity literals and common credential s
 
 New behavior should land in focused commits with the tests that prove it. Do not bulk-rewrite authenticated historical files for style purposes, do not manufacture missing source, and do not fabricate old commits, contributors, dates, tags, or releases to influence repository-history scoring.
 
-See `CONTRIBUTING.md`, `CHANGELOG.md`, and the files under `provenance/` for the development and recovery audit trail.
+See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and the files under `provenance/` for the development and recovery audit trail.
