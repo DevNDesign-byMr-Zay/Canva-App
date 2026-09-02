@@ -135,6 +135,7 @@ make check
 2. Ruff + mypy static analysis
 3. dependency graph + vulnerability audit
 4. authenticated 84-occurrence archive verification
+5. Docker fresh-clone image build + execution
 
 A separate CodeQL workflow performs Python static security analysis. Dependabot tracks Python and GitHub Actions dependencies.
 
@@ -147,7 +148,7 @@ docker build -t canva-archive-verifier .
 docker run --rm canva-archive-verifier
 ```
 
-The container verifies the authenticated archive, runs the pytest suite, checks the enforced coverage threshold, and exits non-zero on failure.
+The container verifies the authenticated archive, runs the pytest suite, checks the enforced coverage threshold, and exits non-zero on failure. CI builds and runs this exact container path on every push and pull request.
 
 ## Environment and secrets
 
