@@ -1,23 +1,87 @@
-name: Verify legacy archive
+name: engineering/ci
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "legacy-html/archive/payload/**"
-      - "provenance/DRIVE_84_MANIFEST.csv"
-      - "scripts/verify_legacy_archive.py"
-      - ".github/workflows/verify-legacy.yml"
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "23 9 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  verify:
+  tests:
+    name: Tests and coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Run tests with branch coverage
+        run: |
+          python -m coverage run -m pytest -q
+          python -m coverage report --fail-under=90
+
+  static-analysis:
+    name: Ruff and mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Lint
+        run: python -m ruff check archive_verifier scripts tests
+      - name: Type-check
+        run: python -m mypy archive_verifier scripts
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Verify dependency graph
+        run: python -m pip check
+      - name: Audit dependencies
+        run: pip-audit -r requirements.lock.txt
+
+  archive-verification:
+    name: Verify authenticated archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
       - name: Verify 84-occurrence archive
         run: python scripts/verify_legacy_archive.py
