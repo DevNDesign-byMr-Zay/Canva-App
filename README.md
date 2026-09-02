@@ -1,24 +1,37 @@
 # Canva Depth Application — Engineering Source Archive
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive and now includes a **runnable, typed engineering verification package** for reconstructing, validating, and safety-scanning that archive from a fresh clone.
+This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, and a **physically materialized authenticated application build** recovered from that archive.
 
-The repository intentionally distinguishes between **historical source provenance** and **maintained executable code**. No missing application source is fabricated merely to make the archive look more complete.
+The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
-## What is executable today
+## What is executable and inspectable today
 
-The maintained Python application is `archive_verifier/`, a layered archive-integrity service with:
+The maintained Python package is `archive_verifier/`, with:
 
 - `config.py` — validated verification configuration and authenticated production expectations.
 - `models.py` — typed scan and verification result models.
 - `scanner.py` — isolated identity/branding and credential-pattern scanning.
 - `service.py` — payload discovery, Base64 decoding, manifest validation, archive reconstruction, hashing, duplicate-state accounting, and safety enforcement.
+- `materializer.py` — deterministic extraction and SHA verification for the authenticated v115 application state.
 - `logging_config.py` — structured JSON logging.
 - `cli.py` / `__main__.py` — command boundary and exit-code handling.
-- `scripts/verify_legacy_archive.py` — backward-compatible thin CLI wrapper.
+- `scripts/verify_legacy_archive.py` and `scripts/materialize_v115.py` — thin compatibility entrypoints.
+
+The authenticated application is physically present at:
+
+```text
+app/authenticated-v115/index.html
+```
+
+It is the exact sanitized bytes of manifest occurrence 44, `aetherv246_v115_depthpop_modeldrawer_FINALFIX.html`, with SHA-256:
+
+```text
+d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1
+```
+
+The committed application file is approximately 571 KB. `app/authenticated-v115/PROVENANCE.md` records its source identity, and `python scripts/materialize_v115.py` deterministically reconstructs it from the committed authenticated archive.
 
 See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy.
-
-The historical application material remains under `legacy-html/`. The previously documented `app/` React/TypeScript tree is **not currently present as authenticated physical source in this repository**. If exact recoverable application source is added later, it should be introduced incrementally with its own package manifest, lockfile, tests, and CI checks.
 
 ## Archive scope and provenance
 
@@ -53,11 +66,6 @@ Requirements:
 git clone https://github.com/DevNDesign-byMr-Zay/Canva-App.git
 cd Canva-App
 python -m venv .venv
-```
-
-Activate the environment, then install the committed locked toolchain:
-
-```bash
 python -m pip install -r requirements.lock.txt
 ```
 
@@ -69,19 +77,21 @@ make setup
 
 The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit.
 
-## Verify the authenticated archive
+## Verify and materialize
+
+Verify the full archive:
 
 ```bash
 python -m archive_verifier
 ```
 
-The legacy entrypoint remains supported:
+Reconstruct the authenticated latest application state:
 
 ```bash
-python scripts/verify_legacy_archive.py
+python scripts/materialize_v115.py
 ```
 
-Successful verification emits a structured JSON log event and exits `0`. Any integrity, manifest, identity, credential, or reconstruction failure emits a structured failure event and exits non-zero.
+The materializer refuses to accept a source whose SHA does not match the authenticated manifest value.
 
 ## Tests and coverage
 
@@ -89,22 +99,21 @@ Successful verification emits a structured JSON log event and exits `0`. Any int
 make test
 ```
 
-The pytest suite builds miniature `.tar.xz` + Base64 payload fixtures and covers real behavior and failure paths, including:
+The pytest suite covers real behavior and failure paths including:
 
-- successful reconstruction
+- successful archive reconstruction
 - duplicate-state accounting
 - missing payload parts
 - invalid Base64
-- archive SHA mismatch
-- manifest SHA mismatch
-- missing manifest columns
-- missing archive members
-- banned identity/branding detection
-- credential-pattern detection
+- archive and manifest SHA mismatches
+- missing manifest columns and members
+- banned identity/branding and credential signatures
 - configuration validation
-- CLI success and failure exit behavior
+- CLI success/failure behavior
+- exact authenticated v115 extraction and SHA verification
+- deterministic v115 materialization and provenance generation
 
-Branch coverage is enforced in CI with a repository floor of **90%** for the maintained Python verification package.
+Branch coverage is enforced in CI with a repository floor of **90%** for maintained Python code.
 
 ## Lint, type-check, and dependency audit
 
@@ -114,14 +123,7 @@ make typecheck
 make audit
 ```
 
-The quality toolchain uses:
-
-- Ruff for lint/security-oriented static rules
-- mypy in strict mode for the maintained package and CLI wrapper
-- `pip check` for installed dependency consistency
-- pip-audit for current Python vulnerability advisories
-
-Run everything, including archive verification, with:
+The quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit. Run the complete local quality path with:
 
 ```bash
 make check
@@ -129,39 +131,37 @@ make check
 
 ## CI/CD
 
-`.github/workflows/verify-legacy.yml` is a Drive-independent engineering pipeline that runs on every push, pull request, weekly schedule, and manual dispatch. It contains independent jobs for:
+`.github/workflows/verify-legacy.yml` runs on pushes, pull requests, a weekly schedule, and manual dispatch. Its independent gates cover:
 
 1. tests + branch coverage
-2. Ruff + mypy static analysis
+2. Ruff + strict mypy
 3. dependency graph + vulnerability audit
 4. authenticated 84-occurrence archive verification
 5. Docker fresh-clone image build + execution
 
-A separate CodeQL workflow performs Python static security analysis. Dependabot tracks Python and GitHub Actions dependencies.
+`.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application and commits the deterministic physical application surface when required. A separate CodeQL workflow performs Python static security analysis. Dependabot tracks Python and GitHub Actions dependencies.
 
 ## Docker
-
-The repository includes a reproducible Python 3.12 container path:
 
 ```bash
 docker build -t canva-archive-verifier .
 docker run --rm canva-archive-verifier
 ```
 
-The container verifies the authenticated archive, runs the pytest suite, checks the enforced coverage threshold, and exits non-zero on failure. CI builds and runs this exact container path on every push and pull request.
+The container verifies the authenticated archive, runs pytest, enforces coverage, and exits non-zero on failure. CI builds and runs this exact path.
 
 ## Environment and secrets
 
-No runtime environment variables, credentials, API keys, or cloud authentication are required to verify this repository. `.env.example` documents that intentionally empty runtime environment. Credentials must never be committed.
+No runtime credentials, API keys, cloud authentication, or environment variables are required to verify or materialize this repository. `.env.example` documents that intentionally empty runtime environment. Credentials must never be committed.
 
 ## Deidentification policy
 
 Repository-facing historical copies remove or neutralize personal identifiers, private tokens/credentials, local user paths, and legacy product branding where doing so does not alter engineering behavior. Third-party technology names are retained when technically relevant.
 
-The maintained scanner enforces banned identity literals and common credential signatures while the manifest verifies each sanitized source artifact by SHA-256.
+The scanner enforces banned identity literals and credential signatures while the manifest verifies sanitized artifacts by SHA-256.
 
 ## Development policy
 
-New behavior should land in focused commits with the tests that prove it. Do not bulk-rewrite authenticated historical files for style purposes, do not manufacture missing source, and do not fabricate old commits, contributors, dates, tags, or releases to influence repository-history scoring.
+New behavior should land in focused commits with tests that prove it. Do not bulk-rewrite authenticated historical files, manufacture missing source, or fabricate old commits, contributors, dates, tags, or releases to influence repository-history scoring.
 
-See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and the files under `provenance/` for the development and recovery audit trail.
+See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `app/authenticated-v115/PROVENANCE.md`, and `provenance/` for the engineering and recovery audit trail.
