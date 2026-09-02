@@ -1,0 +1,42 @@
+name: materialize/v115
+
+on:
+  push:
+    branches:
+      - score-maximization-v115-app
+    paths:
+      - scripts/materialize_v115.py
+      - .github/workflows/materialize-v115.yml
+      - legacy-html/archive/payload/**
+      - provenance/DRIVE_84_MANIFEST.csv
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: score-maximization-v115-app
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Materialize authenticated application
+        run: python scripts/materialize_v115.py
+      - name: Commit deterministic application surface
+        run: |
+          if git diff --quiet -- app/authenticated-v115 && [ -f app/authenticated-v115/index.html ]; then
+            echo "Authenticated v115 application is already materialized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/authenticated-v115
+          git commit -m "build: materialize authenticated v115 application"
+          git push origin HEAD:score-maximization-v115-app
