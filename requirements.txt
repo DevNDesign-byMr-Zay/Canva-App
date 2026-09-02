@@ -1,0 +1,1 @@
+# Runtime dependencies: none. The archive verifier uses only the Python standard library.
