@@ -12,7 +12,8 @@ if str(ROOT) not in sys.path:
 
 def main() -> int:
     cli = importlib.import_module("archive_verifier.cli")
-    return cli.main()
+    result: int = cli.main()
+    return result
 
 
 if __name__ == "__main__":
