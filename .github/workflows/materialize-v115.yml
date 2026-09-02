@@ -5,6 +5,7 @@ on:
     branches:
       - score-maximization-v115-app
     paths:
+      - archive_verifier/materializer.py
       - scripts/materialize_v115.py
       - .github/workflows/materialize-v115.yml
       - legacy-html/archive/payload/**
@@ -31,7 +32,7 @@ jobs:
         run: python scripts/materialize_v115.py
       - name: Commit deterministic application surface
         run: |
-          if git diff --quiet -- app/authenticated-v115 && [ -f app/authenticated-v115/index.html ]; then
+          if [ -z "$(git status --porcelain -- app/authenticated-v115)" ]; then
             echo "Authenticated v115 application is already materialized."
             exit 0
           fi
