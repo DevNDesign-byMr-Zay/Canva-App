@@ -73,7 +73,7 @@ jobs:
         run: pip-audit -r requirements.lock.txt
 
   archive-verification:
-    name: Verify authenticated archive
+    name: Verify authenticated archive and app
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -85,6 +85,10 @@ jobs:
           python-version: "3.12"
       - name: Verify 84-occurrence archive
         run: python scripts/verify_legacy_archive.py
+      - name: Reconstruct authenticated v115 application
+        run: python scripts/materialize_v115.py
+      - name: Verify committed app is deterministic
+        run: git diff --exit-code -- app/authenticated-v115
 
   container-verification:
     name: Docker fresh-clone verification
