@@ -6,7 +6,6 @@ import csv
 import hashlib
 import io
 import re
-import sys
 import tarfile
 from pathlib import Path
 
@@ -14,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PAYLOAD = ROOT / "legacy-html" / "archive" / "payload"
 MANIFEST = ROOT / "provenance" / "DRIVE_84_MANIFEST.csv"
 EXPECTED_B64_CHARS = 460536
-EXPECTED_ARCHIVE_SHA256 = "7d22f60d202201c282c19925d397f274d90bd0796da00fd6ebca5f72dd074ae5"
+EXPECTED_ARCHIVE_BYTES = 345402
+EXPECTED_ARCHIVE_SHA256 = "7f5f98e91aa9e94a33af6b1d1958239ef694551abfe8c1277dd015483900eb58"
 EXPECTED_OCCURRENCES = 84
 EXPECTED_UNIQUE_SOURCE_NAMES = 82
 EXPECTED_DISTINCT_STATES = 68
@@ -24,7 +24,7 @@ BANNED_LITERALS = (
     "roary",
     "mr. zay",
     "mr zay",
-    "devnddesign-byMr-Zay".lower(),
+    "devnddesign-bymr-zay",
 )
 CREDENTIAL_PATTERNS = (
     re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
@@ -60,6 +60,8 @@ def main() -> None:
     archive_sha = hashlib.sha256(archive).hexdigest()
     print(f"archive_bytes={len(archive)}")
     print(f"archive_sha256={archive_sha}")
+    if len(archive) != EXPECTED_ARCHIVE_BYTES:
+        fail(f"archive byte count {len(archive)} != {EXPECTED_ARCHIVE_BYTES}")
     if archive_sha != EXPECTED_ARCHIVE_SHA256:
         fail(f"archive SHA mismatch; expected {EXPECTED_ARCHIVE_SHA256}")
 
@@ -70,17 +72,9 @@ def main() -> None:
         fail(f"manifest occurrence count {len(rows)} != {EXPECTED_OCCURRENCES}")
 
     unique_sources = {row["source_filename_sha256"] for row in rows}
-    distinct_states = {row["sanitized_sha256"] for row in rows}
-    duplicate_occurrences = len(rows) - len(distinct_states)
     print(f"unique_source_names={len(unique_sources)}")
-    print(f"distinct_states={len(distinct_states)}")
-    print(f"duplicate_occurrences={duplicate_occurrences}")
     if len(unique_sources) != EXPECTED_UNIQUE_SOURCE_NAMES:
         fail(f"unique source-name hashes {len(unique_sources)} != {EXPECTED_UNIQUE_SOURCE_NAMES}")
-    if len(distinct_states) != EXPECTED_DISTINCT_STATES:
-        fail(f"distinct states {len(distinct_states)} != {EXPECTED_DISTINCT_STATES}")
-    if duplicate_occurrences != EXPECTED_DUPLICATE_OCCURRENCES:
-        fail(f"duplicate occurrences {duplicate_occurrences} != {EXPECTED_DUPLICATE_OCCURRENCES}")
 
     try:
         tf = tarfile.open(fileobj=io.BytesIO(archive), mode="r:xz")
@@ -96,6 +90,11 @@ def main() -> None:
     if len(by_basename) != EXPECTED_OCCURRENCES:
         fail("archive HTML basenames are not unique")
 
+    actual_hashes: dict[str, str] = {}
+    mismatches: list[tuple[str, str, str]] = []
+    identity_hits: list[str] = []
+    credential_hits: list[str] = []
+
     for row in rows:
         name = row["repository_filename"]
         member = by_basename.get(name)
@@ -106,16 +105,37 @@ def main() -> None:
             fail(f"unable to read archive member: {name}")
         data = extracted.read()
         digest = hashlib.sha256(data).hexdigest()
+        actual_hashes[name] = digest
         if digest != row["sanitized_sha256"]:
-            fail(f"sanitized SHA mismatch for {name}: {digest}")
+            mismatches.append((name, row["sanitized_sha256"], digest))
+
         text = data.decode("utf-8", errors="ignore")
         low = text.lower()
         for literal in BANNED_LITERALS:
             if literal in low:
-                fail(f"banned identity/branding literal found in {name}: {literal}")
+                identity_hits.append(f"{name}:{literal}")
         for pattern in CREDENTIAL_PATTERNS:
             if pattern.search(text):
-                fail(f"credential-shaped value found in {name}: {pattern.pattern}")
+                credential_hits.append(f"{name}:{pattern.pattern}")
+
+    distinct_states = len(set(actual_hashes.values()))
+    duplicate_occurrences = len(actual_hashes) - distinct_states
+    print(f"distinct_states={distinct_states}")
+    print(f"duplicate_occurrences={duplicate_occurrences}")
+    print(f"manifest_hash_mismatches={len(mismatches)}")
+    for name, expected, actual in mismatches:
+        print(f"MISMATCH {name} expected={expected} actual={actual}")
+
+    if distinct_states != EXPECTED_DISTINCT_STATES:
+        fail(f"distinct states {distinct_states} != {EXPECTED_DISTINCT_STATES}")
+    if duplicate_occurrences != EXPECTED_DUPLICATE_OCCURRENCES:
+        fail(f"duplicate occurrences {duplicate_occurrences} != {EXPECTED_DUPLICATE_OCCURRENCES}")
+    if identity_hits:
+        fail("identity/branding scan hits: " + ", ".join(identity_hits))
+    if credential_hits:
+        fail("credential scan hits: " + ", ".join(credential_hits))
+    if mismatches:
+        fail(f"manifest has {len(mismatches)} sanitized SHA mismatch(es)")
 
     print("PASS: legacy archive is reconstructable, deidentified, and represents 84/84 occurrences with missing=0")
 
