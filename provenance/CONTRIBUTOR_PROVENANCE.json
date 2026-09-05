@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "change_id": "V115-ID-001",
+      "component": "authenticated-v115 identity verification",
+      "change": "Pin manifest occurrence 44 to the full authenticated identity tuple, including the source-filename SHA-256.",
+      "source_commits": [
+        "9ea2e12a406ae59c6e7122e6ea59a9ab6ba19007",
+        "f17c1c1d348ebe86d2dd0ef2021b2ca417167880"
+      ],
+      "affected_files": [
+        "archive_verifier/materializer.py",
+        "tests/test_materializer.py",
+        "app/authenticated-v115/PROVENANCE.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "contributor_label": "Tara",
+      "github_identity": "DevNDesign-Team",
+      "attribution_basis": "Commit messages explicitly tag [Tara]; GitHub author/committer identity is DevNDesign-Team.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "mechanically pinned and regression-tested",
+      "confidence": "verified for these Git commits; no retroactive historical corpus attribution"
+    },
+    {
+      "change_id": "V115-ID-002",
+      "component": "authenticated-v115 identity verification",
+      "change": "Model the full v115 tuple as one immutable typed identity and derive a deterministic SHA-256 fingerprint consumed by generated provenance.",
+      "builds_on": "V115-ID-001",
+      "base_commit": "63a08b0cb6a279b314f4a96ea0bdee185e749f6d",
+      "affected_files": [
+        "archive_verifier/materializer.py",
+        "tests/test_materializer.py",
+        "app/authenticated-v115/PROVENANCE.md"
+      ],
+      "contributor_label": "Mr. Zay follow-on",
+      "github_identity": "DevNDesign-byMr-Zay",
+      "attribution_basis": "Focused branch and pull request created from Tara's latest main head.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "pending pull-request CI and CodeQL",
+      "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
+    }
+  ]
+}
