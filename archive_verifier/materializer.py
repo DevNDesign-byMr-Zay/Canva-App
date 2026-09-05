@@ -15,6 +15,7 @@ from archive_verifier.service import (
 )
 
 TARGET_OCCURRENCE = 44
+TARGET_SOURCE_FILENAME_SHA256 = "fcdebfd5ddfa4cef626062e1429d414009ec334bf41e2889817fbf6d5055f810"
 TARGET_BASENAME = "aetherv246_v115_depthpop_modeldrawer_FINALFIX.html"
 TARGET_SHA256 = "d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1"
 OUTPUT_PATH = ROOT / "app" / "authenticated-v115" / "index.html"
@@ -30,6 +31,10 @@ def validate_target_manifest(config: VerificationConfig) -> None:
         )
 
     target = matches[0]
+    if target["source_filename_sha256"] != TARGET_SOURCE_FILENAME_SHA256:
+        raise ArchiveVerificationError(
+            f"manifest occurrence {TARGET_OCCURRENCE} source-name hash does not match authenticated v115"
+        )
     if target["repository_filename"] != TARGET_BASENAME:
         raise ArchiveVerificationError(
             f"manifest occurrence {TARGET_OCCURRENCE} filename does not match authenticated v115"
@@ -86,6 +91,7 @@ def provenance_text() -> str:
         "This file is deterministically materialized from the repository's authenticated "
         "84-occurrence `.tar.xz` archive. The historical archive remains immutable.\n\n"
         f"- Source member: `{TARGET_BASENAME}`\n"
+        f"- Source filename SHA-256: `{TARGET_SOURCE_FILENAME_SHA256}`\n"
         f"- Sanitized SHA-256: `{TARGET_SHA256}`\n"
         f"- Manifest occurrence: `{TARGET_OCCURRENCE}`\n"
         "- Generated path: `app/authenticated-v115/index.html`\n\n"
