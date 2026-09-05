@@ -15,7 +15,9 @@ from archive_verifier.service import (
 )
 
 TARGET_OCCURRENCE = 44
-TARGET_SOURCE_FILENAME_SHA256 = "fcdebfd5ddfa4cef626062e1429d414009ec334bf41e2889817fbf6d5055f810"
+TARGET_SOURCE_FILENAME_SHA256 = (
+    "fcdebfd5ddfa4cef626062e1429d414009ec334bf41e2889817fbf6d5055f810"
+)
 TARGET_BASENAME = "aetherv246_v115_depthpop_modeldrawer_FINALFIX.html"
 TARGET_SHA256 = "d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1"
 OUTPUT_PATH = ROOT / "app" / "authenticated-v115" / "index.html"
