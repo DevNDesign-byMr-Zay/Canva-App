@@ -12,6 +12,7 @@ from archive_verifier.materializer import (
     TARGET_BASENAME,
     TARGET_OCCURRENCE,
     TARGET_SHA256,
+    TARGET_SOURCE_FILENAME_SHA256,
     extract_authenticated_v115,
     materialize,
     provenance_text,
@@ -28,8 +29,13 @@ def _manifest_config(path: Path) -> VerificationConfig:
     return replace(VerificationConfig.production(), manifest_path=path)
 
 
-def _target_row(*, filename: str = TARGET_BASENAME, sha256: str = TARGET_SHA256) -> str:
-    return f"{TARGET_OCCURRENCE},{'a' * 64},{filename},{sha256}\n"
+def _target_row(
+    *,
+    source_filename_sha256: str = TARGET_SOURCE_FILENAME_SHA256,
+    filename: str = TARGET_BASENAME,
+    sha256: str = TARGET_SHA256,
+) -> str:
+    return f"{TARGET_OCCURRENCE},{source_filename_sha256},{filename},{sha256}\n"
 
 
 def _write_manifest(path: Path, *rows: str) -> None:
@@ -45,6 +51,7 @@ def test_target_manifest_accepts_exact_authenticated_mapping(tmp_path: Path) -> 
 @pytest.mark.parametrize(
     ("row", "message"),
     [
+        (_target_row(source_filename_sha256="a" * 64), "source-name hash"),
         (_target_row(filename="drifted.html"), "filename"),
         (_target_row(sha256="b" * 64), "SHA"),
     ],
@@ -84,6 +91,7 @@ def test_materialize_writes_exact_authenticated_bytes(tmp_path: Path) -> None:
 def test_provenance_identifies_exact_source_and_sha(tmp_path: Path) -> None:
     text = provenance_text()
     assert TARGET_BASENAME in text
+    assert TARGET_SOURCE_FILENAME_SHA256 in text
     assert TARGET_SHA256 in text
     assert f"Manifest occurrence: `{TARGET_OCCURRENCE}`" in text
     path = write_provenance(tmp_path / "PROVENANCE.md")
