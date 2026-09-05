@@ -36,6 +36,8 @@ app/authenticated-v115/index.html
 
 The materialized v115 source member is `aetherv246_v115_depthpop_modeldrawer_FINALFIX.html`. Its required sanitized SHA-256 is `d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1`.
 
+The materializer validates the manifest mapping before archive extraction. Occurrence `44` must exist exactly once and its `repository_filename` and `sanitized_sha256` values must match the authenticated v115 constants. This keeps the documented provenance edge and the executable materialization path aligned.
+
 ## Maintained layer map
 
 ```text
@@ -63,7 +65,7 @@ CLI/module entrypoints
 
 ### Materialization boundary
 
-`archive_verifier.materializer` has one narrow responsibility: locate exactly one authenticated v115 member, verify its SHA-256 against the manifest-backed constant, and write those exact bytes to the physical `app/` surface. It does not transform, reformat, minify, or reinterpret the application source.
+`archive_verifier.materializer` has one narrow responsibility: validate the occurrence-44 manifest mapping, locate exactly one authenticated v115 member, verify its SHA-256 against the manifest-backed constant, and write those exact bytes to the physical `app/` surface. It does not transform, reformat, minify, or reinterpret the application source.
 
 The thin `scripts/materialize_v115.py` entrypoint delegates to the typed package so static analysis, tests, and mypy cover the real implementation rather than a procedural script.
 
@@ -79,8 +81,9 @@ Expected integrity/materialization failures raise `ArchiveVerificationError`; in
 
 Production verification asserts the archive properties documented in the README: payload-part count, Base64 size, reconstructed byte count and SHA, occurrence count, source-name uniqueness, state/duplicate accounting, per-file sanitized hashes, and zero banned identity/credential hits.
 
-Application materialization adds two further invariants:
+Application materialization adds three further invariants:
 
+- manifest occurrence `44` must exist exactly once and map to the authenticated v115 filename and sanitized SHA;
 - the target v115 member must occur exactly once in the authenticated archive;
 - the physical `app/authenticated-v115/index.html` must reproduce the authenticated v115 SHA exactly.
 
@@ -88,7 +91,7 @@ CI reruns the materializer and requires `git diff --exit-code -- app/authenticat
 
 ## Test strategy
 
-Generated miniature archives cover verifier failure paths cheaply and deterministically. Dedicated production-materializer tests additionally exercise the real committed archive to prove exact v115 extraction and SHA matching. Entrypoint tests pin process exit behavior.
+Generated miniature archives cover verifier failure paths cheaply and deterministically. Dedicated materializer tests cover manifest mapping drift and additionally exercise the real committed archive to prove exact v115 extraction and SHA matching. Entrypoint tests pin process exit behavior.
 
 The maintained Python surface is subject to:
 
