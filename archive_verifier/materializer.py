@@ -16,7 +16,9 @@ from archive_verifier.service import (
 )
 
 TARGET_OCCURRENCE = 44
-TARGET_SOURCE_FILENAME_SHA256 = "fcdebfd5ddfa4cef626062e1429d414009ec334bf41e2889817fbf6d5055f810"
+TARGET_SOURCE_FILENAME_SHA256 = (
+    "fcdebfd5ddfa4cef626062e1429d414009ec334bf41e2889817fbf6d5055f810"
+)
 TARGET_BASENAME = "aetherv246_v115_depthpop_modeldrawer_FINALFIX.html"
 TARGET_SHA256 = "d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1"
 OUTPUT_PATH = ROOT / "app" / "authenticated-v115" / "index.html"
@@ -56,24 +58,32 @@ AUTHENTICATED_V115 = AuthenticatedV115Identity(
 
 def validate_target_manifest(config: VerificationConfig) -> None:
     rows = read_manifest(config.manifest_path)
-    matches = [row for row in rows if row["occurrence"] == str(AUTHENTICATED_V115.occurrence)]
+    matches = [
+        row
+        for row in rows
+        if row["occurrence"] == str(AUTHENTICATED_V115.occurrence)
+    ]
     if len(matches) != 1:
         raise ArchiveVerificationError(
-            f"expected one manifest row for occurrence {AUTHENTICATED_V115.occurrence}, found {len(matches)}"
+            "expected one manifest row for occurrence "
+            f"{AUTHENTICATED_V115.occurrence}, found {len(matches)}"
         )
 
     target = matches[0]
     if target["source_filename_sha256"] != AUTHENTICATED_V115.source_filename_sha256:
         raise ArchiveVerificationError(
-            f"manifest occurrence {AUTHENTICATED_V115.occurrence} source-name hash does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} source-name hash "
+            "does not match authenticated v115"
         )
     if target["repository_filename"] != AUTHENTICATED_V115.repository_filename:
         raise ArchiveVerificationError(
-            f"manifest occurrence {AUTHENTICATED_V115.occurrence} filename does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} filename does not match "
+            "authenticated v115"
         )
     if target["sanitized_sha256"] != AUTHENTICATED_V115.sanitized_sha256:
         raise ArchiveVerificationError(
-            f"manifest occurrence {AUTHENTICATED_V115.occurrence} SHA does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} SHA does not match "
+            "authenticated v115"
         )
 
 
@@ -91,7 +101,8 @@ def extract_authenticated_v115(config: VerificationConfig | None = None) -> byte
         matches = [
             member
             for member in handle.getmembers()
-            if member.isfile() and Path(member.name).name == AUTHENTICATED_V115.repository_filename
+            if member.isfile()
+            and Path(member.name).name == AUTHENTICATED_V115.repository_filename
         ]
         if len(matches) != 1:
             raise ArchiveVerificationError(
