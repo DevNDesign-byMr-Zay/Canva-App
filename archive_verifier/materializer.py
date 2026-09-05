@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import tarfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from archive_verifier.config import ROOT, VerificationConfig
@@ -22,26 +23,57 @@ OUTPUT_PATH = ROOT / "app" / "authenticated-v115" / "index.html"
 PROVENANCE_PATH = ROOT / "app" / "authenticated-v115" / "PROVENANCE.md"
 
 
+@dataclass(frozen=True, slots=True)
+class AuthenticatedV115Identity:
+    """Canonical manifest identity for the authenticated v115 application artifact."""
+
+    occurrence: int
+    source_filename_sha256: str
+    repository_filename: str
+    sanitized_sha256: str
+
+    def canonical_text(self) -> str:
+        return "\n".join(
+            (
+                f"occurrence={self.occurrence}",
+                f"source_filename_sha256={self.source_filename_sha256}",
+                f"repository_filename={self.repository_filename}",
+                f"sanitized_sha256={self.sanitized_sha256}",
+            )
+        )
+
+    def fingerprint(self) -> str:
+        return hashlib.sha256(self.canonical_text().encode("utf-8")).hexdigest()
+
+
+AUTHENTICATED_V115 = AuthenticatedV115Identity(
+    occurrence=TARGET_OCCURRENCE,
+    source_filename_sha256=TARGET_SOURCE_FILENAME_SHA256,
+    repository_filename=TARGET_BASENAME,
+    sanitized_sha256=TARGET_SHA256,
+)
+
+
 def validate_target_manifest(config: VerificationConfig) -> None:
     rows = read_manifest(config.manifest_path)
-    matches = [row for row in rows if row["occurrence"] == str(TARGET_OCCURRENCE)]
+    matches = [row for row in rows if row["occurrence"] == str(AUTHENTICATED_V115.occurrence)]
     if len(matches) != 1:
         raise ArchiveVerificationError(
-            f"expected one manifest row for occurrence {TARGET_OCCURRENCE}, found {len(matches)}"
+            f"expected one manifest row for occurrence {AUTHENTICATED_V115.occurrence}, found {len(matches)}"
         )
 
     target = matches[0]
-    if target["source_filename_sha256"] != TARGET_SOURCE_FILENAME_SHA256:
+    if target["source_filename_sha256"] != AUTHENTICATED_V115.source_filename_sha256:
         raise ArchiveVerificationError(
-            f"manifest occurrence {TARGET_OCCURRENCE} source-name hash does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} source-name hash does not match authenticated v115"
         )
-    if target["repository_filename"] != TARGET_BASENAME:
+    if target["repository_filename"] != AUTHENTICATED_V115.repository_filename:
         raise ArchiveVerificationError(
-            f"manifest occurrence {TARGET_OCCURRENCE} filename does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} filename does not match authenticated v115"
         )
-    if target["sanitized_sha256"] != TARGET_SHA256:
+    if target["sanitized_sha256"] != AUTHENTICATED_V115.sanitized_sha256:
         raise ArchiveVerificationError(
-            f"manifest occurrence {TARGET_OCCURRENCE} SHA does not match authenticated v115"
+            f"manifest occurrence {AUTHENTICATED_V115.occurrence} SHA does not match authenticated v115"
         )
 
 
@@ -59,7 +91,7 @@ def extract_authenticated_v115(config: VerificationConfig | None = None) -> byte
         matches = [
             member
             for member in handle.getmembers()
-            if member.isfile() and Path(member.name).name == TARGET_BASENAME
+            if member.isfile() and Path(member.name).name == AUTHENTICATED_V115.repository_filename
         ]
         if len(matches) != 1:
             raise ArchiveVerificationError(
@@ -71,9 +103,9 @@ def extract_authenticated_v115(config: VerificationConfig | None = None) -> byte
         data = extracted.read()
 
     digest = hashlib.sha256(data).hexdigest()
-    if digest != TARGET_SHA256:
+    if digest != AUTHENTICATED_V115.sanitized_sha256:
         raise ArchiveVerificationError(
-            f"v115 SHA mismatch: expected {TARGET_SHA256}, got {digest}"
+            f"v115 SHA mismatch: expected {AUTHENTICATED_V115.sanitized_sha256}, got {digest}"
         )
     return data
 
@@ -90,10 +122,11 @@ def provenance_text() -> str:
         "# Authenticated v115 application\n\n"
         "This file is deterministically materialized from the repository's authenticated "
         "84-occurrence `.tar.xz` archive. The historical archive remains immutable.\n\n"
-        f"- Source member: `{TARGET_BASENAME}`\n"
-        f"- Source filename SHA-256: `{TARGET_SOURCE_FILENAME_SHA256}`\n"
-        f"- Sanitized SHA-256: `{TARGET_SHA256}`\n"
-        f"- Manifest occurrence: `{TARGET_OCCURRENCE}`\n"
+        f"- Source member: `{AUTHENTICATED_V115.repository_filename}`\n"
+        f"- Source filename SHA-256: `{AUTHENTICATED_V115.source_filename_sha256}`\n"
+        f"- Sanitized SHA-256: `{AUTHENTICATED_V115.sanitized_sha256}`\n"
+        f"- Manifest occurrence: `{AUTHENTICATED_V115.occurrence}`\n"
+        f"- Identity fingerprint: `{AUTHENTICATED_V115.fingerprint()}`\n"
         "- Generated path: `app/authenticated-v115/index.html`\n\n"
         "Run `python scripts/materialize_v115.py` to reconstruct the application source.\n"
     )
