@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 
@@ -18,10 +19,7 @@ def test_accepts_generated_authenticated_v115_provenance(tmp_path: Path) -> None
     assert validate_provenance_record(record) == record
 
     path = tmp_path / "PROVENANCE.json"
-    path.write_text(
-        __import__("json").dumps(record, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     assert verify_provenance_file(path) == record
 
 
