@@ -39,6 +39,25 @@
       "historical_authorship": "shared-team/unknown",
       "verification_status": "pending pull-request CI and CodeQL",
       "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
+    },
+    {
+      "change_id": "V115-ID-003",
+      "component": "authenticated-v115 provenance integrity",
+      "change": "Generate a deterministic machine-readable provenance sidecar from Tara's authenticated tuple and fingerprint so CI can detect stale or mismatched trust metadata alongside application regeneration.",
+      "builds_on": "V115-ID-002",
+      "base_commit": "1b7a4339d43935afc126fc5417e36ec77a5da097",
+      "affected_files": [
+        "archive_verifier/materializer.py",
+        "tests/test_materializer.py",
+        "app/authenticated-v115/PROVENANCE.json",
+        "provenance/CONTRIBUTOR_PROVENANCE.json"
+      ],
+      "contributor_label": "Mr. Zay follow-on",
+      "github_identity": "DevNDesign-byMr-Zay",
+      "attribution_basis": "PR #5 remains based on Tara's authenticated occurrence-44 tuple; this change derives machine provenance only from that immutable identity and does not modify historical archive bytes or reassign historical authorship.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "pending pull-request CI and CodeQL",
+      "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
     }
   ]
 }
