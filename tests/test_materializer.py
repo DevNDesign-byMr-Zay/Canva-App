@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,15 +10,20 @@ import pytest
 from archive_verifier.config import VerificationConfig
 from archive_verifier.errors import ArchiveVerificationError
 from archive_verifier.materializer import (
+    AUTHENTICATED_V115,
     TARGET_BASENAME,
     TARGET_OCCURRENCE,
     TARGET_SHA256,
     TARGET_SOURCE_FILENAME_SHA256,
+    AuthenticatedV115Identity,
     extract_authenticated_v115,
     materialize,
+    provenance_json_text,
+    provenance_record,
     provenance_text,
     validate_target_manifest,
     write_provenance,
+    write_provenance_json,
 )
 
 _MANIFEST_HEADER = (
@@ -75,6 +81,50 @@ def test_target_manifest_rejects_duplicate_occurrence(tmp_path: Path) -> None:
         validate_target_manifest(_manifest_config(path))
 
 
+def test_authenticated_identity_matches_tara_full_tuple() -> None:
+    assert AUTHENTICATED_V115 == AuthenticatedV115Identity(
+        occurrence=TARGET_OCCURRENCE,
+        source_filename_sha256=TARGET_SOURCE_FILENAME_SHA256,
+        repository_filename=TARGET_BASENAME,
+        sanitized_sha256=TARGET_SHA256,
+    )
+
+
+def test_authenticated_identity_fingerprint_binds_full_tuple() -> None:
+    expected = hashlib.sha256(
+        (
+            f"occurrence={TARGET_OCCURRENCE}\n"
+            f"source_filename_sha256={TARGET_SOURCE_FILENAME_SHA256}\n"
+            f"repository_filename={TARGET_BASENAME}\n"
+            f"sanitized_sha256={TARGET_SHA256}"
+        ).encode()
+    ).hexdigest()
+    assert AUTHENTICATED_V115.fingerprint() == expected
+    drifted = replace(AUTHENTICATED_V115, repository_filename="drifted.html")
+    assert drifted.fingerprint() != expected
+
+
+def test_machine_provenance_binds_tara_identity_and_fingerprint() -> None:
+    record = provenance_record()
+    identity = record["identity"]
+    assert isinstance(identity, dict)
+    assert identity == {
+        "occurrence": TARGET_OCCURRENCE,
+        "source_filename_sha256": TARGET_SOURCE_FILENAME_SHA256,
+        "repository_filename": TARGET_BASENAME,
+        "sanitized_sha256": TARGET_SHA256,
+        "fingerprint": AUTHENTICATED_V115.fingerprint(),
+    }
+    assert record["historical_archive_mutated"] is False
+
+
+def test_machine_provenance_is_deterministic_json(tmp_path: Path) -> None:
+    text = provenance_json_text()
+    assert json.loads(text) == provenance_record()
+    path = write_provenance_json(tmp_path / "PROVENANCE.json")
+    assert path.read_text(encoding="utf-8") == text
+
+
 def test_extract_authenticated_v115_matches_manifest_sha() -> None:
     data = extract_authenticated_v115()
     assert len(data) > 100_000
@@ -94,5 +144,6 @@ def test_provenance_identifies_exact_source_and_sha(tmp_path: Path) -> None:
     assert TARGET_SOURCE_FILENAME_SHA256 in text
     assert TARGET_SHA256 in text
     assert f"Manifest occurrence: `{TARGET_OCCURRENCE}`" in text
+    assert AUTHENTICATED_V115.fingerprint() in text
     path = write_provenance(tmp_path / "PROVENANCE.md")
     assert path.read_text(encoding="utf-8") == text
