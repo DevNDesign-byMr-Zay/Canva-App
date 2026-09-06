@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import tarfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,7 @@ TARGET_BASENAME = "aetherv246_v115_depthpop_modeldrawer_FINALFIX.html"
 TARGET_SHA256 = "d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1"
 OUTPUT_PATH = ROOT / "app" / "authenticated-v115" / "index.html"
 PROVENANCE_PATH = ROOT / "app" / "authenticated-v115" / "PROVENANCE.md"
+PROVENANCE_JSON_PATH = ROOT / "app" / "authenticated-v115" / "PROVENANCE.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +130,25 @@ def materialize(output_path: Path = OUTPUT_PATH) -> Path:
     return output_path
 
 
+def provenance_record() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "identity": {
+            "occurrence": AUTHENTICATED_V115.occurrence,
+            "source_filename_sha256": AUTHENTICATED_V115.source_filename_sha256,
+            "repository_filename": AUTHENTICATED_V115.repository_filename,
+            "sanitized_sha256": AUTHENTICATED_V115.sanitized_sha256,
+            "fingerprint": AUTHENTICATED_V115.fingerprint(),
+        },
+        "generated_path": "app/authenticated-v115/index.html",
+        "historical_archive_mutated": False,
+    }
+
+
+def provenance_json_text() -> str:
+    return json.dumps(provenance_record(), indent=2, sort_keys=True) + "\n"
+
+
 def provenance_text() -> str:
     return (
         "# Authenticated v115 application\n\n"
@@ -149,8 +170,15 @@ def write_provenance(path: Path = PROVENANCE_PATH) -> Path:
     return path
 
 
+def write_provenance_json(path: Path = PROVENANCE_JSON_PATH) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(provenance_json_text(), encoding="utf-8")
+    return path
+
+
 def main() -> int:
     output = materialize()
     write_provenance()
+    write_provenance_json()
     print(f"materialized {output.relative_to(ROOT)}")
     return 0
