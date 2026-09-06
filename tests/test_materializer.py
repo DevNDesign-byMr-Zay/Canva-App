@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -17,9 +18,12 @@ from archive_verifier.materializer import (
     AuthenticatedV115Identity,
     extract_authenticated_v115,
     materialize,
+    provenance_json_text,
+    provenance_record,
     provenance_text,
     validate_target_manifest,
     write_provenance,
+    write_provenance_json,
 )
 
 _MANIFEST_HEADER = (
@@ -98,6 +102,27 @@ def test_authenticated_identity_fingerprint_binds_full_tuple() -> None:
     assert AUTHENTICATED_V115.fingerprint() == expected
     drifted = replace(AUTHENTICATED_V115, repository_filename="drifted.html")
     assert drifted.fingerprint() != expected
+
+
+def test_machine_provenance_binds_tara_identity_and_fingerprint() -> None:
+    record = provenance_record()
+    identity = record["identity"]
+    assert isinstance(identity, dict)
+    assert identity == {
+        "occurrence": TARGET_OCCURRENCE,
+        "source_filename_sha256": TARGET_SOURCE_FILENAME_SHA256,
+        "repository_filename": TARGET_BASENAME,
+        "sanitized_sha256": TARGET_SHA256,
+        "fingerprint": AUTHENTICATED_V115.fingerprint(),
+    }
+    assert record["historical_archive_mutated"] is False
+
+
+def test_machine_provenance_is_deterministic_json(tmp_path: Path) -> None:
+    text = provenance_json_text()
+    assert json.loads(text) == provenance_record()
+    path = write_provenance_json(tmp_path / "PROVENANCE.json")
+    assert path.read_text(encoding="utf-8") == text
 
 
 def test_extract_authenticated_v115_matches_manifest_sha() -> None:
