@@ -58,6 +58,34 @@
       "historical_authorship": "shared-team/unknown",
       "verification_status": "pending pull-request CI and CodeQL",
       "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
+    },
+    {
+      "change_id": "V115-ID-004",
+      "component": "authenticated-v115 independent provenance verification",
+      "change": "Independently validate the committed machine-readable provenance schema and recompute its identity fingerprint from the sidecar fields so stale or tampered trust metadata fails CI without trusting the materializer that generated it.",
+      "builds_on": "V115-ID-003",
+      "base_commit": "0e31ace6ab5f7e4ada8c9cb4116c88c872b28f71",
+      "source_evidence": {
+        "tara_commits": [
+          "9ea2e12a406ae59c6e7122e6ea59a9ab6ba19007",
+          "f17c1c1d348ebe86d2dd0ef2021b2ca417167880",
+          "2febc923"
+        ],
+        "github_identity": "DevNDesign-Team",
+        "authenticated_occurrence": 44
+      },
+      "affected_files": [
+        "archive_verifier/provenance_integrity.py",
+        "tests/test_provenance_integrity.py",
+        ".github/workflows/verify-legacy.yml",
+        "provenance/CONTRIBUTOR_PROVENANCE.json"
+      ],
+      "contributor_label": "Mr. Zay follow-on",
+      "github_identity": "DevNDesign-byMr-Zay",
+      "attribution_basis": "This verifier consumes the provenance sidecar derived from Tara's authenticated occurrence-44 tuple but does not modify Tara's identity constants or historical archive bytes. It independently recomputes the fingerprint and enforces the sidecar contract in CI.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "pending pull-request CI and CodeQL",
+      "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
     }
   ]
 }
