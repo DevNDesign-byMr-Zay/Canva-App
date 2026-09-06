@@ -97,7 +97,7 @@ def test_authenticated_identity_fingerprint_binds_full_tuple() -> None:
             f"source_filename_sha256={TARGET_SOURCE_FILENAME_SHA256}\n"
             f"repository_filename={TARGET_BASENAME}\n"
             f"sanitized_sha256={TARGET_SHA256}"
-        ).encode("utf-8")
+        ).encode()
     ).hexdigest()
     assert AUTHENTICATED_V115.fingerprint() == expected
     drifted = replace(AUTHENTICATED_V115, repository_filename="drifted.html")
