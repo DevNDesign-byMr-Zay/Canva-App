@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import re
@@ -10,7 +11,14 @@ from pathlib import Path
 PROVENANCE_SCHEMA_VERSION = 1
 EXPECTED_GENERATED_PATH = "app/authenticated-v115/index.html"
 DEFAULT_PROVENANCE_PATH = Path("app/authenticated-v115/PROVENANCE.json")
+DEFAULT_MANIFEST_PATH = Path("provenance/DRIVE_84_MANIFEST.csv")
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_REQUIRED_MANIFEST_COLUMNS = {
+    "occurrence",
+    "source_filename_sha256",
+    "repository_filename",
+    "sanitized_sha256",
+}
 
 
 class ProvenanceIntegrityError(ValueError):
@@ -110,6 +118,34 @@ def validate_provenance_record(record: object) -> Mapping[str, object]:
     return provenance
 
 
+def verify_manifest_identity(
+    provenance: Mapping[str, object], manifest_path: Path = DEFAULT_MANIFEST_PATH
+) -> None:
+    """Verify that the provenance identity tuple is present exactly once in the manifest."""
+    identity = _require_mapping(provenance["identity"], "identity")
+    try:
+        with manifest_path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            columns = set(reader.fieldnames or ())
+            if not _REQUIRED_MANIFEST_COLUMNS.issubset(columns):
+                raise ProvenanceIntegrityError("manifest is missing required identity columns")
+            rows = list(reader)
+    except (OSError, csv.Error) as exc:
+        raise ProvenanceIntegrityError(f"unable to read provenance manifest: {exc}") from exc
+
+    occurrence = identity["occurrence"]
+    matches = [row for row in rows if row["occurrence"] == str(occurrence)]
+    if len(matches) != 1:
+        raise ProvenanceIntegrityError(
+            f"expected one manifest row for provenance occurrence {occurrence}, found {len(matches)}"
+        )
+
+    target = matches[0]
+    for field in ("source_filename_sha256", "repository_filename", "sanitized_sha256"):
+        if target[field] != identity[field]:
+            raise ProvenanceIntegrityError(f"manifest identity mismatch for {field}")
+
+
 def verify_generated_artifact(
     provenance: Mapping[str, object], artifact_root: Path = Path(".")
 ) -> None:
@@ -136,13 +172,16 @@ def verify_generated_artifact(
 
 
 def verify_provenance_file(
-    path: Path = DEFAULT_PROVENANCE_PATH, artifact_root: Path = Path(".")
+    path: Path = DEFAULT_PROVENANCE_PATH,
+    artifact_root: Path = Path("."),
+    manifest_path: Path = DEFAULT_MANIFEST_PATH,
 ) -> Mapping[str, object]:
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ProvenanceIntegrityError(f"unable to read provenance JSON: {exc}") from exc
     provenance = validate_provenance_record(record)
+    verify_manifest_identity(provenance, manifest_path)
     verify_generated_artifact(provenance, artifact_root)
     return provenance
 
