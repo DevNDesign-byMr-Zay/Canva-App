@@ -137,7 +137,8 @@ def verify_manifest_identity(
     matches = [row for row in rows if row["occurrence"] == str(occurrence)]
     if len(matches) != 1:
         raise ProvenanceIntegrityError(
-            f"expected one manifest row for provenance occurrence {occurrence}, found {len(matches)}"
+            "expected one manifest row for provenance occurrence "
+            f"{occurrence}, found {len(matches)}"
         )
 
     target = matches[0]
