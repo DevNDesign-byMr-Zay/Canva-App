@@ -12,6 +12,7 @@ from archive_verifier.provenance_integrity import (
     main,
     validate_provenance_record,
     verify_generated_artifact,
+    verify_manifest_identity,
     verify_provenance_file,
 )
 
@@ -27,15 +28,28 @@ def _write_generated_artifact(root: Path, data: bytes) -> Path:
     return path
 
 
+def _write_manifest(path: Path, record: dict[str, object]) -> None:
+    identity = record["identity"]
+    assert isinstance(identity, dict)
+    path.write_text(
+        "occurrence,source_filename_sha256,repository_filename,sanitized_sha256\n"
+        f"{identity['occurrence']},{identity['source_filename_sha256']},"
+        f"{identity['repository_filename']},{identity['sanitized_sha256']}\n",
+        encoding="utf-8",
+    )
+
+
 def test_accepts_generated_authenticated_v115_provenance(tmp_path: Path) -> None:
     record = provenance_record()
     assert validate_provenance_record(record) == record
 
     repository_artifact = Path("app/authenticated-v115/index.html").read_bytes()
     _write_generated_artifact(tmp_path, repository_artifact)
+    manifest_path = tmp_path / "manifest.csv"
+    _write_manifest(manifest_path, record)
     path = tmp_path / "PROVENANCE.json"
     _write_record(path, record)
-    assert verify_provenance_file(path, tmp_path) == record
+    assert verify_provenance_file(path, tmp_path, manifest_path) == record
 
 
 def test_cli_accepts_committed_authenticated_v115_provenance() -> None:
@@ -101,6 +115,28 @@ def test_rejects_invalid_identity_shapes_and_hashes() -> None:
         validate_provenance_record(record)
 
 
+def test_rejects_manifest_identity_drift(tmp_path: Path) -> None:
+    record = provenance_record()
+    manifest_path = tmp_path / "manifest.csv"
+    _write_manifest(manifest_path, record)
+    text = manifest_path.read_text(encoding="utf-8")
+    manifest_path.write_text(text.replace("fcdebfd5", "00000000", 1), encoding="utf-8")
+
+    with pytest.raises(ProvenanceIntegrityError, match="source_filename_sha256"):
+        verify_manifest_identity(record, manifest_path)
+
+
+def test_rejects_duplicate_manifest_occurrence(tmp_path: Path) -> None:
+    record = provenance_record()
+    manifest_path = tmp_path / "manifest.csv"
+    _write_manifest(manifest_path, record)
+    lines = manifest_path.read_text(encoding="utf-8").splitlines()
+    manifest_path.write_text("\n".join((lines[0], lines[1], lines[1])) + "\n", encoding="utf-8")
+
+    with pytest.raises(ProvenanceIntegrityError, match="found 2"):
+        verify_manifest_identity(record, manifest_path)
+
+
 def test_rejects_generated_artifact_byte_drift(tmp_path: Path) -> None:
     record = provenance_record()
     _write_generated_artifact(tmp_path, b"drifted authenticated app")
@@ -119,7 +155,7 @@ def test_rejects_unreadable_json_and_cli_overflow(tmp_path: Path) -> None:
     path = tmp_path / "PROVENANCE.json"
     path.write_text("{not-json", encoding="utf-8")
     with pytest.raises(ProvenanceIntegrityError, match="unable to read provenance JSON"):
-        verify_provenance_file(path, tmp_path)
+        verify_provenance_file(path, tmp_path, tmp_path / "manifest.csv")
 
     with pytest.raises(SystemExit, match="usage"):
         main(["one.json", "two.json"])
