@@ -110,12 +110,41 @@ def validate_provenance_record(record: object) -> Mapping[str, object]:
     return provenance
 
 
-def verify_provenance_file(path: Path = DEFAULT_PROVENANCE_PATH) -> Mapping[str, object]:
+def verify_generated_artifact(
+    provenance: Mapping[str, object], artifact_root: Path = Path(".")
+) -> None:
+    """Verify that the materialized application bytes match the provenance content digest."""
+    identity = _require_mapping(provenance["identity"], "identity")
+    expected_sha256 = _require_sha256(identity["sanitized_sha256"], "sanitized_sha256")
+    generated_path = provenance["generated_path"]
+    if not isinstance(generated_path, str):
+        raise ProvenanceIntegrityError("generated_path must be a string")
+
+    artifact_path = artifact_root / generated_path
+    try:
+        data = artifact_path.read_bytes()
+    except OSError as exc:
+        raise ProvenanceIntegrityError(
+            f"unable to read generated artifact: {artifact_path}"
+        ) from exc
+
+    actual_sha256 = hashlib.sha256(data).hexdigest()
+    if actual_sha256 != expected_sha256:
+        raise ProvenanceIntegrityError(
+            f"generated artifact SHA mismatch: expected {expected_sha256}, got {actual_sha256}"
+        )
+
+
+def verify_provenance_file(
+    path: Path = DEFAULT_PROVENANCE_PATH, artifact_root: Path = Path(".")
+) -> Mapping[str, object]:
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ProvenanceIntegrityError(f"unable to read provenance JSON: {exc}") from exc
-    return validate_provenance_record(record)
+    provenance = validate_provenance_record(record)
+    verify_generated_artifact(provenance, artifact_root)
+    return provenance
 
 
 def main(argv: Sequence[str] | None = None) -> int:
