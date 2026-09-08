@@ -102,11 +102,13 @@ test('streams assistant deltas and finalizes the same persisted assistant shell'
   const { renderers, chatInner, persisted, actions } = state;
 
   const handle = renderers.beginAssistantMessage({ chatInner });
+  assert.deepEqual(persisted, []);
+
+  renderers.appendAssistantDelta(handle, 'RO');
   assert.deepEqual(persisted, [{ role: 'assistant', content: '' }]);
   const persistedShell = persisted[0];
   assert.equal(handle.persistedRecord, persistedShell);
 
-  renderers.appendAssistantDelta(handle, 'RO');
   renderers.appendAssistantDelta(handle, 'ARY');
   renderers.finishAssistantMessage(handle, {
     content: 'ROARY',
@@ -131,10 +133,35 @@ test('streams assistant deltas and finalizes the same persisted assistant shell'
   assert.equal(state.conversationPersists, 1);
 });
 
+test('successful empty response still persists and finalizes an assistant shell', () => {
+  const state = setup();
+  const { renderers, chatInner, persisted } = state;
+  const handle = renderers.beginAssistantMessage({ chatInner });
+
+  renderers.finishAssistantMessage(handle, { content: '' });
+
+  assert.deepEqual(persisted, [{ role: 'assistant', content: '' }]);
+  assert.equal(state.conversationPersists, 1);
+});
+
+test('pre-stream failure does not persist an empty assistant shell', () => {
+  const state = setup();
+  const { renderers, chatInner, persisted } = state;
+  const handle = renderers.beginAssistantMessage({ chatInner });
+  const error = new Error('request rejected');
+
+  renderers.renderError(error, { assistantHandle: handle, streamedContent: '' });
+
+  assert.deepEqual(persisted, []);
+  assert.equal(state.conversationPersists, 0);
+  assert.equal(handle.error, error);
+});
+
 test('fails closed if another persisted record displaces the authenticated assistant shell', () => {
   const state = setup();
   const { renderers, chatInner, persisted } = state;
   const handle = renderers.beginAssistantMessage({ chatInner });
+  renderers.appendAssistantDelta(handle, 'RO');
   persisted.push({ role: 'user', content: 'unexpected write' });
 
   assert.throws(
