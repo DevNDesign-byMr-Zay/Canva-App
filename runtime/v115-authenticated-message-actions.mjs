@@ -17,11 +17,19 @@ function pulse(button, schedule) {
 }
 
 function doublecheckPrompt(text) {
-  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\n${text}`;
+  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
+
+Response to check:
+${text}`;
 }
 
 function reportPrompt(text) {
-  return `Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\n${text}`;
+  return `Report: I think there may be an issue with the previous response.
+
+Describe the issue briefly and suggest a fix.
+
+Response:
+${text}`;
 }
 
 /**
