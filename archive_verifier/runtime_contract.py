@@ -139,7 +139,9 @@ def verify_runtime_contract(path: Path = DEFAULT_APP_PATH) -> RuntimeContractRep
 
     missing_scripts = sorted(REQUIRED_EXTERNAL_SCRIPTS - set(report.external_scripts))
     if missing_scripts:
-        raise RuntimeContractError(f"authenticated app is missing runtime scripts: {missing_scripts}")
+        raise RuntimeContractError(
+            f"authenticated app is missing runtime scripts: {missing_scripts}"
+        )
 
     return report
 
