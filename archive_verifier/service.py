@@ -19,11 +19,43 @@ _REQUIRED_MANIFEST_COLUMNS = {
     "repository_filename",
     "sanitized_sha256",
 }
+_HEX_DIGITS = frozenset("0123456789abcdef")
 
 
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise ArchiveVerificationError(message)
+
+
+def _validate_manifest_row(row: dict[str, str], row_number: int) -> None:
+    occurrence_text = row["occurrence"].strip()
+    try:
+        occurrence = int(occurrence_text)
+    except ValueError as exc:
+        raise ArchiveVerificationError(
+            f"manifest row {row_number} occurrence must be a positive integer"
+        ) from exc
+    _require(
+        occurrence > 0 and str(occurrence) == occurrence_text,
+        f"manifest row {row_number} occurrence must be a positive integer",
+    )
+
+    repository_filename = row["repository_filename"].strip()
+    _require(
+        bool(repository_filename),
+        f"manifest row {row_number} repository_filename must not be empty",
+    )
+    _require(
+        Path(repository_filename).name == repository_filename,
+        f"manifest row {row_number} repository_filename must be a basename",
+    )
+
+    for column in ("source_filename_sha256", "sanitized_sha256"):
+        digest = row[column].strip().lower()
+        _require(
+            len(digest) == 64 and set(digest).issubset(_HEX_DIGITS),
+            f"manifest row {row_number} {column} must be a SHA-256 hex digest",
+        )
 
 
 def discover_payload_parts(config: VerificationConfig) -> list[Path]:
@@ -59,7 +91,10 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
                 _REQUIRED_MANIFEST_COLUMNS.issubset(columns),
                 "manifest is missing required columns",
             )
-            return list(reader)
+            rows = list(reader)
+            for row_number, row in enumerate(rows, start=2):
+                _validate_manifest_row(row, row_number)
+            return rows
     except OSError as exc:
         error_type = exc.__class__.__name__
         raise ArchiveVerificationError(f"unable to read manifest: {error_type}") from exc
