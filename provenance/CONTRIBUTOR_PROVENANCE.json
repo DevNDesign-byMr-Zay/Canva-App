@@ -84,8 +84,48 @@
       "github_identity": "DevNDesign-byMr-Zay",
       "attribution_basis": "This verifier consumes the provenance sidecar derived from Tara's authenticated occurrence-44 tuple but does not modify Tara's identity constants or historical archive bytes. It independently recomputes the fingerprint and enforces the sidecar contract in CI.",
       "historical_authorship": "shared-team/unknown",
-      "verification_status": "pending pull-request CI and CodeQL",
+      "verification_status": "merged with CI and CodeQL green",
       "confidence": "verified for current GitHub change; historical authorship intentionally unresolved"
+    },
+    {
+      "change_id": "V115-ID-005",
+      "component": "authenticated-v115 end-to-end provenance binding",
+      "change": "Bind the committed sidecar independently to both the materialized v115 bytes and the exact occurrence-44 manifest identity tuple, with regression coverage for manifest drift and duplicate occurrence.",
+      "source_commits": [
+        "cb9acf8bc1d2135a6d941bb44a665bf461e41c77",
+        "f8591887c9de62481e9eeef1c611a91a108f2482",
+        "68247d9f238373d7410b2139be54adc4f9b417bb",
+        "3746bb0ece898d3367c1d59ece4d1981c4291eb9"
+      ],
+      "affected_files": [
+        "archive_verifier/provenance_integrity.py",
+        "tests/test_provenance_integrity.py"
+      ],
+      "contributor_label": "Tara",
+      "github_identity": "DevNDesign-Team",
+      "attribution_basis": "Each source commit message explicitly tags [Tara], and GitHub records DevNDesign-Team as the authenticated author/committer. The changes bind the already-authenticated sidecar to app bytes and the exact manifest row without rewriting historical archive content.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "main CI and CodeQL green at 3746bb0ece898d3367c1d59ece4d1981c4291eb9",
+      "confidence": "verified for these Git commits; no retroactive historical corpus attribution"
+    },
+    {
+      "change_id": "V115-RUN-001",
+      "component": "authenticated-v115 runtime readiness",
+      "change": "Audit the immutable v115 application shell as a runnable artifact by mechanically verifying its expected title and critical external runtime script contract while separately reporting unresolved local asset references.",
+      "builds_on": "V115-ID-005",
+      "base_commit": "3746bb0ece898d3367c1d59ece4d1981c4291eb9",
+      "affected_files": [
+        "archive_verifier/runtime_contract.py",
+        "tests/test_runtime_contract.py",
+        ".github/workflows/verify-legacy.yml",
+        "provenance/CONTRIBUTOR_PROVENANCE.json"
+      ],
+      "contributor_label": "Mr. Zay follow-on",
+      "github_identity": "DevNDesign-byMr-Zay",
+      "attribution_basis": "The audit branch starts from Tara's exact latest green main head and derives runtime expectations directly from the authenticated v115 artifact. It does not modify the 570 KB application bytes, occurrence-44 identity tuple, or historical archive.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "pending pull-request CI and CodeQL",
+      "confidence": "verified for the current GitHub follow-on; historical authorship intentionally unresolved"
     }
   ]
 }
