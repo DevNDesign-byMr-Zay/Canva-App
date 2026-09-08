@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   AUTHENTICATED_V115_MESSAGE_ACTIONS,
+  AUTHENTICATED_V115_MORE_ACTIONS,
   createAuthenticatedV115MessageActions,
 } from '../../runtime/v115-authenticated-message-actions.mjs';
 
@@ -42,6 +43,7 @@ test('authenticated action surface is limited to the promoted gn behavior', () =
     'dislike',
     'regen',
   ]);
+  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck']);
 });
 
 test('copy writes the assistant text and uses the authenticated transient state', async () => {
@@ -121,6 +123,30 @@ test('regen restores the preceding user prompt and reuses the existing submit pa
   assert.equal(result.submitted, true);
 });
 
+test('double-check seeds the authenticated cross-reference prompt and submits', async () => {
+  const prompts = [];
+  let submissions = 0;
+  const actions = createActions({
+    setPrompt: (prompt) => prompts.push(prompt),
+    submit: async () => {
+      submissions += 1;
+    },
+  });
+
+  const result = await actions.performMore({
+    action: 'doublecheck',
+    text: 'original assistant answer',
+  });
+
+  assert.equal(
+    prompts[0],
+    'Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\noriginal assistant answer',
+  );
+  assert.equal(submissions, 1);
+  assert.equal(result.handled, true);
+  assert.equal(result.submitted, true);
+});
+
 test('delegated click resolves the authenticated action row and assistant text', async () => {
   const writes = [];
   const assistant = { innerText: ' streamed assistant answer ' };
@@ -147,4 +173,43 @@ test('delegated click resolves the authenticated action row and assistant text',
   assert.equal(stopped, true);
   assert.deepEqual(writes, ['streamed assistant answer']);
   assert.equal(result.handled, true);
+});
+
+test('delegated More click promotes only the authenticated double-check item', async () => {
+  const prompts = [];
+  let submissions = 0;
+  const assistant = { textContent: 'answer to verify' };
+  const wrap = {
+    classList: classList(['msg-wrap']),
+    querySelector: (selector) => (selector === '.msg.assistant' ? assistant : null),
+  };
+  const row = { previousElementSibling: wrap };
+  const item = {
+    dataset: { item: 'doublecheck' },
+    closest: (selector) => (selector === '.msg-actions-row' ? row : null),
+  };
+  const actions = createActions({
+    setPrompt: (prompt) => prompts.push(prompt),
+    submit: async () => {
+      submissions += 1;
+    },
+  });
+
+  const result = await actions.handleClick({
+    target: {
+      closest(selector) {
+        if (selector === '.act-item') return item;
+        return null;
+      },
+    },
+    stopPropagation() {},
+  });
+
+  assert.equal(result.action, 'doublecheck');
+  assert.equal(submissions, 1);
+  assert.match(prompts[0], /Response to check:\nanswer to verify$/);
+  assert.deepEqual(
+    await actions.performMore({ action: 'export', text: 'nope' }),
+    { handled: false },
+  );
 });
