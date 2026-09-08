@@ -43,7 +43,7 @@ test('authenticated action surface is limited to the promoted gn behavior', () =
     'dislike',
     'regen',
   ]);
-  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck']);
+  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck', 'report']);
 });
 
 test('copy writes the assistant text and uses the authenticated transient state', async () => {
@@ -147,6 +147,30 @@ test('double-check seeds the authenticated cross-reference prompt and submits', 
   assert.equal(result.submitted, true);
 });
 
+test('report seeds the authenticated issue prompt and reuses submit', async () => {
+  const prompts = [];
+  let submissions = 0;
+  const actions = createActions({
+    setPrompt: (prompt) => prompts.push(prompt),
+    submit: async () => {
+      submissions += 1;
+    },
+  });
+
+  const result = await actions.performMore({
+    action: 'report',
+    text: 'original assistant answer',
+  });
+
+  assert.equal(
+    prompts[0],
+    'Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\noriginal assistant answer',
+  );
+  assert.equal(submissions, 1);
+  assert.equal(result.handled, true);
+  assert.equal(result.submitted, true);
+});
+
 test('delegated click resolves the authenticated action row and assistant text', async () => {
   const writes = [];
   const assistant = { innerText: ' streamed assistant answer ' };
@@ -175,7 +199,7 @@ test('delegated click resolves the authenticated action row and assistant text',
   assert.equal(result.handled, true);
 });
 
-test('delegated More click promotes only the authenticated double-check item', async () => {
+test('delegated More click promotes only authenticated prompt items', async () => {
   const prompts = [];
   let submissions = 0;
   const assistant = { textContent: 'answer to verify' };
@@ -185,7 +209,7 @@ test('delegated More click promotes only the authenticated double-check item', a
   };
   const row = { previousElementSibling: wrap };
   const item = {
-    dataset: { item: 'doublecheck' },
+    dataset: { item: 'report' },
     closest: (selector) => (selector === '.msg-actions-row' ? row : null),
   };
   const actions = createActions({
@@ -205,9 +229,9 @@ test('delegated More click promotes only the authenticated double-check item', a
     stopPropagation() {},
   });
 
-  assert.equal(result.action, 'doublecheck');
+  assert.equal(result.action, 'report');
   assert.equal(submissions, 1);
-  assert.match(prompts[0], /Response to check:\nanswer to verify$/);
+  assert.match(prompts[0], /Response:\nanswer to verify$/);
   assert.deepEqual(
     await actions.performMore({ action: 'export', text: 'nope' }),
     { handled: false },
