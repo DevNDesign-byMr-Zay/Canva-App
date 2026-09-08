@@ -87,6 +87,40 @@ test('share uses native share and falls back to clipboard when unavailable', asy
   assert.deepEqual(writes, ['fallback answer']);
 });
 
+test('copy contains clipboard rejection without applying transient UI state', async () => {
+  const button = { classList: classList() };
+  const actions = createActions({
+    clipboardWrite: async () => {
+      throw new Error('clipboard denied');
+    },
+  });
+
+  const result = await actions.perform({ action: 'copy', text: 'answer', button });
+
+  assert.deepEqual(result, { handled: true, action: 'copy' });
+  assert.equal(button.classList.contains('is-on'), false);
+});
+
+test('share contains native and fallback browser-action rejections', async () => {
+  const native = createActions({
+    share: async () => {
+      throw new Error('share cancelled');
+    },
+  });
+  await assert.doesNotReject(() => native.perform({ action: 'share', text: 'answer' }));
+
+  const button = { classList: classList() };
+  const fallback = createActions({
+    clipboardWrite: async () => {
+      throw new Error('clipboard denied');
+    },
+  });
+  const result = await fallback.perform({ action: 'share', text: 'answer', button });
+
+  assert.deepEqual(result, { handled: true, action: 'share' });
+  assert.equal(button.classList.contains('is-on'), false);
+});
+
 test('like and dislike remain mutually exclusive within the action row', async () => {
   const like = { classList: classList() };
   const dislike = { classList: classList(['is-on']) };

@@ -62,18 +62,31 @@ export function createAuthenticatedV115MessageActions({
 
     if (action === 'copy') {
       if (!clipboardWrite) throw new TypeError('clipboardWrite must be available for copy');
-      await clipboardWrite(text);
+      try {
+        await clipboardWrite(text);
+      } catch {
+        return { handled: true, action };
+      }
       pulse(button, schedule);
       return { handled: true, action };
     }
 
     if (action === 'share') {
-      if (share) await share({ text });
-      else {
+      if (share) {
+        try {
+          await share({ text });
+        } catch {
+          return { handled: true, action };
+        }
+      } else {
         if (!clipboardWrite) {
           throw new TypeError('clipboardWrite must be available when share is unavailable');
         }
-        await clipboardWrite(text);
+        try {
+          await clipboardWrite(text);
+        } catch {
+          return { handled: true, action };
+        }
         pulse(button, schedule);
       }
       return { handled: true, action };
