@@ -27,6 +27,7 @@ function classList(initial = []) {
 function createActions(overrides = {}) {
   return createAuthenticatedV115MessageActions({
     clipboardWrite: async () => {},
+    exportText: async () => {},
     schedule: (callback) => callback(),
     getPreviousUserText: () => 'original user prompt',
     setPrompt: () => {},
@@ -43,7 +44,7 @@ test('authenticated action surface is limited to the promoted gn behavior', () =
     'dislike',
     'regen',
   ]);
-  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck', 'report']);
+  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck', 'export', 'report']);
 });
 
 test('copy writes the assistant text and uses the authenticated transient state', async () => {
@@ -181,6 +182,31 @@ test('double-check seeds the authenticated cross-reference prompt and submits', 
   assert.equal(result.submitted, true);
 });
 
+test('export preserves the authenticated text-file contract and contains rejection', async () => {
+  const downloads = [];
+  const actions = createActions({
+    exportText: async (text, options) => downloads.push({ text, ...options }),
+  });
+
+  const result = await actions.performMore({ action: 'export', text: 'assistant answer' });
+
+  assert.deepEqual(downloads, [
+    {
+      text: 'assistant answer',
+      filename: 'AETHER_response.txt',
+      type: 'text/plain;charset=utf-8',
+    },
+  ]);
+  assert.deepEqual(result, { handled: true, action: 'export' });
+
+  const blocked = createActions({
+    exportText: async () => {
+      throw new Error('download blocked');
+    },
+  });
+  await assert.doesNotReject(() => blocked.performMore({ action: 'export', text: 'answer' }));
+});
+
 test('report seeds the authenticated issue prompt and reuses submit', async () => {
   const prompts = [];
   let submissions = 0;
@@ -233,7 +259,7 @@ test('delegated click resolves the authenticated action row and assistant text',
   assert.equal(result.handled, true);
 });
 
-test('delegated More click promotes only authenticated prompt items', async () => {
+test('delegated More click promotes only authenticated items', async () => {
   const prompts = [];
   let submissions = 0;
   const assistant = { textContent: 'answer to verify' };
@@ -267,7 +293,7 @@ test('delegated More click promotes only authenticated prompt items', async () =
   assert.equal(submissions, 1);
   assert.match(prompts[0], /Response:\nanswer to verify$/);
   assert.deepEqual(
-    await actions.performMore({ action: 'export', text: 'nope' }),
+    await actions.performMore({ action: 'branch', text: 'nope' }),
     { handled: false },
   );
 });

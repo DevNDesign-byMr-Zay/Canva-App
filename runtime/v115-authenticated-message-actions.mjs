@@ -1,5 +1,5 @@
 const SUPPORTED_ACTIONS = new Set(['copy', 'share', 'like', 'dislike', 'regen']);
-const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck', 'report']);
+const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck', 'export', 'report']);
 
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
@@ -17,19 +17,11 @@ function pulse(button, schedule) {
 }
 
 function doublecheckPrompt(text) {
-  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
-
-Response to check:
-${text}`;
+  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\n${text}`;
 }
 
 function reportPrompt(text) {
-  return `Report: I think there may be an issue with the previous response.
-
-Describe the issue briefly and suggest a fix.
-
-Response:
-${text}`;
+  return `Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\n${text}`;
 }
 
 /**
@@ -39,12 +31,13 @@ ${text}`;
  * v115 delegates clicks from `.msg-actions-row` buttons and preserves these
  * actions: copy, share (with clipboard fallback), mutually exclusive
  * like/dislike state, regeneration from the preceding user prompt, and the
- * separately promoted More-drawer double-check/report paths. Other More actions
- * remain historical until their individual paths are promoted separately.
+ * separately promoted More-drawer double-check/export/report paths. Other More
+ * actions remain historical until their individual paths are promoted separately.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
   share,
+  exportText,
   schedule = globalThis.setTimeout,
   getPreviousUserText,
   setPrompt,
@@ -56,6 +49,7 @@ export function createAuthenticatedV115MessageActions({
   requireFunction(submit, 'submit');
   if (clipboardWrite !== undefined) requireFunction(clipboardWrite, 'clipboardWrite');
   if (share !== undefined) requireFunction(share, 'share');
+  if (exportText !== undefined) requireFunction(exportText, 'exportText');
 
   async function perform({ action, text = '', button, row, wrap } = {}) {
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
@@ -111,6 +105,19 @@ export function createAuthenticatedV115MessageActions({
   async function performMore({ action, text = '' } = {}) {
     if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
 
+    if (action === 'export') {
+      if (!exportText) throw new TypeError('exportText must be available for export');
+      try {
+        await exportText(text, {
+          filename: 'AETHER_response.txt',
+          type: 'text/plain;charset=utf-8',
+        });
+      } catch {
+        return { handled: true, action };
+      }
+      return { handled: true, action };
+    }
+
     const prompt = action === 'doublecheck' ? doublecheckPrompt(text) : reportPrompt(text);
     setPrompt(prompt);
     await submit();
@@ -162,4 +169,8 @@ export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
   'regen',
 ]);
 
-export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['doublecheck', 'report']);
+export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze([
+  'doublecheck',
+  'export',
+  'report',
+]);
