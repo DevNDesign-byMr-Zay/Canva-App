@@ -1,3 +1,5 @@
+import { createAuthenticatedV115MessageRecord } from './v115-authenticated-message-record.mjs';
+
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
   return value;
@@ -74,9 +76,10 @@ export function createAuthenticatedV115MessageRenderers({
   }
 
   return {
-    renderUserMessage(prompt, { chatInner }) {
-      const handle = createMessage(chatInner, 'user', prompt);
-      persistMessage?.({ role: 'user', content: prompt });
+    renderUserMessage(prompt, { chatInner, attachments } = {}) {
+      const metadata = attachments ? { attachments } : {};
+      const handle = createMessage(chatInner, 'user', prompt, metadata);
+      persistMessage?.(createAuthenticatedV115MessageRecord('user', prompt, metadata));
       return handle;
     },
 
@@ -99,7 +102,12 @@ export function createAuthenticatedV115MessageRenderers({
       const content = typeof result.content === 'string' ? result.content : handle.content;
       handle.content = content;
       renderContent('assistant', content, handle.message);
-      persistMessage?.({ role: 'assistant', content });
+      persistMessage?.(
+        createAuthenticatedV115MessageRecord('assistant', content, {
+          ...(result.sources ? { sources: result.sources } : {}),
+          ...(result.engine ? { engine: result.engine } : {}),
+        }),
+      );
       return handle;
     },
 
