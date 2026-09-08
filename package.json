@@ -1,0 +1,14 @@
+{
+  "name": "canva-depth-archive-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Developer tooling for authenticating a recovered Canva-oriented application archive and exercising maintained v115 runtime adapters.",
+  "scripts": {
+    "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
+    "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
