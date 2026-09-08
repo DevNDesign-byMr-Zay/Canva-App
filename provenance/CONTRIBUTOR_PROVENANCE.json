@@ -124,8 +124,36 @@
       "github_identity": "DevNDesign-byMr-Zay",
       "attribution_basis": "The audit branch starts from Tara's exact latest green main head and derives runtime expectations directly from the authenticated v115 artifact. It does not modify the 570 KB application bytes, occurrence-44 identity tuple, or historical archive.",
       "historical_authorship": "shared-team/unknown",
-      "verification_status": "pending pull-request CI and CodeQL",
+      "verification_status": "merged to main at 4b029951554c9c024b4d6bd8e945d3ebf1fdcc0d with engineering CI and CodeQL green",
       "confidence": "verified for the current GitHub follow-on; historical authorship intentionally unresolved"
+    },
+    {
+      "change_id": "V115-RUN-002",
+      "component": "authenticated-v115 maintained AI chat runtime adapter",
+      "change": "Extract the authenticated v115 OpenAI-compatible streaming chat boundary into a maintained ESM adapter that builds the exact POST /v1/chat/completions request contract, keeps bearer credentials out of returned evidence, parses incremental SSE deltas, and exposes an injectable fetch boundary for end-to-end integration.",
+      "builds_on": "V115-RUN-001",
+      "base_commit": "4b029951554c9c024b4d6bd8e945d3ebf1fdcc0d",
+      "source_evidence": {
+        "authenticated_artifact": "app/authenticated-v115/index.html",
+        "chat_endpoint": "/v1/chat/completions",
+        "transport": "POST application/json + Bearer authorization + OpenAI-compatible SSE data lines",
+        "legacy_defaults": {
+          "proxy": "http://127.0.0.1:8001",
+          "model": "AETHER-primary"
+        }
+      },
+      "affected_files": [
+        "runtime/v115-chat-runtime-adapter.mjs",
+        "tests/js/chat-runtime-adapter.test.mjs",
+        ".github/workflows/verify-legacy.yml",
+        "provenance/CONTRIBUTOR_PROVENANCE.json"
+      ],
+      "contributor_label": "Mr. Zay follow-on",
+      "github_identity": "DevNDesign-byMr-Zay",
+      "attribution_basis": "The maintained adapter is derived from the mechanically authenticated v115 runtime boundary after Tara's occurrence-44/provenance work and the green runtime-shell audit. The immutable v115 HTML, occurrence-44 tuple, and historical archive bytes remain unchanged; no individual historical author is inferred from the shared team account.",
+      "historical_authorship": "shared-team/unknown",
+      "verification_status": "pending pull-request engineering CI and CodeQL",
+      "confidence": "verified for the maintained extraction; historical authorship intentionally unresolved"
     }
   ]
 }
