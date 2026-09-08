@@ -175,7 +175,10 @@ test('double-check seeds the authenticated cross-reference prompt and submits', 
 
   assert.equal(
     prompts[0],
-    'Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\noriginal assistant answer',
+    `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
+
+Response to check:
+original assistant answer`,
   );
   assert.equal(submissions, 1);
   assert.equal(result.handled, true);
@@ -224,7 +227,12 @@ test('report seeds the authenticated issue prompt and reuses submit', async () =
 
   assert.equal(
     prompts[0],
-    'Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\noriginal assistant answer',
+    `Report: I think there may be an issue with the previous response.
+
+Describe the issue briefly and suggest a fix.
+
+Response:
+original assistant answer`,
   );
   assert.equal(submissions, 1);
   assert.equal(result.handled, true);
