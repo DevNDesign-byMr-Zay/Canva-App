@@ -32,6 +32,20 @@ jobs:
           python -m coverage run -m pytest -q
           python -m coverage report --fail-under=90
 
+  maintained-runtime:
+    name: Authenticated v115 chat runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Test maintained runtime adapter with coverage
+        run: node --experimental-test-coverage --test tests/js/*.test.mjs
+
   static-analysis:
     name: Ruff and mypy
     runs-on: ubuntu-latest
