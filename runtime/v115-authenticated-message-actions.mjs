@@ -1,5 +1,5 @@
 const SUPPORTED_ACTIONS = new Set(['copy', 'share', 'like', 'dislike', 'regen']);
-const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck', 'export', 'report']);
+const SUPPORTED_MORE_ACTIONS = new Set(['branch', 'doublecheck', 'export', 'report']);
 
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
@@ -39,8 +39,7 @@ ${text}`;
  * v115 delegates clicks from `.msg-actions-row` buttons and preserves these
  * actions: copy, share (with clipboard fallback), mutually exclusive
  * like/dislike state, regeneration from the preceding user prompt, and the
- * separately promoted More-drawer double-check/export/report paths. Other More
- * actions remain historical until their individual paths are promoted separately.
+ * separately promoted More-drawer branch/double-check/export/report paths.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
@@ -50,6 +49,12 @@ export function createAuthenticatedV115MessageActions({
   getPreviousUserText,
   setPrompt,
   submit,
+  resetConversation,
+  createConversation,
+  getActiveConversation,
+  persistConversations,
+  renderConversationList,
+  renderActiveConversation,
 } = {}) {
   requireFunction(schedule, 'schedule');
   requireFunction(getPreviousUserText, 'getPreviousUserText');
@@ -58,6 +63,20 @@ export function createAuthenticatedV115MessageActions({
   if (clipboardWrite !== undefined) requireFunction(clipboardWrite, 'clipboardWrite');
   if (share !== undefined) requireFunction(share, 'share');
   if (exportText !== undefined) requireFunction(exportText, 'exportText');
+  if (resetConversation !== undefined) requireFunction(resetConversation, 'resetConversation');
+  if (createConversation !== undefined) requireFunction(createConversation, 'createConversation');
+  if (getActiveConversation !== undefined) {
+    requireFunction(getActiveConversation, 'getActiveConversation');
+  }
+  if (persistConversations !== undefined) {
+    requireFunction(persistConversations, 'persistConversations');
+  }
+  if (renderConversationList !== undefined) {
+    requireFunction(renderConversationList, 'renderConversationList');
+  }
+  if (renderActiveConversation !== undefined) {
+    requireFunction(renderActiveConversation, 'renderActiveConversation');
+  }
 
   async function perform({ action, text = '', button, row, wrap } = {}) {
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
@@ -110,8 +129,33 @@ export function createAuthenticatedV115MessageActions({
     return { handled: true, action, submitted: true, prompt };
   }
 
-  async function performMore({ action, text = '' } = {}) {
+  async function performMore({ action, text = '', wrap } = {}) {
     if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
+
+    if (action === 'branch') {
+      requireFunction(resetConversation, 'resetConversation');
+      requireFunction(createConversation, 'createConversation');
+      requireFunction(getActiveConversation, 'getActiveConversation');
+      requireFunction(persistConversations, 'persistConversations');
+      requireFunction(renderConversationList, 'renderConversationList');
+      requireFunction(renderActiveConversation, 'renderActiveConversation');
+
+      const userText = getPreviousUserText(wrap) || '';
+      resetConversation();
+      try {
+        createConversation(userText, []);
+      } catch {}
+
+      const conversation = getActiveConversation();
+      if (conversation) {
+        if (userText) conversation.messages.push({ role: 'user', content: userText });
+        if (text) conversation.messages.push({ role: 'assistant', content: text });
+        persistConversations();
+        renderConversationList();
+        renderActiveConversation();
+      }
+      return { handled: true, action, branched: Boolean(conversation) };
+    }
 
     if (action === 'export') {
       if (!exportText) throw new TypeError('exportText must be available for export');
@@ -150,7 +194,7 @@ export function createAuthenticatedV115MessageActions({
       const action = item.dataset?.item;
       if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
       event.stopPropagation?.();
-      return performMore({ action, text: messageText(assistant) });
+      return performMore({ action, text: messageText(assistant), wrap });
     }
 
     const action = button.dataset?.act;
@@ -178,6 +222,7 @@ export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
 ]);
 
 export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze([
+  'branch',
   'doublecheck',
   'export',
   'report',
