@@ -14,12 +14,18 @@ from archive_verifier.runtime_contract import (
 )
 
 
-def _write_html(path: Path, *, title: str = EXPECTED_TITLE, scripts: tuple[str, ...] = ()) -> Path:
+def _write_html(
+    path: Path,
+    *,
+    title: str = EXPECTED_TITLE,
+    scripts: tuple[str, ...] = (),
+) -> Path:
     script_tags = "".join(f'<script src="{source}"></script>' for source in scripts)
-    path.write_text(
-        f"<!doctype html><html><head><title>{title}</title>{script_tags}</head><body></body></html>",
-        encoding="utf-8",
+    html = (
+        f"<!doctype html><html><head><title>{title}</title>"
+        f"{script_tags}</head><body></body></html>"
     )
+    path.write_text(html, encoding="utf-8")
     return path
 
 
@@ -50,7 +56,9 @@ def test_runtime_contract_rejects_title_drift(tmp_path: Path) -> None:
         verify_runtime_contract(path)
 
 
-def test_runtime_report_tracks_missing_local_assets_without_failing_core_shell(tmp_path: Path) -> None:
+def test_runtime_report_tracks_missing_local_assets(
+    tmp_path: Path,
+) -> None:
     scripts = tuple(REQUIRED_EXTERNAL_SCRIPTS)
     path = _write_html(tmp_path / "index.html", scripts=scripts)
     path.write_text(
