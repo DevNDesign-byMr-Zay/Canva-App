@@ -1,4 +1,5 @@
 const SUPPORTED_ACTIONS = new Set(['copy', 'share', 'like', 'dislike', 'regen']);
+const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck']);
 
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
@@ -15,15 +16,22 @@ function pulse(button, schedule) {
   schedule(() => button.classList.remove('is-on'), 900);
 }
 
+function doublecheckPrompt(text) {
+  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
+
+Response to check:
+${text}`;
+}
+
 /**
  * Maintained behavioral adapter for the mechanically authenticated v115 `gn`
  * assistant-action boundary.
  *
  * v115 delegates clicks from `.msg-actions-row` buttons and preserves these
  * actions: copy, share (with clipboard fallback), mutually exclusive
- * like/dislike state, and regeneration from the preceding user prompt. The
- * broader More drawer stays historical until its individual paths are promoted
- * separately.
+ * like/dislike state, regeneration from the preceding user prompt, and the
+ * separately promoted More-drawer double-check path. Other More actions remain
+ * historical until their individual paths are promoted separately.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
@@ -78,17 +86,35 @@ export function createAuthenticatedV115MessageActions({
     return { handled: true, action, submitted: true, prompt };
   }
 
-  async function handleClick(event) {
-    const button = event?.target?.closest?.('.act-btn');
-    if (!button) return { handled: false };
+  async function performMore({ action, text = '' } = {}) {
+    if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
 
-    const row = button.closest?.('.msg-actions-row');
+    const prompt = doublecheckPrompt(text);
+    setPrompt(prompt);
+    await submit();
+    return { handled: true, action, submitted: true, prompt };
+  }
+
+  async function handleClick(event) {
+    const item = event?.target?.closest?.('.act-item');
+    const button = item ? null : event?.target?.closest?.('.act-btn');
+    const trigger = item || button;
+    if (!trigger) return { handled: false };
+
+    const row = trigger.closest?.('.msg-actions-row');
     if (!row) return { handled: false };
 
     const candidate = row.previousElementSibling;
     const wrap = candidate?.classList?.contains?.('msg-wrap') ? candidate : null;
     const assistant = wrap?.querySelector?.('.msg.assistant');
     if (!assistant) return { handled: false };
+
+    if (item) {
+      const action = item.dataset?.item;
+      if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
+      event.stopPropagation?.();
+      return performMore({ action, text: messageText(assistant) });
+    }
 
     const action = button.dataset?.act;
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
@@ -103,7 +129,7 @@ export function createAuthenticatedV115MessageActions({
     });
   }
 
-  return { perform, handleClick };
+  return { perform, performMore, handleClick };
 }
 
 export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
@@ -113,3 +139,5 @@ export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
   'dislike',
   'regen',
 ]);
+
+export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['doublecheck']);
