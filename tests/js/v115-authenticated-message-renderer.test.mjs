@@ -34,6 +34,7 @@ function setup() {
   const attachments = [];
   const actions = [];
   const persisted = [];
+  let conversationPersists = 0;
   const scroll = element('div');
   const chatInner = element('div');
   scroll.appendChild(chatInner);
@@ -57,9 +58,27 @@ function setup() {
     persistMessage(message) {
       persisted.push(message);
     },
+    getPersistedMessages() {
+      return persisted;
+    },
+    persistConversation() {
+      conversationPersists += 1;
+    },
   });
 
-  return { renderers, chatInner, scroll, renders, avatars, attachments, actions, persisted };
+  return {
+    renderers,
+    chatInner,
+    scroll,
+    renders,
+    avatars,
+    attachments,
+    actions,
+    persisted,
+    get conversationPersists() {
+      return conversationPersists;
+    },
+  };
 }
 
 test('creates the authenticated v115 user message DOM shell in exact role order', () => {
@@ -78,13 +97,22 @@ test('creates the authenticated v115 user message DOM shell in exact role order'
   assert.deepEqual(persisted, [{ role: 'user', content: 'Build ROARY' }]);
 });
 
-test('streams assistant deltas through the authenticated message shell', () => {
-  const { renderers, chatInner, persisted, actions } = setup();
+test('streams assistant deltas and finalizes the same persisted assistant shell', () => {
+  const state = setup();
+  const { renderers, chatInner, persisted, actions } = state;
 
   const handle = renderers.beginAssistantMessage({ chatInner });
+  assert.deepEqual(persisted, [{ role: 'assistant', content: '' }]);
+  const persistedShell = persisted[0];
+  assert.equal(handle.persistedRecord, persistedShell);
+
   renderers.appendAssistantDelta(handle, 'RO');
   renderers.appendAssistantDelta(handle, 'ARY');
-  renderers.finishAssistantMessage(handle, { content: 'ROARY' });
+  renderers.finishAssistantMessage(handle, {
+    content: 'ROARY',
+    sources: [{ title: 'Runtime evidence' }],
+    engine: 'authenticated-v115',
+  });
 
   assert.equal(handle.wrap.className, 'msg-wrap assistant');
   assert.equal(handle.avatar.className, 'msg-avatar msg-avatar-assistant');
@@ -92,7 +120,28 @@ test('streams assistant deltas through the authenticated message shell', () => {
   assert.equal(handle.message.rendered, 'ROARY');
   assert.equal(actions.length, 1);
   assert.equal(actions[0][2], false);
-  assert.deepEqual(persisted, [{ role: 'assistant', content: 'ROARY' }]);
+  assert.equal(persisted.length, 1);
+  assert.equal(persisted[0], persistedShell);
+  assert.deepEqual(persisted[0], {
+    role: 'assistant',
+    content: 'ROARY',
+    sources: [{ title: 'Runtime evidence' }],
+    engine: 'authenticated-v115',
+  });
+  assert.equal(state.conversationPersists, 1);
+});
+
+test('fails closed if another persisted record displaces the authenticated assistant shell', () => {
+  const state = setup();
+  const { renderers, chatInner, persisted } = state;
+  const handle = renderers.beginAssistantMessage({ chatInner });
+  persisted.push({ role: 'user', content: 'unexpected write' });
+
+  assert.throws(
+    () => renderers.finishAssistantMessage(handle, { content: 'ROARY' }),
+    /persisted assistant shell must remain the last message/,
+  );
+  assert.equal(state.conversationPersists, 0);
 });
 
 test('preserves partial assistant output when the request fails', () => {
