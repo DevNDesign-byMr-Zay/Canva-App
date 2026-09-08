@@ -91,6 +91,8 @@ jobs:
         run: git diff --exit-code -- app/authenticated-v115
       - name: Verify authenticated v115 provenance self-consistency
         run: python -m archive_verifier.provenance_integrity
+      - name: Verify authenticated v115 runtime shell contract
+        run: python -m archive_verifier.runtime_contract
 
   container-verification:
     name: Docker fresh-clone verification
