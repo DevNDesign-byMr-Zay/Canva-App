@@ -44,7 +44,12 @@ test('authenticated action surface is limited to the promoted gn behavior', () =
     'dislike',
     'regen',
   ]);
-  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, ['doublecheck', 'export', 'report']);
+  assert.deepEqual(AUTHENTICATED_V115_MORE_ACTIONS, [
+    'branch',
+    'doublecheck',
+    'export',
+    'report',
+  ]);
 });
 
 test('copy writes the assistant text and uses the authenticated transient state', async () => {
@@ -156,6 +161,43 @@ test('regen restores the preceding user prompt and reuses the existing submit pa
   assert.deepEqual(prompts, ['retry this prompt']);
   assert.equal(submissions, 1);
   assert.equal(result.submitted, true);
+});
+
+test('branch creates a new chat and clones the authenticated exchange', async () => {
+  const calls = [];
+  const conversation = { messages: [] };
+  const wrap = { id: 'assistant-wrap' };
+  const actions = createActions({
+    getPreviousUserText: (candidate) => {
+      assert.equal(candidate, wrap);
+      return 'original user prompt';
+    },
+    resetConversation: () => calls.push('reset'),
+    createConversation: (title, messages) => calls.push(['create', title, messages]),
+    getActiveConversation: () => conversation,
+    persistConversations: () => calls.push('persist'),
+    renderConversationList: () => calls.push('list'),
+    renderActiveConversation: () => calls.push('active'),
+  });
+
+  const result = await actions.performMore({
+    action: 'branch',
+    text: 'original assistant answer',
+    wrap,
+  });
+
+  assert.deepEqual(calls, [
+    'reset',
+    ['create', 'original user prompt', []],
+    'persist',
+    'list',
+    'active',
+  ]);
+  assert.deepEqual(conversation.messages, [
+    { role: 'user', content: 'original user prompt' },
+    { role: 'assistant', content: 'original assistant answer' },
+  ]);
+  assert.deepEqual(result, { handled: true, action: 'branch', branched: true });
 });
 
 test('double-check seeds the authenticated cross-reference prompt and submits', async () => {
@@ -301,7 +343,7 @@ test('delegated More click promotes only authenticated items', async () => {
   assert.equal(submissions, 1);
   assert.match(prompts[0], /Response:\nanswer to verify$/);
   assert.deepEqual(
-    await actions.performMore({ action: 'branch', text: 'nope' }),
+    await actions.performMore({ action: 'future', text: 'nope' }),
     { handled: false },
   );
 });
