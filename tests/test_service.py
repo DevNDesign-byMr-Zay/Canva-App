@@ -106,6 +106,46 @@ def test_manifest_missing_required_column_fails(build_archive: Callable[..., Any
         read_manifest(built.manifest_path)
 
 
+def test_manifest_invalid_occurrence_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[0]["occurrence"] = "not-a-number"
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(ArchiveVerificationError, match="occurrence must be a positive integer"):
+        read_manifest(built.manifest_path)
+
+
+def test_manifest_empty_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[0]["repository_filename"] = ""
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(ArchiveVerificationError, match="repository_filename must not be empty"):
+        read_manifest(built.manifest_path)
+
+
+def test_manifest_non_basename_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[0]["repository_filename"] = "nested/state-a.html"
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(ArchiveVerificationError, match="repository_filename must be a basename"):
+        read_manifest(built.manifest_path)
+
+
+def test_manifest_malformed_sha_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[0]["source_filename_sha256"] = "not-a-sha256"
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(ArchiveVerificationError, match="source_filename_sha256 must be a SHA-256"):
+        read_manifest(built.manifest_path)
+
+
 def test_manifest_referencing_missing_member_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
     rows = _read_rows(built.manifest_path)
