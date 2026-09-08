@@ -94,6 +94,13 @@ export function createAuthenticatedV115MessageRenderers({
     return { wrap, avatar, image, message, role: normalizedRole, content };
   }
 
+  function ensurePersistedAssistantShell(handle) {
+    if (!usesAuthenticatedAssistantFinalization || handle.persistedRecord) return;
+    const record = createAuthenticatedV115MessageRecord('assistant', '');
+    persistMessage(record);
+    handle.persistedRecord = record;
+  }
+
   return {
     renderUserMessage(prompt, { chatInner, attachments } = {}) {
       const metadata = attachments ? { attachments } : {};
@@ -103,19 +110,14 @@ export function createAuthenticatedV115MessageRenderers({
     },
 
     beginAssistantMessage({ chatInner }) {
-      const handle = createMessage(chatInner, 'assistant', '');
-      if (usesAuthenticatedAssistantFinalization) {
-        const record = createAuthenticatedV115MessageRecord('assistant', '');
-        persistMessage(record);
-        handle.persistedRecord = record;
-      }
-      return handle;
+      return createMessage(chatInner, 'assistant', '');
     },
 
     appendAssistantDelta(handle, delta) {
       if (!handle?.message || handle.role !== 'assistant') {
         throw new TypeError('assistant message handle is required');
       }
+      ensurePersistedAssistantShell(handle);
       handle.content += String(delta ?? '');
       renderContent('assistant', handle.content, handle.message);
     },
@@ -124,6 +126,7 @@ export function createAuthenticatedV115MessageRenderers({
       if (!handle?.message || handle.role !== 'assistant') {
         throw new TypeError('assistant message handle is required');
       }
+      ensurePersistedAssistantShell(handle);
       const content = typeof result.content === 'string' ? result.content : handle.content;
       handle.content = content;
       renderContent('assistant', content, handle.message);
