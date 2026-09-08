@@ -1,5 +1,5 @@
 const SUPPORTED_ACTIONS = new Set(['copy', 'share', 'like', 'dislike', 'regen']);
-const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck']);
+const SUPPORTED_MORE_ACTIONS = new Set(['doublecheck', 'report']);
 
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
@@ -23,6 +23,15 @@ Response to check:
 ${text}`;
 }
 
+function reportPrompt(text) {
+  return `Report: I think there may be an issue with the previous response.
+
+Describe the issue briefly and suggest a fix.
+
+Response:
+${text}`;
+}
+
 /**
  * Maintained behavioral adapter for the mechanically authenticated v115 `gn`
  * assistant-action boundary.
@@ -30,8 +39,8 @@ ${text}`;
  * v115 delegates clicks from `.msg-actions-row` buttons and preserves these
  * actions: copy, share (with clipboard fallback), mutually exclusive
  * like/dislike state, regeneration from the preceding user prompt, and the
- * separately promoted More-drawer double-check path. Other More actions remain
- * historical until their individual paths are promoted separately.
+ * separately promoted More-drawer double-check/report paths. Other More actions
+ * remain historical until their individual paths are promoted separately.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
@@ -89,7 +98,7 @@ export function createAuthenticatedV115MessageActions({
   async function performMore({ action, text = '' } = {}) {
     if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
 
-    const prompt = doublecheckPrompt(text);
+    const prompt = action === 'doublecheck' ? doublecheckPrompt(text) : reportPrompt(text);
     setPrompt(prompt);
     await submit();
     return { handled: true, action, submitted: true, prompt };
@@ -140,4 +149,4 @@ export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
   'regen',
 ]);
 
-export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['doublecheck']);
+export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['doublecheck', 'report']);
