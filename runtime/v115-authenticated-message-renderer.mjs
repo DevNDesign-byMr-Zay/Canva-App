@@ -1,4 +1,7 @@
-import { createAuthenticatedV115MessageRecord } from './v115-authenticated-message-record.mjs';
+import {
+  createAuthenticatedV115MessageRecord,
+  finalizeAuthenticatedV115AssistantRecord,
+} from './v115-authenticated-message-record.mjs';
 
 function requireFunction(value, name) {
   if (typeof value !== 'function') throw new TypeError(`${name} must be a function`);
@@ -26,6 +29,8 @@ export function createAuthenticatedV115MessageRenderers({
   mountAttachments,
   mountAssistantActions,
   persistMessage,
+  getPersistedMessages,
+  persistConversation,
 } = {}) {
   if (!documentRef || typeof documentRef.createElement !== 'function') {
     throw new TypeError('document.createElement must be available');
@@ -38,6 +43,20 @@ export function createAuthenticatedV115MessageRenderers({
     requireFunction(mountAssistantActions, 'mountAssistantActions');
   }
   if (persistMessage !== undefined) requireFunction(persistMessage, 'persistMessage');
+  if (getPersistedMessages !== undefined) {
+    requireFunction(getPersistedMessages, 'getPersistedMessages');
+  }
+  if (persistConversation !== undefined) {
+    requireFunction(persistConversation, 'persistConversation');
+  }
+
+  const usesAuthenticatedAssistantFinalization =
+    getPersistedMessages !== undefined || persistConversation !== undefined;
+  if (usesAuthenticatedAssistantFinalization) {
+    requireFunction(persistMessage, 'persistMessage');
+    requireFunction(getPersistedMessages, 'getPersistedMessages');
+    requireFunction(persistConversation, 'persistConversation');
+  }
 
   function createMessage(chatInner, role, content = '', metadata = {}) {
     if (!chatInner || typeof chatInner.appendChild !== 'function') {
@@ -84,7 +103,13 @@ export function createAuthenticatedV115MessageRenderers({
     },
 
     beginAssistantMessage({ chatInner }) {
-      return createMessage(chatInner, 'assistant', '');
+      const handle = createMessage(chatInner, 'assistant', '');
+      if (usesAuthenticatedAssistantFinalization) {
+        const record = createAuthenticatedV115MessageRecord('assistant', '');
+        persistMessage(record);
+        handle.persistedRecord = record;
+      }
+      return handle;
     },
 
     appendAssistantDelta(handle, delta) {
@@ -102,12 +127,29 @@ export function createAuthenticatedV115MessageRenderers({
       const content = typeof result.content === 'string' ? result.content : handle.content;
       handle.content = content;
       renderContent('assistant', content, handle.message);
-      persistMessage?.(
-        createAuthenticatedV115MessageRecord('assistant', content, {
-          ...(result.sources ? { sources: result.sources } : {}),
-          ...(result.engine ? { engine: result.engine } : {}),
-        }),
-      );
+
+      if (usesAuthenticatedAssistantFinalization) {
+        const messages = getPersistedMessages();
+        if (!Array.isArray(messages)) {
+          throw new TypeError('getPersistedMessages must return an array');
+        }
+        if (messages[messages.length - 1] !== handle.persistedRecord) {
+          throw new Error('persisted assistant shell must remain the last message');
+        }
+        handle.persistedRecord = finalizeAuthenticatedV115AssistantRecord(messages, {
+          content,
+          sources: Array.isArray(result.sources) ? result.sources : [],
+          engine: result.engine ?? null,
+          persist: persistConversation,
+        });
+      } else {
+        persistMessage?.(
+          createAuthenticatedV115MessageRecord('assistant', content, {
+            ...(result.sources ? { sources: result.sources } : {}),
+            ...(result.engine ? { engine: result.engine } : {}),
+          }),
+        );
+      }
       return handle;
     },
 
