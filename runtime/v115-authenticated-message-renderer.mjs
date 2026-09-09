@@ -12,6 +12,13 @@ function roleClass(role) {
   return role === 'user' ? 'user' : 'assistant';
 }
 
+function isRestoredImageOnlyAssistant(content, metadata) {
+  if (metadata.restored !== true || typeof content !== 'string') return false;
+  const trimmed = content.trim();
+  return trimmed.startsWith('Generated image for:')
+    || trimmed.startsWith('**Generated image for:**');
+}
+
 /**
  * Maintained renderer adapter for the mechanically authenticated v115 main-chat
  * message boundary (`Mn` in the preserved artifact).
@@ -89,6 +96,10 @@ export function createAuthenticatedV115MessageRenderers({
     message.className = `msg ${normalizedRole}`;
     renderContent(normalizedRole, content, message);
 
+    const imageOnlyAssistant = normalizedRole === 'assistant'
+      && isRestoredImageOnlyAssistant(content, metadata);
+    if (imageOnlyAssistant) message.className += ' image-only-msg';
+
     wrap.appendChild(avatar);
     wrap.appendChild(message);
     chatInner.appendChild(wrap);
@@ -98,7 +109,7 @@ export function createAuthenticatedV115MessageRenderers({
     }
 
     let assistantActions;
-    if (normalizedRole === 'assistant' && mountAssistantActions) {
+    if (normalizedRole === 'assistant' && !imageOnlyAssistant && mountAssistantActions) {
       assistantActions = mountAssistantActions(chatInner, wrap, metadata.restored === true);
       if (metadata.sources?.length && assistantActions && mountAssistantSources) {
         mountAssistantSources(assistantActions, metadata.sources, metadata.engine);
