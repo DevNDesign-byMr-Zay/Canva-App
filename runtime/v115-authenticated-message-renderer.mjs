@@ -28,6 +28,7 @@ export function createAuthenticatedV115MessageRenderers({
   setAvatarSource,
   mountAttachments,
   mountAssistantActions,
+  deriveAttachments,
   persistMessage,
   getPersistedMessages,
   persistConversation,
@@ -42,6 +43,7 @@ export function createAuthenticatedV115MessageRenderers({
   if (mountAssistantActions !== undefined) {
     requireFunction(mountAssistantActions, 'mountAssistantActions');
   }
+  if (deriveAttachments !== undefined) requireFunction(deriveAttachments, 'deriveAttachments');
   if (persistMessage !== undefined) requireFunction(persistMessage, 'persistMessage');
   if (getPersistedMessages !== undefined) {
     requireFunction(getPersistedMessages, 'getPersistedMessages');
@@ -107,6 +109,24 @@ export function createAuthenticatedV115MessageRenderers({
       const handle = createMessage(chatInner, 'user', prompt, metadata);
       persistMessage?.(createAuthenticatedV115MessageRecord('user', prompt, metadata));
       return handle;
+    },
+
+    renderPersistedUserMessage(record, { chatInner } = {}) {
+      if (!record || record.role !== 'user' || typeof record.content !== 'string') {
+        throw new TypeError('persisted user message record is required');
+      }
+      const attachments = Array.isArray(record.attachments)
+        ? record.attachments
+        : deriveAttachments?.(record.content);
+      if (attachments !== undefined && !Array.isArray(attachments)) {
+        throw new TypeError('deriveAttachments must return an array');
+      }
+      return createMessage(
+        chatInner,
+        'user',
+        record.content,
+        attachments?.length ? { attachments } : {},
+      );
     },
 
     beginAssistantMessage({ chatInner }) {
