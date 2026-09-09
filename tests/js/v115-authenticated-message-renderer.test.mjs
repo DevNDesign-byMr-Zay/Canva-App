@@ -28,11 +28,12 @@ function documentRef() {
   };
 }
 
-function setup({ deriveAttachments } = {}) {
+function setup({ deriveAttachments, deriveSources } = {}) {
   const renders = [];
   const avatars = [];
   const attachments = [];
   const actions = [];
+  const sources = [];
   const persisted = [];
   let conversationPersists = 0;
   const scroll = element('div');
@@ -54,8 +55,13 @@ function setup({ deriveAttachments } = {}) {
     },
     mountAssistantActions(root, wrap, restored) {
       actions.push([root, wrap, restored]);
+      return { root, wrap, restored };
+    },
+    mountAssistantSources(actionRow, items, engine) {
+      sources.push([actionRow, items, engine]);
     },
     ...(deriveAttachments ? { deriveAttachments } : {}),
+    ...(deriveSources ? { deriveSources } : {}),
     persistMessage(message) {
       persisted.push(message);
     },
@@ -75,6 +81,7 @@ function setup({ deriveAttachments } = {}) {
     avatars,
     attachments,
     actions,
+    sources,
     persisted,
     get conversationPersists() {
       return conversationPersists;
@@ -140,6 +147,56 @@ test('uses the injected v115 attachment fallback when persisted metadata is abse
   assert.deepEqual(state.persisted, []);
   assert.equal(state.attachments.length, 1);
   assert.equal(state.attachments[0][2], fallback);
+});
+
+test('replays stored v115 assistant sources without persisting a duplicate record', () => {
+  let derived = 0;
+  const state = setup({
+    deriveSources() {
+      derived += 1;
+      return [];
+    },
+  });
+  const stored = {
+    role: 'assistant',
+    content: 'Stored answer',
+    sources: [{ title: 'Stored source', url: 'https://example.test/stored' }],
+  };
+
+  const handle = state.renderers.renderPersistedAssistantMessage(stored, {
+    chatInner: state.chatInner,
+  });
+
+  assert.equal(handle.message.rendered, 'Stored answer');
+  assert.deepEqual(state.persisted, []);
+  assert.equal(derived, 0);
+  assert.equal(state.actions.length, 1);
+  assert.equal(state.actions[0][2], true);
+  assert.equal(state.sources.length, 1);
+  assert.equal(state.sources[0][1], stored.sources);
+  assert.equal(state.sources[0][2], 'web');
+});
+
+test('uses injected cited-source fallback for persisted v115 assistant replay', () => {
+  const fallback = [{ title: 'Derived citation', url: 'https://example.test/cited' }];
+  const state = setup({
+    deriveSources(content) {
+      assert.equal(content, 'Answer with legacy citations');
+      return fallback;
+    },
+  });
+
+  state.renderers.renderPersistedAssistantMessage(
+    { role: 'assistant', content: 'Answer with legacy citations' },
+    { chatInner: state.chatInner },
+  );
+
+  assert.deepEqual(state.persisted, []);
+  assert.equal(state.actions.length, 1);
+  assert.equal(state.actions[0][2], true);
+  assert.equal(state.sources.length, 1);
+  assert.equal(state.sources[0][1], fallback);
+  assert.equal(state.sources[0][2], 'cited');
 });
 
 test('streams assistant deltas and finalizes the same persisted assistant shell', () => {
