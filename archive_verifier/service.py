@@ -58,6 +58,18 @@ def _validate_manifest_row(row: dict[str, str], row_number: int) -> None:
         )
 
 
+def _validate_occurrence_sequence(rows: list[dict[str, str]]) -> None:
+    occurrences = [int(row["occurrence"]) for row in rows]
+    _require(
+        len(set(occurrences)) == len(occurrences),
+        "manifest occurrence values must be unique",
+    )
+    _require(
+        occurrences == list(range(1, len(rows) + 1)),
+        "manifest occurrence values must be sequential starting at 1",
+    )
+
+
 def discover_payload_parts(config: VerificationConfig) -> list[Path]:
     parts = sorted(config.payload_dir.glob("part-*.b64"))
     _require(
@@ -94,6 +106,7 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
             rows = list(reader)
             for row_number, row in enumerate(rows, start=2):
                 _validate_manifest_row(row, row_number)
+            _validate_occurrence_sequence(rows)
             return rows
     except OSError as exc:
         error_type = exc.__class__.__name__
