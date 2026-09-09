@@ -28,7 +28,9 @@ export function createAuthenticatedV115MessageRenderers({
   setAvatarSource,
   mountAttachments,
   mountAssistantActions,
+  mountAssistantSources,
   deriveAttachments,
+  deriveSources,
   persistMessage,
   getPersistedMessages,
   persistConversation,
@@ -43,7 +45,11 @@ export function createAuthenticatedV115MessageRenderers({
   if (mountAssistantActions !== undefined) {
     requireFunction(mountAssistantActions, 'mountAssistantActions');
   }
+  if (mountAssistantSources !== undefined) {
+    requireFunction(mountAssistantSources, 'mountAssistantSources');
+  }
   if (deriveAttachments !== undefined) requireFunction(deriveAttachments, 'deriveAttachments');
+  if (deriveSources !== undefined) requireFunction(deriveSources, 'deriveSources');
   if (persistMessage !== undefined) requireFunction(persistMessage, 'persistMessage');
   if (getPersistedMessages !== undefined) {
     requireFunction(getPersistedMessages, 'getPersistedMessages');
@@ -86,14 +92,19 @@ export function createAuthenticatedV115MessageRenderers({
     if (normalizedRole === 'user' && metadata.attachments?.length && mountAttachments) {
       mountAttachments(chatInner, message, metadata.attachments);
     }
+
+    let assistantActions;
     if (normalizedRole === 'assistant' && mountAssistantActions) {
-      mountAssistantActions(chatInner, wrap, false);
+      assistantActions = mountAssistantActions(chatInner, wrap, metadata.restored === true);
+      if (metadata.sources?.length && assistantActions && mountAssistantSources) {
+        mountAssistantSources(assistantActions, metadata.sources, metadata.engine);
+      }
     }
 
     const scrollContainer = chatInner.parentElement;
     if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
 
-    return { wrap, avatar, image, message, role: normalizedRole, content };
+    return { wrap, avatar, image, message, role: normalizedRole, content, assistantActions };
   }
 
   function ensurePersistedAssistantShell(handle) {
@@ -127,6 +138,24 @@ export function createAuthenticatedV115MessageRenderers({
         record.content,
         attachments?.length ? { attachments } : {},
       );
+    },
+
+    renderPersistedAssistantMessage(record, { chatInner } = {}) {
+      if (!record || record.role !== 'assistant' || typeof record.content !== 'string') {
+        throw new TypeError('persisted assistant message record is required');
+      }
+      const storedSources = Array.isArray(record.sources) && record.sources.length
+        ? record.sources
+        : null;
+      const sources = storedSources || deriveSources?.(record.content);
+      if (sources !== undefined && !Array.isArray(sources)) {
+        throw new TypeError('deriveSources must return an array');
+      }
+      const engine = record.engine || (storedSources ? 'web' : 'cited');
+      return createMessage(chatInner, 'assistant', record.content, {
+        restored: true,
+        ...(sources?.length ? { sources, engine } : {}),
+      });
     },
 
     beginAssistantMessage({ chatInner }) {
