@@ -29,6 +29,7 @@ export function createAuthenticatedV115MessageRenderers({
   mountAttachments,
   mountAssistantActions,
   mountAssistantSources,
+  mountAssistantMedia,
   deriveAttachments,
   deriveSources,
   persistMessage,
@@ -47,6 +48,9 @@ export function createAuthenticatedV115MessageRenderers({
   }
   if (mountAssistantSources !== undefined) {
     requireFunction(mountAssistantSources, 'mountAssistantSources');
+  }
+  if (mountAssistantMedia !== undefined) {
+    requireFunction(mountAssistantMedia, 'mountAssistantMedia');
   }
   if (deriveAttachments !== undefined) requireFunction(deriveAttachments, 'deriveAttachments');
   if (deriveSources !== undefined) requireFunction(deriveSources, 'deriveSources');
@@ -98,6 +102,13 @@ export function createAuthenticatedV115MessageRenderers({
       assistantActions = mountAssistantActions(chatInner, wrap, metadata.restored === true);
       if (metadata.sources?.length && assistantActions && mountAssistantSources) {
         mountAssistantSources(assistantActions, metadata.sources, metadata.engine);
+      }
+      if (
+        assistantActions
+        && mountAssistantMedia
+        && (metadata.media?.images?.length || metadata.media?.videos?.length)
+      ) {
+        mountAssistantMedia(assistantActions, metadata.media);
       }
     }
 
@@ -152,9 +163,24 @@ export function createAuthenticatedV115MessageRenderers({
         throw new TypeError('deriveSources must return an array');
       }
       const engine = record.engine || (storedSources ? 'web' : 'cited');
+
+      let media;
+      if (
+        record.media
+        && (Array.isArray(record.media.images) || Array.isArray(record.media.videos))
+      ) {
+        media = {
+          images: Array.isArray(record.media.images) ? record.media.images : [],
+          videos: Array.isArray(record.media.videos) ? record.media.videos : [],
+        };
+      } else if (Array.isArray(record.images) && record.images.length) {
+        media = { images: record.images, videos: [] };
+      }
+
       return createMessage(chatInner, 'assistant', record.content, {
         restored: true,
         ...(sources?.length ? { sources, engine } : {}),
+        ...(media ? { media } : {}),
       });
     },
 
