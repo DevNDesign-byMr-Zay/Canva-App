@@ -28,7 +28,7 @@ function documentRef() {
   };
 }
 
-function setup() {
+function setup({ deriveAttachments } = {}) {
   const renders = [];
   const avatars = [];
   const attachments = [];
@@ -55,6 +55,7 @@ function setup() {
     mountAssistantActions(root, wrap, restored) {
       actions.push([root, wrap, restored]);
     },
+    ...(deriveAttachments ? { deriveAttachments } : {}),
     persistMessage(message) {
       persisted.push(message);
     },
@@ -95,6 +96,50 @@ test('creates the authenticated v115 user message DOM shell in exact role order'
   assert.equal(handle.message.rendered, 'Build ROARY');
   assert.deepEqual(avatars, ['user']);
   assert.deepEqual(persisted, [{ role: 'user', content: 'Build ROARY' }]);
+});
+
+test('replays stored v115 user attachments without persisting a duplicate record', () => {
+  let derived = 0;
+  const state = setup({
+    deriveAttachments() {
+      derived += 1;
+      return [];
+    },
+  });
+  const stored = {
+    role: 'user',
+    content: 'Review this',
+    attachments: [{ name: 'brief.pdf', type: 'application/pdf', size: 2048 }],
+  };
+
+  const handle = state.renderers.renderPersistedUserMessage(stored, {
+    chatInner: state.chatInner,
+  });
+
+  assert.equal(handle.message.rendered, 'Review this');
+  assert.deepEqual(state.persisted, []);
+  assert.equal(derived, 0);
+  assert.equal(state.attachments.length, 1);
+  assert.equal(state.attachments[0][2], stored.attachments);
+});
+
+test('uses the injected v115 attachment fallback when persisted metadata is absent', () => {
+  const fallback = [{ name: 'legacy.txt', type: 'text/plain', size: 12 }];
+  const state = setup({
+    deriveAttachments(content) {
+      assert.equal(content, 'Legacy attachment marker');
+      return fallback;
+    },
+  });
+
+  state.renderers.renderPersistedUserMessage(
+    { role: 'user', content: 'Legacy attachment marker' },
+    { chatInner: state.chatInner },
+  );
+
+  assert.deepEqual(state.persisted, []);
+  assert.equal(state.attachments.length, 1);
+  assert.equal(state.attachments[0][2], fallback);
 });
 
 test('streams assistant deltas and finalizes the same persisted assistant shell', () => {
