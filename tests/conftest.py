@@ -27,18 +27,20 @@ def build_archive(tmp_path: Path) -> Callable[..., BuiltArchive]:
         files: dict[str, bytes] | None = None,
         *,
         payload_parts: int = 2,
+        archive_only_files: dict[str, bytes] | None = None,
     ) -> BuiltArchive:
         source_files = files or {
             "state-a.html": b"<html><body>alpha</body></html>",
             "state-b.html": b"<html><body>beta</body></html>",
         }
+        extra_files = archive_only_files or {}
         payload_dir = tmp_path / "payload"
         payload_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = tmp_path / "manifest.csv"
 
         buffer = io.BytesIO()
         with tarfile.open(fileobj=buffer, mode="w:xz") as archive:
-            for name, data in source_files.items():
+            for name, data in {**source_files, **extra_files}.items():
                 info = tarfile.TarInfo(name=name)
                 info.size = len(data)
                 archive.addfile(info, io.BytesIO(data))
