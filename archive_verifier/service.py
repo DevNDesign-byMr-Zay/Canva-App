@@ -106,7 +106,6 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
             rows = list(reader)
             for row_number, row in enumerate(rows, start=2):
                 _validate_manifest_row(row, row_number)
-            _validate_occurrence_sequence(rows)
             return rows
     except OSError as exc:
         error_type = exc.__class__.__name__
@@ -139,6 +138,7 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
         len(rows) == config.expected_occurrences,
         f"manifest occurrence count {len(rows)} != {config.expected_occurrences}",
     )
+    _validate_occurrence_sequence(rows)
 
     unique_sources = {row["source_filename_sha256"] for row in rows}
     _require(
