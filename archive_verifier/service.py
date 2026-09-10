@@ -167,7 +167,7 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
             member.name
             for member in file_members
             if not member.name.lower().endswith(".html")
-            and Path(member.name).name not in _ALLOWED_ARCHIVE_METADATA_FILES
+            and member.name not in _ALLOWED_ARCHIVE_METADATA_FILES
         ]
         _require(
             not unexpected_files,
