@@ -37,6 +37,7 @@ export function createAuthenticatedV115MessageRenderers({
   mountAssistantActions,
   mountAssistantSources,
   mountAssistantMedia,
+  wireRestoredGeneratedImageCard,
   deriveAttachments,
   deriveSources,
   persistMessage,
@@ -58,6 +59,9 @@ export function createAuthenticatedV115MessageRenderers({
   }
   if (mountAssistantMedia !== undefined) {
     requireFunction(mountAssistantMedia, 'mountAssistantMedia');
+  }
+  if (wireRestoredGeneratedImageCard !== undefined) {
+    requireFunction(wireRestoredGeneratedImageCard, 'wireRestoredGeneratedImageCard');
   }
   if (deriveAttachments !== undefined) requireFunction(deriveAttachments, 'deriveAttachments');
   if (deriveSources !== undefined) requireFunction(deriveSources, 'deriveSources');
@@ -99,6 +103,18 @@ export function createAuthenticatedV115MessageRenderers({
     const imageOnlyAssistant = normalizedRole === 'assistant'
       && isRestoredImageOnlyAssistant(content, metadata);
     if (imageOnlyAssistant) message.className += ' image-only-msg';
+
+    if (
+      normalizedRole === 'assistant'
+      && metadata.restored === true
+      && wireRestoredGeneratedImageCard
+    ) {
+      try {
+        wireRestoredGeneratedImageCard(message);
+      } catch {
+        // Authenticated v115 contains reload helper failures instead of aborting replay.
+      }
+    }
 
     wrap.appendChild(avatar);
     wrap.appendChild(message);
