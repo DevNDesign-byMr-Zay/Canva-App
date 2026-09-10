@@ -161,10 +161,17 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
         raise ArchiveVerificationError("xz/tar open failed") from exc
 
     with archive_handle as tar_handle:
+        file_members = [member for member in tar_handle.getmembers() if member.isfile()]
+        unexpected_files = [
+            member.name for member in file_members if not member.name.lower().endswith(".html")
+        ]
+        _require(
+            not unexpected_files,
+            "archive contains unmanifested regular files: " + ", ".join(unexpected_files),
+        )
+
         html_members = [
-            member
-            for member in tar_handle.getmembers()
-            if member.isfile() and member.name.lower().endswith(".html")
+            member for member in file_members if member.name.lower().endswith(".html")
         ]
         _require(
             len(html_members) == config.expected_occurrences,
