@@ -58,6 +58,18 @@ def _validate_manifest_row(row: dict[str, str], row_number: int) -> None:
         )
 
 
+def _validate_occurrence_sequence(rows: list[dict[str, str]]) -> None:
+    occurrences = [int(row["occurrence"]) for row in rows]
+    _require(
+        len(set(occurrences)) == len(occurrences),
+        "manifest occurrence values must be unique",
+    )
+    _require(
+        occurrences == list(range(1, len(rows) + 1)),
+        "manifest occurrence values must be sequential starting at 1",
+    )
+
+
 def discover_payload_parts(config: VerificationConfig) -> list[Path]:
     parts = sorted(config.payload_dir.glob("part-*.b64"))
     _require(
@@ -126,6 +138,7 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
         len(rows) == config.expected_occurrences,
         f"manifest occurrence count {len(rows)} != {config.expected_occurrences}",
     )
+    _validate_occurrence_sequence(rows)
 
     unique_sources = {row["source_filename_sha256"] for row in rows}
     _require(

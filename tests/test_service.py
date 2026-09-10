@@ -116,6 +116,29 @@ def test_manifest_invalid_occurrence_fails(build_archive: Callable[..., Any]) ->
         read_manifest(built.manifest_path)
 
 
+def test_archive_duplicate_occurrence_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[1]["occurrence"] = rows[0]["occurrence"]
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(ArchiveVerificationError, match="occurrence values must be unique"):
+        verify_archive(built.config)
+
+
+def test_archive_nonsequential_occurrence_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[1]["occurrence"] = "3"
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(
+        ArchiveVerificationError,
+        match="occurrence values must be sequential starting at 1",
+    ):
+        verify_archive(built.config)
+
+
 def test_manifest_empty_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
     rows = _read_rows(built.manifest_path)
