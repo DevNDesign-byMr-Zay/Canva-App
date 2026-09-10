@@ -139,6 +139,19 @@ def test_archive_nonsequential_occurrence_fails(build_archive: Callable[..., Any
         verify_archive(built.config)
 
 
+def test_archive_duplicate_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    rows = _read_rows(built.manifest_path)
+    rows[1]["repository_filename"] = rows[0]["repository_filename"]
+    _write_rows(built.manifest_path, rows)
+
+    with pytest.raises(
+        ArchiveVerificationError,
+        match="repository_filename values must be unique",
+    ):
+        verify_archive(built.config)
+
+
 def test_manifest_empty_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
     rows = _read_rows(built.manifest_path)
