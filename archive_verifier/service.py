@@ -70,6 +70,14 @@ def _validate_occurrence_sequence(rows: list[dict[str, str]]) -> None:
     )
 
 
+def _validate_repository_filename_uniqueness(rows: list[dict[str, str]]) -> None:
+    filenames = [row["repository_filename"].strip() for row in rows]
+    _require(
+        len(set(filenames)) == len(filenames),
+        "manifest repository_filename values must be unique",
+    )
+
+
 def discover_payload_parts(config: VerificationConfig) -> list[Path]:
     parts = sorted(config.payload_dir.glob("part-*.b64"))
     _require(
@@ -139,6 +147,7 @@ def verify_archive(config: VerificationConfig) -> VerificationReport:
         f"manifest occurrence count {len(rows)} != {config.expected_occurrences}",
     )
     _validate_occurrence_sequence(rows)
+    _validate_repository_filename_uniqueness(rows)
 
     unique_sources = {row["source_filename_sha256"] for row in rows}
     _require(
