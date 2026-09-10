@@ -152,6 +152,16 @@ def test_archive_duplicate_repository_filename_fails(build_archive: Callable[...
         verify_archive(built.config)
 
 
+def test_archive_unmanifested_regular_file_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive(archive_only_files={"notes.txt": b"not covered by the manifest"})
+
+    with pytest.raises(
+        ArchiveVerificationError,
+        match="archive contains unmanifested regular files: notes.txt",
+    ):
+        verify_archive(built.config)
+
+
 def test_manifest_empty_repository_filename_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
     rows = _read_rows(built.manifest_path)
