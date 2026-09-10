@@ -20,9 +20,10 @@ function element(tagName) {
   };
 }
 
-function setup() {
+function setup({ wireRestoredGeneratedImageCard } = {}) {
   const actions = [];
   const persisted = [];
+  const rewired = [];
   const scroll = element('div');
   const chatInner = element('div');
   scroll.appendChild(chatInner);
@@ -37,6 +38,13 @@ function setup() {
       actions.push([root, wrap, restored]);
       return { root, wrap, restored };
     },
+    ...(wireRestoredGeneratedImageCard
+      ? { wireRestoredGeneratedImageCard }
+      : {
+          wireRestoredGeneratedImageCard(message) {
+            rewired.push(message);
+          },
+        }),
     deriveSources() {
       return [];
     },
@@ -49,7 +57,7 @@ function setup() {
     persistConversation() {},
   });
 
-  return { renderers, chatInner, actions, persisted };
+  return { renderers, chatInner, actions, persisted, rewired };
 }
 
 test('restored generated-image assistant messages suppress the normal action row', () => {
@@ -91,6 +99,41 @@ test('restored generated-image detection trims persisted content before matching
   assert.deepEqual(state.persisted, []);
 });
 
+test('restored assistant replay rewires generated-image cards after image-only classification', () => {
+  let seenClassName = null;
+  const state = setup({
+    wireRestoredGeneratedImageCard(message) {
+      seenClassName = message.className;
+    },
+  });
+
+  const handle = state.renderers.renderPersistedAssistantMessage(
+    { role: 'assistant', content: 'Generated image for:\n\n**Rewired skyline**' },
+    { chatInner: state.chatInner },
+  );
+
+  assert.equal(seenClassName, 'msg assistant image-only-msg');
+  assert.equal(handle.message.className, 'msg assistant image-only-msg');
+  assert.deepEqual(state.persisted, []);
+});
+
+test('restored generated-image helper failures do not abort replay', () => {
+  const state = setup({
+    wireRestoredGeneratedImageCard() {
+      throw new Error('card helper failed');
+    },
+  });
+
+  const handle = state.renderers.renderPersistedAssistantMessage(
+    { role: 'assistant', content: 'Generated image for:\n\n**Still restored**' },
+    { chatInner: state.chatInner },
+  );
+
+  assert.equal(handle.message.rendered, 'Generated image for:\n\n**Still restored**');
+  assert.equal(state.chatInner.children.at(-1), handle.wrap);
+  assert.deepEqual(state.persisted, []);
+});
+
 test('ordinary restored assistant messages still mount their action row', () => {
   const state = setup();
 
@@ -102,4 +145,5 @@ test('ordinary restored assistant messages still mount their action row', () => 
   assert.equal(handle.message.className, 'msg assistant');
   assert.equal(state.actions.length, 1);
   assert.equal(state.actions[0][2], true);
+  assert.equal(state.rewired.length, 1);
 });
