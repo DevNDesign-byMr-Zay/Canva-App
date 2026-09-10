@@ -78,6 +78,19 @@ test('restored bold generated-image marker uses the same image-only branch', () 
   assert.deepEqual(state.actions, []);
 });
 
+test('restored generated-image detection trims persisted content before matching', () => {
+  const state = setup();
+
+  const handle = state.renderers.renderPersistedAssistantMessage(
+    { role: 'assistant', content: '\n  Generated image for:\n\n**Trimmed skyline**' },
+    { chatInner: state.chatInner },
+  );
+
+  assert.equal(handle.message.className, 'msg assistant image-only-msg');
+  assert.deepEqual(state.actions, []);
+  assert.deepEqual(state.persisted, []);
+});
+
 test('ordinary restored assistant messages still mount their action row', () => {
   const state = setup();
 
