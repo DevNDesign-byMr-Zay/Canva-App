@@ -134,7 +134,7 @@ test('restored generated-image helper failures do not abort replay', () => {
   assert.deepEqual(state.persisted, []);
 });
 
-test('ordinary restored assistant messages still mount their action row', () => {
+test('ordinary restored assistant messages keep actions and skip generated-image rewiring', () => {
   const state = setup();
 
   const handle = state.renderers.renderPersistedAssistantMessage(
@@ -145,5 +145,5 @@ test('ordinary restored assistant messages still mount their action row', () => 
   assert.equal(handle.message.className, 'msg assistant');
   assert.equal(state.actions.length, 1);
   assert.equal(state.actions[0][2], true);
-  assert.equal(state.rewired.length, 1);
+  assert.deepEqual(state.rewired, []);
 });
