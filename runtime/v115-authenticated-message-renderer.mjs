@@ -104,11 +104,7 @@ export function createAuthenticatedV115MessageRenderers({
       && isRestoredImageOnlyAssistant(content, metadata);
     if (imageOnlyAssistant) message.className += ' image-only-msg';
 
-    if (
-      normalizedRole === 'assistant'
-      && metadata.restored === true
-      && wireRestoredGeneratedImageCard
-    ) {
+    if (imageOnlyAssistant && wireRestoredGeneratedImageCard) {
       try {
         wireRestoredGeneratedImageCard(message);
       } catch {
