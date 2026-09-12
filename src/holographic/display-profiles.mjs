@@ -1,10 +1,6 @@
 export const DISPLAY_PROFILE_SCHEMA = 'canva.holographic-display-profile.v1';
 
 const PROFILES = Object.freeze({
-  default: Object.freeze({
-    targetType: 'simulator',
-    capabilities: Object.freeze(['preview', 'deterministic-replay']),
-  }),
   simulator: Object.freeze({
     targetType: 'simulator',
     capabilities: Object.freeze(['preview', 'deterministic-replay']),
@@ -36,7 +32,8 @@ export function getDisplayProfile(name = 'default') {
   if (typeof name !== 'string' || !name.trim()) {
     throw new TypeError('A display profile is required.');
   }
-  const id = name.trim();
+  const requestedId = name.trim();
+  const id = requestedId === 'default' ? 'simulator' : requestedId;
   const profile = PROFILES[id];
   if (!profile) throw new TypeError(`Unsupported display profile: ${name}`);
   return Object.freeze({ schema: DISPLAY_PROFILE_SCHEMA, id, ...profile });
