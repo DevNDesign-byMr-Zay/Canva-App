@@ -16,12 +16,20 @@ describe('Canva holographic export', () => {
     assert.equal(result.mimeType, 'application/json');
     assert.equal(result.filename, 'canva-product.holo.json');
     assert.equal(payload.schema, 'canva.holographic-export.v1');
+    assert.equal(payload.target, 'simulator');
     assert.equal(payload.scene.id, 'canva-product');
   });
 
-  test('rejects unsupported export formats and invalid scenes', () => {
+  test('preserves an explicit physical display target', () => {
+    const scene = createHolographicScene({ id: 'stage-show' });
+    const result = exportHolographicScene(scene, { target: 'projector-wall-a' });
+    assert.equal(result.payload.target, 'projector-wall-a');
+  });
+
+  test('rejects unsupported export formats and invalid inputs', () => {
     const scene = createHolographicScene({ id: 'demo' });
     assert.throws(() => exportHolographicScene(scene, { format: 'png' }), /Unsupported/);
+    assert.throws(() => exportHolographicScene(scene, { target: '' }), /target/);
     assert.throws(() => exportHolographicScene({}), /holo.scene.v1/);
   });
 });
