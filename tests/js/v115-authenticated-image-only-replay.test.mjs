@@ -147,3 +147,15 @@ test('ordinary restored assistant messages keep actions and skip generated-image
   assert.equal(state.actions[0][2], true);
   assert.deepEqual(state.rewired, []);
 });
+
+test('live assistant content that resembles the restored image marker stays on the live path', () => {
+  const state = setup();
+
+  const handle = state.renderers.beginAssistantMessage({ chatInner: state.chatInner });
+  state.renderers.appendAssistantDelta(handle, 'Generated image for:\n\n**Live skyline**');
+
+  assert.equal(handle.message.className, 'msg assistant');
+  assert.deepEqual(state.rewired, []);
+  assert.equal(state.persisted.length, 1);
+  assert.equal(state.persisted[0].role, 'assistant');
+});
