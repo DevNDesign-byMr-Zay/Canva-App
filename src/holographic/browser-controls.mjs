@@ -152,7 +152,7 @@ export function bindHolographicViewportControls({
       for (const [type, listener] of listeners) viewport.removeEventListener(type, listener);
       if (state.pointer?.id !== undefined) viewport.releasePointerCapture?.(state.pointer.id);
       state.pointer = null;
-      bindings.delete(viewport);
+      if (bindings.get(viewport) === state) bindings.delete(viewport);
     },
   });
 
