@@ -21,8 +21,10 @@ function element(tagName) {
 }
 
 function setup() {
+  const actions = [];
   const media = [];
   const persisted = [];
+  const rewired = [];
   const scroll = element('div');
   const chatInner = element('div');
   scroll.appendChild(chatInner);
@@ -38,10 +40,15 @@ function setup() {
     },
     setAvatarSource() {},
     mountAssistantActions(root, wrap, restored) {
-      return { root, wrap, restored };
+      const actionRow = { root, wrap, restored };
+      actions.push(actionRow);
+      return actionRow;
     },
     mountAssistantMedia(actionRow, payload) {
       media.push([actionRow, payload]);
+    },
+    wireRestoredGeneratedImageCard(message) {
+      rewired.push(message);
     },
     persistMessage(message) {
       persisted.push(message);
@@ -52,7 +59,7 @@ function setup() {
     persistConversation() {},
   });
 
-  return { renderers, chatInner, media, persisted };
+  return { renderers, chatInner, actions, media, persisted, rewired };
 }
 
 test('replays structured persisted v115 assistant media without re-persisting', () => {
@@ -103,4 +110,31 @@ test('structured empty media does not fall through to legacy images', () => {
 
   assert.deepEqual(state.persisted, []);
   assert.deepEqual(state.media, []);
+});
+
+test('restored text with multiple images stays on the normal mixed-media replay path', () => {
+  const state = setup();
+  const stored = {
+    role: 'assistant',
+    content: 'Two generated options with comparison notes.',
+    media: {
+      images: [
+        { url: 'https://example.test/first.png' },
+        { url: 'https://example.test/second.png' },
+      ],
+      videos: [],
+    },
+  };
+
+  const handle = state.renderers.renderPersistedAssistantMessage(stored, {
+    chatInner: state.chatInner,
+  });
+
+  assert.equal(handle.message.className, 'msg assistant');
+  assert.equal(state.actions.length, 1);
+  assert.equal(state.actions[0].restored, true);
+  assert.equal(state.media.length, 1);
+  assert.deepEqual(state.media[0][1], stored.media);
+  assert.deepEqual(state.rewired, []);
+  assert.deepEqual(state.persisted, []);
 });
