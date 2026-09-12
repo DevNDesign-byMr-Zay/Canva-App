@@ -14,14 +14,23 @@ describe('Canva holographic export', () => {
     assert.equal(payload.schema, 'canva.holographic-export.v1');
     assert.equal(payload.target, 'simulator');
     assert.equal(payload.displayProfile, 'default');
+    assert.equal(payload.displayProfileSchema, 'canva.holographic-display-profile.v1');
     assert.equal(payload.scene.id, 'canva-product');
   });
 
   test('preserves explicit physical target and display profile', () => {
     const scene = createHolographicScene({ id: 'stage-show' });
-    const result = exportHolographicScene(scene, { target: 'projector-wall-a', displayProfile: 'wide-stage' });
+    const result = exportHolographicScene(scene, { target: 'projector-wall-a', displayProfile: 'projector' });
     assert.equal(result.payload.target, 'projector-wall-a');
-    assert.equal(result.payload.displayProfile, 'wide-stage');
+    assert.equal(result.payload.displayProfile, 'projector');
+  });
+
+  test('rejects incompatible target and display profile', () => {
+    const scene = createHolographicScene({ id: 'demo' });
+    assert.throws(
+      () => exportHolographicScene(scene, { target: 'holomat-1', displayProfile: 'projector' }),
+      /incompatible/i,
+    );
   });
 
   test('rejects unsupported formats and invalid inputs', () => {
@@ -29,6 +38,7 @@ describe('Canva holographic export', () => {
     assert.throws(() => exportHolographicScene(scene, { format: 'png' }), /Unsupported/);
     assert.throws(() => exportHolographicScene(scene, { target: '' }), /target/);
     assert.throws(() => exportHolographicScene(scene, { displayProfile: '' }), /display profile/);
+    assert.throws(() => exportHolographicScene(scene, { displayProfile: 'unknown' }), /Unsupported display profile/);
     assert.throws(() => exportHolographicScene({}), /holo.scene.v1/);
   });
 });
