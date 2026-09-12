@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createCss3dMountAdapter } from '../../src/holographic/mount.mjs';
-import { HOLO_RENDER_SCHEMA } from '../../src/holographic/renderer.mjs';
+import { createCss3dMountAdapter, HOLO_RENDER_SCHEMA } from '../../src/holographic/index.mjs';
 
 function element() {
   return {
@@ -37,7 +36,7 @@ const model = (ids) => ({
   layers: ids.map((id) => ({ id, attributes: {}, style: {} })),
 });
 
-test('reuses keyed layers and removes stale ones', () => {
+test('reuses keyed layers and removes stale ones through the public holographic surface', () => {
   const root = element();
   const adapter = createCss3dMountAdapter({ document });
   adapter.render(root, model(['a', 'b']));
