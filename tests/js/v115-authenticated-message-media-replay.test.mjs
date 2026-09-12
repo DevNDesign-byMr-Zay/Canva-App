@@ -138,3 +138,24 @@ test('restored text with multiple images stays on the normal mixed-media replay 
   assert.deepEqual(state.rewired, []);
   assert.deepEqual(state.persisted, []);
 });
+
+
+test('structured video media takes precedence over legacy image fields', () => {
+  const state = setup();
+  const videos = [{ url: 'https://example.test/clip.mp4' }];
+
+  state.renderers.renderPersistedAssistantMessage(
+    {
+      role: 'assistant',
+      content: 'Video replay',
+      media: { videos },
+      images: [{ url: 'https://example.test/legacy.png' }],
+    },
+    { chatInner: state.chatInner },
+  );
+
+  assert.deepEqual(state.persisted, []);
+  assert.equal(state.media.length, 1);
+  assert.deepEqual(state.media[0][1], { images: [], videos });
+  assert.deepEqual(state.rewired, []);
+});
