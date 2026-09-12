@@ -9,3 +9,5 @@ export {
   HOLO_VIEW_SCHEMA,
   projectHolographicFrame,
 } from './interaction.mjs';
+export { createHolographicControlAdapter, HOLO_CONTROLS_SCHEMA } from './controls.mjs';
+export { buildCss3dRenderModel, HOLO_RENDER_SCHEMA } from './renderer.mjs';
