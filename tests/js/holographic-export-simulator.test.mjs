@@ -11,10 +11,11 @@ test('simulates a Canva-derived scene before versioned export', () => {
   });
   const receipt = simulateHolographicScene(scene, { targetId: 'holomat-1' });
   const exported = exportHolographicScene(scene);
+  const payload = JSON.parse(exported.content);
 
   assert.equal(receipt.status, 'simulated');
   assert.deepEqual(receipt.renderedNodes, ['hero']);
-  assert.equal(exported.sourceSchema, 'holo.scene.v1');
+  assert.equal(exported.payload.sourceSchema, 'holo.scene.v1');
   assert.equal(exported.format, 'json');
-  assert.equal(JSON.parse(exported.content).scene.id, 'product-demo');
+  assert.equal(payload.scene.id, 'product-demo');
 });
