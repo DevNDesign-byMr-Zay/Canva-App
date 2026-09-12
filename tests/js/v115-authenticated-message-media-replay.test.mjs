@@ -112,6 +112,26 @@ test('structured empty media does not fall through to legacy images', () => {
   assert.deepEqual(state.media, []);
 });
 
+test('preserves v115 legacy fallback when media object has no structured arrays', () => {
+  const state = setup();
+  const legacyImages = [{ url: 'https://example.test/preserved-fallback.png' }];
+
+  state.renderers.renderPersistedAssistantMessage(
+    {
+      role: 'assistant',
+      content: 'Preserved empty media-object fallback',
+      media: {},
+      images: legacyImages,
+    },
+    { chatInner: state.chatInner },
+  );
+
+  assert.deepEqual(state.persisted, []);
+  assert.equal(state.media.length, 1);
+  assert.deepEqual(state.media[0][1], { images: legacyImages, videos: [] });
+  assert.deepEqual(state.rewired, []);
+});
+
 test('restored text with multiple images stays on the normal mixed-media replay path', () => {
   const state = setup();
   const stored = {
