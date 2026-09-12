@@ -53,3 +53,19 @@ test('replay boundary resets once before dispatching records in persisted order'
   assert.deepEqual(events, ['reset', 'user:first', 'assistant:second']);
   assert.deepEqual(handles, [{ role: 'user' }, { role: 'assistant' }]);
 });
+
+test('replay boundary falls back to clearing innerHTML when replaceChildren is unavailable', () => {
+  const events = [];
+  const chatInner = {
+    appendChild() {},
+    innerHTML: '<div>stale replay</div>',
+  };
+
+  replayAuthenticatedV115Conversation(
+    [{ role: 'assistant', content: 'fresh' }],
+    { chatInner, renderers: validRenderers(events) },
+  );
+
+  assert.equal(chatInner.innerHTML, '');
+  assert.deepEqual(events, ['assistant:fresh']);
+});
