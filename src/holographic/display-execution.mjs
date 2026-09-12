@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getDisplayProfile, validateDisplayProfile } from './display-profiles.mjs';
 
 export const DISPLAY_EXECUTION_SCHEMA = 'canva.holographic-display-execution.v1';
@@ -9,6 +10,17 @@ const REQUIRED_CAPABILITIES = Object.freeze({
   'three-d-platform': Object.freeze(['depth', 'platform-staging']),
 });
 
+const OPERATIONS = Object.freeze({
+  simulator: 'preview-and-replay',
+  projector: 'prepare-projector',
+  holomat: 'prepare-holomat',
+  'three-d-platform': 'prepare-three-d-platform',
+});
+
+function fingerprint(value) {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
 export function createDisplayExecutionPlan({ scene, target, displayProfile = 'default' } = {}) {
   if (!scene || scene.schema !== 'holo.scene.v1') throw new TypeError('A holo.scene.v1 scene is required.');
   const profile = getDisplayProfile(displayProfile);
@@ -17,7 +29,7 @@ export function createDisplayExecutionPlan({ scene, target, displayProfile = 'de
   const missing = required.filter((capability) => !profile.capabilities.includes(capability));
   if (missing.length) throw new Error(`Display profile is missing required capabilities: ${missing.join(', ')}`);
 
-  return Object.freeze({
+  const plan = {
     schema: DISPLAY_EXECUTION_SCHEMA,
     sceneId: scene.id,
     target,
@@ -25,6 +37,8 @@ export function createDisplayExecutionPlan({ scene, target, displayProfile = 'de
     profileSchema: profile.schema,
     targetType: profile.targetType,
     capabilities: Object.freeze([...profile.capabilities]),
-    operation: profile.targetType === 'simulator' ? 'preview-and-replay' : `prepare-${profile.targetType}`,
-  });
+    operation: OPERATIONS[profile.targetType],
+    renderPolicy: Object.freeze({ depth: profile.capabilities.includes('depth'), perspective: profile.capabilities.includes('perspective'), surfaceMapping: profile.capabilities.includes('surface-mapping'), platformStaging: profile.capabilities.includes('platform-staging'), deterministicReplay: profile.capabilities.includes('deterministic-replay') }),
+  };
+  return Object.freeze({ ...plan, fingerprint: fingerprint(plan) });
 }
