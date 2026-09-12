@@ -2,6 +2,7 @@ export { createHolographicScene, planFromCanvaAssets, HOLO_SCENE_SCHEMA } from '
 export { SimulatorDisplayAdapter, composeCanvaPresentation } from './adapter.mjs';
 export { exportHolographicScene } from './export.mjs';
 export { DISPLAY_PROFILE_SCHEMA, getDisplayProfile, validateDisplayProfile } from './display-profiles.mjs';
+export { DISPLAY_EXECUTION_SCHEMA, createDisplayExecutionPlan } from './display-execution.mjs';
 export {
   applyHolographicInteraction,
   createHolographicViewState,
