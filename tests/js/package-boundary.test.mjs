@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import * as root from '../../src/holographic-scene-adapter.mjs';
-import * as sceneExport from '../../src/holographic-scene-adapter.mjs';
-import * as viewExport from '../../src/holographic-operator-view.mjs';
+import * as root from 'canva-depth-archive-tooling';
+import * as sceneExport from 'canva-depth-archive-tooling/holographic-scene';
+import * as viewExport from 'canva-depth-archive-tooling/holographic-operator-view';
 
 const scene = {
   sceneVersion: 2,
@@ -13,9 +13,10 @@ const scene = {
   layers: { topology: { nodes: 1 }, attention: [] },
 };
 
-test('maintained holographic package surfaces expose working constructors and validators', () => {
+test('public package exports expose the maintained holographic boundary', () => {
   assert.equal(root.buildHolographicCanvaPayload, sceneExport.buildHolographicCanvaPayload);
   assert.equal(typeof root.validateHolographicCanvaPayload, 'function');
+  assert.equal(typeof sceneExport.buildHolographicCanvaPayload, 'function');
   assert.equal(typeof viewExport.buildHolographicOperatorView, 'function');
   assert.equal(typeof viewExport.validateHolographicOperatorView, 'function');
 
