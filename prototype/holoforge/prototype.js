@@ -21,6 +21,8 @@ const constraintState = document.querySelector('#constraintState');
 const tradeoff = document.querySelector('#tradeoffText');
 const compare = document.querySelector('#compareRange');
 const compareValue = document.querySelector('#compareValue');
+const depth = document.querySelector('#depthRange');
+const depthValue = document.querySelector('#depthValue');
 const source = document.querySelector('#sourceFrame');
 const candidate = document.querySelector('#candidateFrame');
 const applyButton = document.querySelector('#applyButton');
@@ -91,6 +93,17 @@ function renderCompare() {
   candidate.style.filter = `saturate(${0.65 + value * 0.6})`;
 }
 
+function renderDepth() {
+  const normalized = state.depthPercent / 100;
+  const sourceZ = -40 - normalized * 80;
+  const candidateZ = 25 + normalized * 50;
+  depth.value = String(state.depthPercent);
+  depth.setAttribute('aria-valuetext', `${state.depthPercent}% spatial depth`);
+  depthValue.textContent = `${state.depthPercent}%`;
+  source.style.transform = `translate(-62%,-50%) translateZ(${sourceZ}px) rotateY(7deg)`;
+  candidate.style.transform = `translate(-38%,-46%) translateZ(${candidateZ}px) rotateY(-7deg)`;
+}
+
 function renderOverlays() {
   document.querySelectorAll('[data-overlay]').forEach((button) => {
     const enabled = state.overlays[button.dataset.overlay];
@@ -118,6 +131,7 @@ function render() {
   renderList();
   renderScenario();
   renderCompare();
+  renderDepth();
   renderOverlays();
   renderSelection();
 }
@@ -134,9 +148,15 @@ compare.addEventListener('input', () => {
   renderCompare();
 });
 
+depth.addEventListener('input', () => {
+  state = reducePrototypeState(state, { type: 'set-depth', percent: Number(depth.value) });
+  renderDepth();
+});
+
 document.querySelector('#resetView').addEventListener('click', () => {
   state = reducePrototypeState(state, { type: 'reset-view' });
   renderCompare();
+  renderDepth();
 });
 
 function toggleCandidateSelection() {
