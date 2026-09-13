@@ -40,7 +40,13 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
     sceneIdentity,
     provenanceRef,
     layers: layerPayload,
-    attention: attentionItems.map((item) => ({ priority: item.priority, severity: text(item.severity, 'attention.severity'), reason: text(item.reason, 'attention.reason'), evidenceRef: item.evidenceRef == null ? null : text(item.evidenceRef, 'attention.evidenceRef'), advisoryOnly: item.advisoryOnly === true })),
+    attention: attentionItems.map((item) => ({
+      priority: item.priority,
+      severity: text(item.severity, 'attention.severity'),
+      reason: text(item.reason, 'attention.reason'),
+      evidenceRef: item.evidenceRef == null ? null : text(item.evidenceRef, 'attention.evidenceRef'),
+      advisoryOnly: item.advisoryOnly === true
+    })),
     proposal: value.proposal ?? null,
     metrics: value.metrics ?? null,
   };
@@ -50,6 +56,15 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
     payloadFingerprint: digest(payload),
     safety: Object.freeze({ authoritative: false, physicalActuation: false, provenanceRequired: true }),
   });
+}
+
+function fingerprintInput(payload) {
+  const {
+    payloadFingerprint: _payloadFingerprint,
+    safety: _safety,
+    ...payload
+  } = payload;
+  return payload;
 }
 
 export function validateHolographicCanvaPayload(payload) {
@@ -62,6 +77,7 @@ export function validateHolographicCanvaPayload(payload) {
       && typeof value.sceneIdentity === 'string' && value.sceneIdentity.trim().length > 0
       && typeof value.provenanceRef === 'string' && value.provenanceRef.trim().length > 0
       && /^[a-f0-9]{64}$/.test(value.payloadFingerprint)
+      && value.payloadFingerprint === digest(fingerprintInput(value))
       && value.safety?.authoritative === false
       && value.safety?.physicalActuation === false
       && value.safety?.provenanceRequired === true;
