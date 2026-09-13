@@ -29,6 +29,13 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _validate_manifest_row(row: dict[str, str], row_number: int) -> None:
+    for column in _REQUIRED_MANIFEST_COLUMNS:
+        value = row.get(column)
+        _require(
+            value is not None,
+            f"manifest row {row_number} {column} must not be empty",
+        )
+
     occurrence_text = row["occurrence"].strip()
     try:
         occurrence = int(occurrence_text)
