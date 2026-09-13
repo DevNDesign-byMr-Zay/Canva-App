@@ -1,8 +1,14 @@
 import { reconstructSourceConfig, projectDesignConfig } from './geometry.js';
 import { prototypeScenarios } from './scenarios.js';
-import { createPrototypeState, isScenarioSelected, reducePrototypeState } from './state.js';
+import {
+  createPrototypeState,
+  isScenarioSelected,
+  reducePrototypeState,
+  resolveScenarioNavigation,
+} from './state.js';
 
 const scenarios = prototypeScenarios;
+const scenarioIds = scenarios.map((scenario) => scenario.id);
 
 const list = document.querySelector('#scenarioList');
 const title = document.querySelector('#scenarioTitle');
@@ -141,18 +147,34 @@ function renderFixtureStage(scenario) {
   candidateCanvas.replaceChildren(...candidateElements);
 }
 
+function selectScenario(scenarioId, { focus = false } = {}) {
+  if (scenarioId === state.scenarioId && !focus) return;
+  state = reducePrototypeState(state, { type: 'select-scenario', scenarioId });
+  applyButton.textContent = 'Apply selected scenario';
+  render();
+
+  if (focus) {
+    const activeButton = list.querySelector(`[data-scenario="${scenarioId}"]`);
+    activeButton?.focus();
+  }
+}
+
 function renderList() {
   list.replaceChildren(...scenarios.map((scenario) => {
+    const active = scenario.id === state.scenarioId;
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `scenario-card${scenario.id === state.scenarioId ? ' active' : ''}`;
+    button.className = `scenario-card${active ? ' active' : ''}`;
     button.dataset.scenario = scenario.id;
-    button.setAttribute('aria-pressed', String(scenario.id === state.scenarioId));
+    button.setAttribute('aria-pressed', String(active));
+    if (active) button.setAttribute('aria-current', 'true');
     button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>gap ${formatMetric(scenario.gap)}</span><span>${scenario.changed} changes</span></span>`;
-    button.addEventListener('click', () => {
-      state = reducePrototypeState(state, { type: 'select-scenario', scenarioId: scenario.id });
-      applyButton.textContent = 'Apply selected scenario';
-      render();
+    button.addEventListener('click', () => selectScenario(scenario.id));
+    button.addEventListener('keydown', (event) => {
+      const nextId = resolveScenarioNavigation(scenarioIds, state.scenarioId, event.key);
+      if (nextId === state.scenarioId) return;
+      event.preventDefault();
+      selectScenario(nextId, { focus: true });
     });
     return button;
   }));
@@ -191,6 +213,13 @@ function renderCompare() {
   source.style.opacity = String(Math.max(0.18, 1 - value * 0.85));
   candidate.style.opacity = String(Math.max(0.18, value));
   candidate.style.filter = `saturate(${0.65 + value * 0.6})`;
+
+  document.querySelectorAll('[data-compare-preset]').forEach((button) => {
+    const values = { original: 0, split: 58, candidate: 100 };
+    const active = values[button.dataset.comparePreset] === state.comparePercent;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
 }
 
 function renderDepth() {
@@ -240,6 +269,16 @@ document.querySelectorAll('[data-overlay]').forEach((button) => {
   button.addEventListener('click', () => {
     state = reducePrototypeState(state, { type: 'toggle-overlay', overlay: button.dataset.overlay });
     renderOverlays();
+  });
+});
+
+document.querySelectorAll('[data-compare-preset]').forEach((button) => {
+  button.addEventListener('click', () => {
+    state = reducePrototypeState(state, {
+      type: 'set-compare-preset',
+      preset: button.dataset.comparePreset,
+    });
+    renderCompare();
   });
 });
 
