@@ -11,16 +11,25 @@ function eventTarget(extra = {}) {
   return {
     ...extra,
     addEventListener(type, listener) {
-      listeners.set(type, listener);
+      const registered = listeners.get(type) ?? new Set();
+      registered.add(listener);
+      listeners.set(type, registered);
     },
     removeEventListener(type, listener) {
-      if (listeners.get(type) === listener) listeners.delete(type);
+      const registered = listeners.get(type);
+      registered?.delete(listener);
+      if (registered?.size === 0) listeners.delete(type);
     },
     dispatch(type, event = {}) {
-      return listeners.get(type)?.(event);
+      let result;
+      for (const listener of listeners.get(type) ?? []) result = listener(event);
+      return result;
     },
     hasListener(type) {
-      return listeners.has(type);
+      return (listeners.get(type)?.size ?? 0) > 0;
+    },
+    listenerCount(type) {
+      return listeners.get(type)?.size ?? 0;
     },
   };
 }
@@ -131,6 +140,54 @@ test('authenticated click and Enter boundaries are bound and removable', async (
   binding.destroy();
   assert.equal(documentRef.elements.sendBtn.hasListener('click'), false);
   assert.equal(documentRef.elements.composerInput.hasListener('keydown'), false);
+});
+
+test('rebinding the same authenticated DOM reuses listeners and updates bridge dependencies', async () => {
+  const documentRef = authenticatedDocument('use the newest bridge');
+  const firstEvents = [];
+  const secondEvents = [];
+  let firstCalls = 0;
+  let secondCalls = 0;
+
+  const first = bindAuthenticatedV115MainChat({
+    document: documentRef,
+    ...renderers(firstEvents),
+    requestImpl: async () => {
+      firstCalls += 1;
+      return { content: 'stale', doneMarkerSeen: true };
+    },
+  });
+  const firstBridge = first.bridge;
+
+  const second = bindAuthenticatedV115MainChat({
+    document: documentRef,
+    ...renderers(secondEvents),
+    requestImpl: async (_input, { onDelta }) => {
+      secondCalls += 1;
+      onDelta('current');
+      return { content: 'current', doneMarkerSeen: true };
+    },
+  });
+
+  assert.equal(second, first);
+  assert.notEqual(second.bridge, firstBridge);
+  assert.equal(documentRef.elements.sendBtn.listenerCount('click'), 1);
+  assert.equal(documentRef.elements.composerInput.listenerCount('keydown'), 1);
+
+  documentRef.elements.sendBtn.dispatch('click', { preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(firstCalls, 0);
+  assert.equal(secondCalls, 1);
+  assert.equal(firstEvents.length, 0);
+  assert.deepEqual(
+    secondEvents.map((event) => event[0]),
+    ['user', 'begin', 'delta', 'finish'],
+  );
+
+  second.destroy();
+  assert.equal(documentRef.elements.sendBtn.listenerCount('click'), 0);
+  assert.equal(documentRef.elements.composerInput.listenerCount('keydown'), 0);
 });
 
 test('missing authenticated DOM evidence fails closed', () => {
