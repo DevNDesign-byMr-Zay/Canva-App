@@ -13,6 +13,7 @@
   },
   "exports": {
     ".": "./src/holographic-scene-adapter.mjs",
-    "./holographic-scene": "./src/holographic-scene-adapter.mjs"
+    "./holographic-scene": "./src/holographic-scene-adapter.mjs",
+    "./holographic-operator-view": "./src/holographic-operator-view.mjs"
   }
 }
