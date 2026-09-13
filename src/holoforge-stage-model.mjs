@@ -9,6 +9,17 @@ function canonical(value) {
   return value;
 }
 
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+function immutableCopy(value) {
+  if (value == null) return value;
+  return deepFreeze(structuredClone(value));
+}
+
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
 }
@@ -28,10 +39,10 @@ export function buildHoloforgeStageModel({
   const model = {
     scenarioId: scenario?.scenarioId ?? null,
     status: gates.previewEnabled ? (gates.applyEnabled ? 'apply-ready' : 'preview-ready') : 'blocked',
-    source: scenario?.source ?? null,
-    intent: scenario?.intent ?? null,
-    interpretation: scenario?.interpretation ?? null,
-    evidence: scenario?.evidence ?? null,
+    source: immutableCopy(scenario?.source ?? null),
+    intent: immutableCopy(scenario?.intent ?? null),
+    interpretation: immutableCopy(scenario?.interpretation ?? null),
+    evidence: immutableCopy(scenario?.evidence ?? null),
     comparison: gates.previewEnabled
       ? {
           original: {
@@ -39,11 +50,11 @@ export function buildHoloforgeStageModel({
             fingerprint: scenario.source.snapshotFingerprint,
           },
           candidate: {
-            layout: scenario.candidate.layout,
-            changedElementIds: scenario.candidate.changedElementIds,
-            delta: scenario.candidate.delta,
+            layout: immutableCopy(scenario.candidate.layout),
+            changedElementIds: immutableCopy(scenario.candidate.changedElementIds),
+            delta: immutableCopy(scenario.candidate.delta),
           },
-          layers: Object.freeze([
+          layers: [
             'source-frame',
             'candidate-frame',
             'changed-elements',
@@ -51,10 +62,10 @@ export function buildHoloforgeStageModel({
             'relationship-lines',
             'attention-annotations',
             'evidence-markers',
-          ]),
+          ],
         }
       : null,
-    controls: Object.freeze({
+    controls: {
       depth: true,
       scrub: true,
       branchSwitching: true,
@@ -63,11 +74,11 @@ export function buildHoloforgeStageModel({
       evidenceMarkers: true,
       resetView: true,
       mutation: false,
-    }),
+    },
     gates,
   };
 
-  return Object.freeze({
+  return deepFreeze({
     ...model,
     stageIdentity: digest(model),
   });
