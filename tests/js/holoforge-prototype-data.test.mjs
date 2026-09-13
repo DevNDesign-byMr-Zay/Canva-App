@@ -24,6 +24,9 @@ function projectScenario(scenario) {
     hardConstraintsPassed: scenario.evidence.hardConstraintsPassed,
     tradeoff: scenario.interpretation.tradeoffs[0] ?? '',
     changed: scenario.candidate.changedElementIds.length,
+    changedElementIds: scenario.candidate.changedElementIds,
+    layout: scenario.candidate.layout.elements,
+    delta: scenario.candidate.delta,
     sourceSnapshotId: scenario.source.snapshotId,
     sourceSnapshotFingerprint: scenario.source.snapshotFingerprint,
     optimizationFingerprint: scenario.provenance.optimizationFingerprint,
@@ -48,6 +51,18 @@ test('prototype projection exposes problem and result identity separately', () =
     assert.match(scenario.optimizationFingerprint, /^[a-f0-9]{64}$/);
     assert.match(scenario.scenarioFingerprint, /^[a-f0-9]{64}$/);
     assert.notEqual(scenario.optimizationFingerprint, scenario.scenarioFingerprint);
+  }
+});
+
+test('projected layout and delta stay inside the presentation boundary', () => {
+  for (const scenario of prototypeScenarios) {
+    assert.ok(scenario.changedElementIds.length > 0);
+    assert.equal(typeof scenario.layout, 'object');
+    assert.equal(typeof scenario.delta, 'object');
+    for (const id of scenario.changedElementIds) {
+      assert.ok(Object.hasOwn(scenario.layout, id));
+      assert.ok(Object.hasOwn(scenario.delta, id));
+    }
   }
 });
 
