@@ -37,6 +37,13 @@ test('replay boundary rejects invalid inputs before mutating the rendered conver
     () => replayAuthenticatedV115Conversation([], { chatInner, renderers: {} }),
     /renderers\.renderPersistedUserMessage must be a function/,
   );
+  assert.throws(
+    () => replayAuthenticatedV115Conversation(
+      [{ role: 'system', content: 'unsupported' }],
+      { chatInner, renderers: validRenderers() },
+    ),
+    /records\[0\]\.role must be user or assistant/,
+  );
   assert.deepEqual(events, []);
 });
 
