@@ -32,6 +32,24 @@ Response:
 ${text}`;
 }
 
+function createFeedbackEmitter(feedback) {
+  if (feedback === undefined) return () => {};
+  if (!feedback || typeof feedback !== 'object' || Array.isArray(feedback)) {
+    throw new TypeError('feedback must be an object');
+  }
+  requireFunction(feedback.pending, 'feedback.pending');
+  requireFunction(feedback.success, 'feedback.success');
+  requireFunction(feedback.failure, 'feedback.failure');
+
+  return (state, action) => {
+    try {
+      feedback[state](action);
+    } catch {
+      // Presentation feedback must never change the authenticated action result.
+    }
+  };
+}
+
 /**
  * Maintained behavioral adapter for the mechanically authenticated v115 `gn`
  * assistant-action boundary.
@@ -40,6 +58,10 @@ ${text}`;
  * actions: copy, share (with clipboard fallback), mutually exclusive
  * like/dislike state, regeneration from the preceding user prompt, and the
  * separately promoted More-drawer branch/double-check/export/report paths.
+ *
+ * Optional feedback is observational only. It can expose pending/success/error
+ * states to a host UI without changing the preserved action return or failure
+ * behavior, and feedback-renderer failures are contained at this boundary.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
@@ -55,6 +77,7 @@ export function createAuthenticatedV115MessageActions({
   persistConversations,
   renderConversationList,
   renderActiveConversation,
+  feedback,
 } = {}) {
   requireFunction(schedule, 'schedule');
   requireFunction(getPreviousUserText, 'getPreviousUserText');
@@ -78,38 +101,51 @@ export function createAuthenticatedV115MessageActions({
     requireFunction(renderActiveConversation, 'renderActiveConversation');
   }
 
+  const emitFeedback = createFeedbackEmitter(feedback);
+
   async function perform({ action, text = '', button, row, wrap } = {}) {
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
 
     if (action === 'copy') {
-      if (!clipboardWrite) throw new TypeError('clipboardWrite must be available for copy');
+      if (!clipboardWrite) {
+        emitFeedback('failure', action);
+        throw new TypeError('clipboardWrite must be available for copy');
+      }
+      emitFeedback('pending', action);
       try {
         await clipboardWrite(text);
       } catch {
+        emitFeedback('failure', action);
         return { handled: true, action };
       }
       pulse(button, schedule);
+      emitFeedback('success', action);
       return { handled: true, action };
     }
 
     if (action === 'share') {
+      emitFeedback('pending', action);
       if (share) {
         try {
           await share({ text });
         } catch {
+          emitFeedback('failure', action);
           return { handled: true, action };
         }
       } else {
         if (!clipboardWrite) {
+          emitFeedback('failure', action);
           throw new TypeError('clipboardWrite must be available when share is unavailable');
         }
         try {
           await clipboardWrite(text);
         } catch {
+          emitFeedback('failure', action);
           return { handled: true, action };
         }
         pulse(button, schedule);
       }
+      emitFeedback('success', action);
       return { handled: true, action };
     }
 
@@ -119,13 +155,21 @@ export function createAuthenticatedV115MessageActions({
       );
       button?.classList?.toggle('is-on');
       opposite?.classList?.remove('is-on');
+      emitFeedback('success', action);
       return { handled: true, action };
     }
 
     const prompt = getPreviousUserText(wrap);
     if (!prompt) return { handled: true, action, submitted: false };
+    emitFeedback('pending', action);
     setPrompt(prompt);
-    await submit();
+    try {
+      await submit();
+    } catch (error) {
+      emitFeedback('failure', action);
+      throw error;
+    }
+    emitFeedback('success', action);
     return { handled: true, action, submitted: true, prompt };
   }
 
@@ -140,39 +184,59 @@ export function createAuthenticatedV115MessageActions({
       requireFunction(renderConversationList, 'renderConversationList');
       requireFunction(renderActiveConversation, 'renderActiveConversation');
 
+      emitFeedback('pending', action);
       const userText = getPreviousUserText(wrap) || '';
       resetConversation();
       try {
         createConversation(userText, []);
       } catch {}
 
-      const conversation = getActiveConversation();
-      if (conversation) {
-        if (userText) conversation.messages.push({ role: 'user', content: userText });
-        if (text) conversation.messages.push({ role: 'assistant', content: text });
-        persistConversations();
-        renderConversationList();
-        renderActiveConversation();
+      try {
+        const conversation = getActiveConversation();
+        if (conversation) {
+          if (userText) conversation.messages.push({ role: 'user', content: userText });
+          if (text) conversation.messages.push({ role: 'assistant', content: text });
+          persistConversations();
+          renderConversationList();
+          renderActiveConversation();
+        }
+        emitFeedback('success', action);
+        return { handled: true, action, branched: Boolean(conversation) };
+      } catch (error) {
+        emitFeedback('failure', action);
+        throw error;
       }
-      return { handled: true, action, branched: Boolean(conversation) };
     }
 
     if (action === 'export') {
-      if (!exportText) throw new TypeError('exportText must be available for export');
+      if (!exportText) {
+        emitFeedback('failure', action);
+        throw new TypeError('exportText must be available for export');
+      }
+      emitFeedback('pending', action);
       try {
         await exportText(text, {
           filename: 'AETHER_response.txt',
           type: 'text/plain;charset=utf-8',
         });
       } catch {
+        emitFeedback('failure', action);
         return { handled: true, action };
       }
+      emitFeedback('success', action);
       return { handled: true, action };
     }
 
     const prompt = action === 'doublecheck' ? doublecheckPrompt(text) : reportPrompt(text);
+    emitFeedback('pending', action);
     setPrompt(prompt);
-    await submit();
+    try {
+      await submit();
+    } catch (error) {
+      emitFeedback('failure', action);
+      throw error;
+    }
+    emitFeedback('success', action);
     return { handled: true, action, submitted: true, prompt };
   }
 
