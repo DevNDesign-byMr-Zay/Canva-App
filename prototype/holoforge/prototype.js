@@ -1,4 +1,5 @@
 import { prototypeScenarios } from './scenarios.js';
+import { createPrototypeState, isScenarioSelected, reducePrototypeState } from './state.js';
 
 const scenarios = prototypeScenarios;
 
@@ -13,13 +14,14 @@ const objective = document.querySelector('#objectiveId');
 const seed = document.querySelector('#seed');
 const tradeoff = document.querySelector('#tradeoffText');
 const compare = document.querySelector('#compareRange');
+const compareValue = document.querySelector('#compareValue');
 const source = document.querySelector('#sourceFrame');
 const candidate = document.querySelector('#candidateFrame');
 const applyButton = document.querySelector('#applyButton');
 const evidenceState = document.querySelector('#evidenceState');
+const stageViewport = document.querySelector('#stageViewport');
 
-let activeId = scenarios[0].id;
-let selected = false;
+let state = createPrototypeState(scenarios[0].id);
 
 function formatMetric(value) {
   if (!Number.isFinite(value)) return '—';
@@ -31,13 +33,13 @@ function renderList() {
   list.replaceChildren(...scenarios.map((scenario) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `scenario-card${scenario.id === activeId ? ' active' : ''}`;
+    button.className = `scenario-card${scenario.id === state.scenarioId ? ' active' : ''}`;
     button.dataset.scenario = scenario.id;
+    button.setAttribute('aria-pressed', String(scenario.id === state.scenarioId));
     button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>${scenario.changed} changes</span></span>`;
     button.addEventListener('click', () => {
-      activeId = scenario.id;
-      selected = false;
-      applyButton.disabled = true;
+      state = reducePrototypeState(state, { type: 'select-scenario', scenarioId: scenario.id });
+      applyButton.textContent = 'Apply selected scenario';
       render();
     });
     return button;
@@ -45,7 +47,7 @@ function renderList() {
 }
 
 function renderScenario() {
-  const scenario = scenarios.find((item) => item.id === activeId);
+  const scenario = scenarios.find((item) => item.id === state.scenarioId);
   title.textContent = scenario.title;
   interpretation.textContent = scenario.interpretation;
   candidateScore.textContent = formatMetric(scenario.score);
@@ -60,37 +62,78 @@ function renderScenario() {
 }
 
 function renderCompare() {
-  const value = Number(compare.value) / 100;
+  const value = state.comparePercent / 100;
+  compare.value = String(state.comparePercent);
+  compare.setAttribute('aria-valuetext', `${state.comparePercent}% candidate`);
+  compareValue.textContent = `${state.comparePercent}%`;
   source.style.opacity = String(Math.max(0.18, 1 - value * 0.85));
   candidate.style.opacity = String(Math.max(0.18, value));
   candidate.style.filter = `saturate(${0.65 + value * 0.6})`;
+}
+
+function renderOverlays() {
+  document.querySelectorAll('[data-overlay]').forEach((button) => {
+    const enabled = state.overlays[button.dataset.overlay];
+    button.classList.toggle('active', enabled);
+    button.setAttribute('aria-pressed', String(enabled));
+  });
+
+  document.querySelectorAll('.relationship-line').forEach((line) => {
+    line.hidden = !state.overlays.relationships;
+  });
+  document.querySelectorAll('.evidence-pin').forEach((pin) => {
+    pin.hidden = !state.overlays.evidence;
+  });
+  stageViewport.classList.toggle('attention-on', state.overlays.attention);
+}
+
+function renderSelection() {
+  const selected = isScenarioSelected(state);
+  candidate.style.outline = selected ? '2px solid rgba(210,169,74,.85)' : '';
+  candidate.setAttribute('aria-pressed', String(selected));
+  applyButton.disabled = !selected;
 }
 
 function render() {
   renderList();
   renderScenario();
   renderCompare();
+  renderOverlays();
+  renderSelection();
 }
 
 document.querySelectorAll('[data-overlay]').forEach((button) => {
-  button.addEventListener('click', () => button.classList.toggle('active'));
+  button.addEventListener('click', () => {
+    state = reducePrototypeState(state, { type: 'toggle-overlay', overlay: button.dataset.overlay });
+    renderOverlays();
+  });
 });
 
-compare.addEventListener('input', renderCompare);
-
-document.querySelector('#resetView').addEventListener('click', () => {
-  compare.value = '58';
+compare.addEventListener('input', () => {
+  state = reducePrototypeState(state, { type: 'set-compare', percent: Number(compare.value) });
   renderCompare();
 });
 
-candidate.addEventListener('click', () => {
-  selected = !selected;
-  candidate.style.outline = selected ? '2px solid rgba(210,169,74,.85)' : '';
-  applyButton.disabled = !selected;
+document.querySelector('#resetView').addEventListener('click', () => {
+  state = reducePrototypeState(state, { type: 'reset-view' });
+  renderCompare();
+});
+
+function toggleCandidateSelection() {
+  state = reducePrototypeState(state, { type: 'toggle-selection' });
+  applyButton.textContent = 'Apply selected scenario';
+  renderSelection();
+}
+
+candidate.addEventListener('click', toggleCandidateSelection);
+candidate.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  toggleCandidateSelection();
 });
 
 applyButton.addEventListener('click', () => {
-  if (!selected) return;
+  if (!isScenarioSelected(state)) return;
   applyButton.textContent = 'Prototype only — source unchanged';
   applyButton.disabled = true;
 });
