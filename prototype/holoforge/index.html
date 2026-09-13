@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HOLOFORGE Scenario Lab</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="forge-shell" aria-label="HoloForge Scenario Lab prototype">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="forge-mark" aria-hidden="true">HF</div>
+        <div>
+          <p class="eyebrow">CANVA SPATIAL INTELLIGENCE</p>
+          <h1>HOLOFORGE</h1>
+        </div>
+      </div>
+      <div class="source-status">
+        <span class="status-dot"></span>
+        <span>Source captured</span>
+        <code>snapshot-v1</code>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="scenario-rail" aria-label="Scenario branches">
+        <div class="rail-heading">
+          <span>SCENARIOS</span>
+          <button type="button" class="ghost-button" aria-label="Create scenario">+</button>
+        </div>
+        <div id="scenarioList" class="scenario-list"></div>
+        <div class="rail-footer">
+          <span class="micro-label">AUREN interpretation</span>
+          <p id="interpretationSummary">Select a scenario.</p>
+        </div>
+      </aside>
+
+      <section class="stage-panel">
+        <div class="stage-toolbar">
+          <div>
+            <p class="eyebrow">HOLO STAGE / READ ONLY</p>
+            <h2 id="scenarioTitle">Hierarchy Focus</h2>
+          </div>
+          <div class="stage-actions">
+            <button type="button" class="chip active" data-overlay="relationships">Relationships</button>
+            <button type="button" class="chip active" data-overlay="evidence">Evidence</button>
+            <button type="button" class="chip" data-overlay="attention">Attention</button>
+          </div>
+        </div>
+
+        <div class="stage-viewport" id="stageViewport">
+          <div class="grid-floor" aria-hidden="true"></div>
+          <div class="source-frame layer-card" id="sourceFrame">
+            <span class="layer-label">SOURCE</span>
+            <div class="mock-logo">MZ</div>
+            <div class="mock-heading">CREATE WHAT'S NEXT</div>
+            <div class="mock-copy"></div>
+            <div class="mock-copy short"></div>
+          </div>
+          <div class="candidate-frame layer-card" id="candidateFrame">
+            <span class="layer-label candidate">CANDIDATE</span>
+            <div class="mock-logo">MZ</div>
+            <div class="mock-heading candidate-heading">CREATE WHAT'S NEXT</div>
+            <div class="mock-copy"></div>
+            <div class="mock-copy short"></div>
+            <div class="evidence-pin pin-a">01</div>
+            <div class="evidence-pin pin-b">02</div>
+          </div>
+          <div class="relationship-line line-a" aria-hidden="true"></div>
+          <div class="relationship-line line-b" aria-hidden="true"></div>
+        </div>
+
+        <div class="compare-strip">
+          <span>Original</span>
+          <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
+          <span>Candidate</span>
+          <button id="resetView" type="button" class="ghost-button text-button">Reset view</button>
+        </div>
+      </section>
+
+      <aside class="evidence-drawer" aria-label="Scenario evidence">
+        <div class="drawer-heading">
+          <div>
+            <p class="eyebrow">EVIDENCE</p>
+            <h3>Decision record</h3>
+          </div>
+          <span id="evidenceState" class="evidence-state valid">VALID</span>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric"><span>Candidate</span><strong id="candidateScore">0.92</strong></div>
+          <div class="metric"><span>Reference</span><strong id="baselineScore">0.95</strong></div>
+          <div class="metric"><span>Gap</span><strong id="objectiveGap">0.03</strong></div>
+          <div class="metric"><span>Duration</span><strong id="duration">12 ms</strong></div>
+        </div>
+
+        <dl class="evidence-list">
+          <div><dt>Objective</dt><dd id="objectiveId">hierarchy-balance-v1</dd></div>
+          <div><dt>Backend</dt><dd>VÆLON</dd></div>
+          <div><dt>Baseline</dt><dd>classical-reference</dd></div>
+          <div><dt>Seed</dt><dd id="seed">hierarchy-seed-001</dd></div>
+          <div><dt>Snapshot</dt><dd>snapshot-v1</dd></div>
+          <div><dt>Provenance</dt><dd class="verified">Verified</dd></div>
+        </dl>
+
+        <div class="tradeoff-card">
+          <span class="micro-label">AUREN tradeoff</span>
+          <p id="tradeoffText">Slightly increases vertical separation to improve hierarchy.</p>
+        </div>
+
+        <div class="apply-gate">
+          <div>
+            <span class="micro-label">APPLY GATE</span>
+            <p>Source is unchanged. Explicit confirmation is required.</p>
+          </div>
+          <button id="applyButton" type="button" disabled>Apply selected scenario</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script type="module" src="./prototype.js"></script>
+</body>
+</html>
