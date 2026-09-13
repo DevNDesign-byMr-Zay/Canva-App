@@ -6,6 +6,8 @@ export const V115_MAIN_CHAT_DOM = Object.freeze({
   chatInner: 'chatInner',
 });
 
+const bindings = new WeakMap();
+
 function requireElement(documentRef, id) {
   const element = documentRef?.getElementById?.(id);
   if (!element) throw new Error(`authenticated-v115 DOM element #${id} is required`);
@@ -17,6 +19,37 @@ function requireFunction(value, name) {
   return value;
 }
 
+function createBridge({
+  composerInput,
+  sendButton,
+  chatInner,
+  renderUserMessage,
+  beginAssistantMessage,
+  appendAssistantDelta,
+  finishAssistantMessage,
+  renderError,
+  requestImpl,
+  runtime,
+}) {
+  return createV115UiAiBridge({
+    readPrompt() {
+      return composerInput.value;
+    },
+    renderUserMessage(prompt) {
+      composerInput.value = '';
+      renderUserMessage(prompt, { chatInner, composerInput, sendButton });
+    },
+    beginAssistantMessage() {
+      return beginAssistantMessage({ chatInner, composerInput, sendButton });
+    },
+    appendAssistantDelta,
+    finishAssistantMessage,
+    renderError,
+    ...(requestImpl ? { requestImpl } : {}),
+    runtime,
+  });
+}
+
 /**
  * Binds the maintained UI/AI bridge to the mechanically authenticated v115
  * main-chat DOM edge without modifying the historical HTML artifact.
@@ -25,8 +58,9 @@ function requireFunction(value, name) {
  *   #composerInput -> #sendBtn click / Enter-without-Shift -> main chat submit
  *   assistant output is attached under #chatInner
  *
- * Rendering remains injected so the maintained runtime does not silently
- * normalize historical message markup or overwrite later contributor work.
+ * Rebinding the same authenticated DOM reuses the existing listener pair and
+ * updates its bridge dependencies. This prevents duplicate submit work during
+ * remounts while keeping rendering injected and historical markup untouched.
  */
 export function bindAuthenticatedV115MainChat({
   document: documentRef = globalThis.document,
@@ -48,38 +82,46 @@ export function bindAuthenticatedV115MainChat({
   requireFunction(finishAssistantMessage, 'finishAssistantMessage');
   requireFunction(renderError, 'renderError');
 
-  let activeController = null;
-
-  const bridge = createV115UiAiBridge({
-    readPrompt() {
-      return composerInput.value;
-    },
-    renderUserMessage(prompt) {
-      composerInput.value = '';
-      renderUserMessage(prompt, { chatInner, composerInput, sendButton });
-    },
-    beginAssistantMessage() {
-      return beginAssistantMessage({ chatInner, composerInput, sendButton });
-    },
+  const nextBridge = createBridge({
+    composerInput,
+    sendButton,
+    chatInner,
+    renderUserMessage,
+    beginAssistantMessage,
     appendAssistantDelta,
     finishAssistantMessage,
     renderError,
-    ...(requestImpl ? { requestImpl } : {}),
+    requestImpl,
     runtime,
   });
 
+  const existing = bindings.get(composerInput);
+  if (existing && existing.sendButton === sendButton && existing.chatInner === chatInner) {
+    existing.bridge = nextBridge;
+    return existing.binding;
+  }
+  existing?.binding.destroy();
+
+  const state = {
+    activeController: null,
+    bridge: nextBridge,
+    sendButton,
+    chatInner,
+    binding: null,
+  };
+
   async function submitOrAbort() {
-    if (activeController) {
-      activeController.abort();
+    if (state.activeController) {
+      state.activeController.abort();
       return { accepted: false, reason: 'aborted-active' };
     }
 
     const controller = new AbortController();
-    activeController = controller;
+    state.activeController = controller;
     try {
-      return await bridge.submit({ signal: controller.signal });
+      return await state.bridge.submit({ signal: controller.signal });
     } finally {
-      if (activeController === controller) activeController = null;
+      if (state.activeController === controller) state.activeController = null;
     }
   }
 
@@ -97,15 +139,21 @@ export function bindAuthenticatedV115MainChat({
   sendButton.addEventListener('click', onClick);
   composerInput.addEventListener('keydown', onKeyDown);
 
-  return {
-    bridge,
+  state.binding = {
+    get bridge() {
+      return state.bridge;
+    },
     elements: { composerInput, sendButton, chatInner },
     submitOrAbort,
     destroy() {
-      activeController?.abort();
-      activeController = null;
+      state.activeController?.abort();
+      state.activeController = null;
       sendButton.removeEventListener('click', onClick);
       composerInput.removeEventListener('keydown', onKeyDown);
+      if (bindings.get(composerInput) === state) bindings.delete(composerInput);
     },
   };
+
+  bindings.set(composerInput, state);
+  return state.binding;
 }
