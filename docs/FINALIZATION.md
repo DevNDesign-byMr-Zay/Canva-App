@@ -1,0 +1,1 @@
+Canva runtime finalization follows the maintained action-feedback boundary: preserve authenticated action semantics, contain presentation failures, and keep computation experiments separate from the interaction surface.

@@ -20,7 +20,12 @@ export function createActionFeedback({ notify, clear = () => {} } = {}) {
   if (typeof clear !== 'function') throw new TypeError('clear must be a function.');
 
   function emit(action, status, message) {
-    notify(Object.freeze({ action, status, message }));
+    try {
+      const result = notify(Object.freeze({ action, status, message }));
+      if (result && typeof result.then === 'function') result.catch(() => {});
+    } catch {
+      // Presentation feedback must never change the authenticated action result.
+    }
   }
 
   function success(action, message = DEFAULT_MESSAGES[action] ?? 'Done') {
