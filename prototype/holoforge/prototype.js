@@ -21,13 +21,19 @@ const evidenceState = document.querySelector('#evidenceState');
 let activeId = scenarios[0].id;
 let selected = false;
 
+function formatMetric(value) {
+  if (!Number.isFinite(value)) return '—';
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
 function renderList() {
   list.replaceChildren(...scenarios.map((scenario) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `scenario-card${scenario.id === activeId ? ' active' : ''}`;
     button.dataset.scenario = scenario.id;
-    button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${scenario.score}</span><span>${scenario.changed} changes</span></span>`;
+    button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>${scenario.changed} changes</span></span>`;
     button.addEventListener('click', () => {
       activeId = scenario.id;
       selected = false;
@@ -42,9 +48,9 @@ function renderScenario() {
   const scenario = scenarios.find((item) => item.id === activeId);
   title.textContent = scenario.title;
   interpretation.textContent = scenario.interpretation;
-  candidateScore.textContent = scenario.score;
-  baselineScore.textContent = scenario.baseline;
-  gap.textContent = scenario.gap;
+  candidateScore.textContent = formatMetric(scenario.score);
+  baselineScore.textContent = formatMetric(scenario.baseline);
+  gap.textContent = formatMetric(scenario.gap);
   duration.textContent = `${scenario.durationMs} ms`;
   objective.textContent = scenario.objective;
   seed.textContent = scenario.seed;
