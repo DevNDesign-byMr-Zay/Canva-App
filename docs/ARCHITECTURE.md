@@ -2,11 +2,12 @@
 
 ## Purpose
 
-`Canva-App` now contains three deliberately separated layers:
+`Canva-App` now contains four deliberately separated layers:
 
 1. **Historical provenance** — the authenticated, deidentified 84-occurrence HTML lineage and recovery metadata.
 2. **Authenticated application surface** — the exact v115 final-fix application materialized at `app/authenticated-v115/index.html` from the committed archive.
 3. **Maintained verification/materialization application** — typed Python code that reconstructs the archive, validates provenance and safety rules, and proves that the committed v115 application bytes match the authenticated source.
+4. **Maintained holographic presentation boundary** — renderer-neutral scene adaptation and related presentation contracts that consume validated upstream scene/result evidence without becoming authoritative, mutating historical content, or physically actuating displays.
 
 No missing React/TypeScript tree is fabricated. The physical application surface is produced only from authenticated bytes already present in the repository's archive.
 
@@ -42,6 +43,26 @@ The materializer validates the manifest mapping before archive extraction. Occur
 ## Maintained layer map
 
 ```text
+                         +-----------------------------+
+                         | validated scene/result      |
+                         | evidence from upstream      |
+                         +--------------+--------------+
+                                        |
+                                        v
+                             holographic scene adapter
+                                        |
+                                        v
+                           renderer-neutral presentation
+                              /          |          \
+                             v           v           v
+                         interaction   CSS3D       display
+                           actions     render       planning
+                             |          model          |
+                             +----------+--------------+
+                                        |
+                                        v
+                              maintained viewport
+
 CLI/module entrypoints
       |              |
       v              v
@@ -70,6 +91,12 @@ CLI/module entrypoints
 
 The thin `scripts/materialize_v115.py` entrypoint delegates to the typed package so static analysis, tests, and mypy cover the real implementation rather than a procedural script.
 
+### Holographic presentation boundary
+
+`src/holographic-scene-adapter.mjs` is downstream of validated scene/result evidence. It requires the versioned scene contract, explicit identity and provenance references, and a supported presentation target. Its payload fingerprint is calculated over the canonical payload and revalidated at the boundary so content tampering cannot silently pass as the original presentation payload.
+
+The adapter explicitly marks its output as non-authoritative and non-actuating. Presentation concerns such as browser controls, renderer-neutral interaction state, CSS3D mounting, reduced-motion behavior, and display-profile execution planning belong downstream of this boundary. They must not become a second source of camera authority, mutate authenticated historical bytes, persist transient viewport state into chat history, or introduce physical-display actuation without an explicit safety-boundary change.
+
 ### Configuration and scanner boundaries
 
 `VerificationConfig` owns filesystem locations, authenticated archive expectations, identity rules, and credential-pattern rules. `archive_verifier.scanner` remains isolated from archive traversal and returns typed scan results for independently testable privacy/security behavior.
@@ -88,6 +115,13 @@ Application materialization adds three further invariants:
 - the target v115 member must occur exactly once in the authenticated archive;
 - the physical `app/authenticated-v115/index.html` must reproduce the authenticated v115 SHA exactly.
 
+The holographic presentation boundary adds its own invariants:
+
+- scene version and target must be supported before projection;
+- snapshot, scene identity, and provenance references must be non-empty;
+- payload fingerprints must match the canonical payload contents;
+- safety flags must remain explicitly non-authoritative and non-actuating.
+
 CI reruns the materializer and requires `git diff --exit-code -- app/authenticated-v115`, proving the committed application and generated provenance metadata have not drifted from their authenticated archive source.
 
 ## Test strategy
@@ -105,6 +139,8 @@ The maintained Python surface is subject to:
 - reproducible dependencies via `requirements.lock.txt`;
 - Docker fresh-clone verification;
 - full archive + application determinism verification.
+
+The maintained JavaScript surface uses Node's built-in test runner. Holographic adapter tests cover deterministic projection, target rejection, identity/provenance validation, payload preservation, safety flags, fingerprint shape, and fingerprint/content integrity.
 
 ## Historical-source policy
 
