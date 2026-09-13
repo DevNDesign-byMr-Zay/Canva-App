@@ -18,19 +18,17 @@ const scene = {
     mode: 'renderer-neutral',
     authoritativeSource: 'thergrid-decision-receipt',
   },
-  layers: [
-    { id: 'topology', type: 'topology', data: { nodes: 3 } },
-    { id: 'solver-primary', type: 'solverComparison', data: {
-      candidates: [
-        { id: 'classical', objective: 0.12, feasible: true, runtimeMs: 8 },
-        { id: 'quantum-inspired', objective: 0.09, feasible: true, runtimeMs: 14 },
-      ],
-    } },
-  ],
-  attention: [
-    { id: 'a-low', priority: 1, severity: 'info', reason: 'Review forecast', evidenceRef: 'receipt-001', advisoryOnly: true },
-    { id: 'a-high', priority: 3, severity: 'warning', reason: 'Review constrained candidate', evidenceRef: 'solver-002', advisoryOnly: true },
-  ],
+  layers: {
+    topology: { nodes: 3 },
+    solverComparison: [
+      { id: 'classical', objective: 0.12, feasible: true, runtimeMs: 8 },
+      { id: 'quantum-inspired', objective: 0.09, feasible: true, runtimeMs: 14 },
+    ],
+    attention: [
+      { id: 'a-low', priority: 1, severity: 'info', reason: 'Review forecast', evidenceRef: 'receipt-001', advisoryOnly: true },
+      { id: 'a-high', priority: 3, severity: 'warning', reason: 'Review constrained candidate', evidenceRef: 'solver-002', advisoryOnly: true },
+    ],
+  },
   provenanceRef: 'experiment-runtime-001',
   proposal: { id: 'proposal-001', status: 'advisory' },
   metrics: { balanceKw: 0, renewableShare: 0.72 },
@@ -62,7 +60,7 @@ test('executes deterministic THERGRID-to-VÆLON-to-Canva presentation handoff', 
     assert.equal(view.presentation.authoritative, false);
     assert.equal(view.presentation.physicalActuation, false);
     assert.equal(view.comparison.candidateCount, 2);
-    assert.equal(view.attention[0].priority >= view.attention[1].priority, true);
+    assert.equal(view.attention[0].priority <= view.attention[1].priority, true);
   }
 });
 
@@ -70,7 +68,7 @@ test('fails closed when the validated handoff identity is changed after projecti
   const payload = buildHolographicCanvaPayload({ scene, target: 'volumetric-3d' });
   const tampered = { ...payload, provenanceRef: 'experiment-runtime-tampered' };
   assert.equal(validateHolographicCanvaPayload(tampered), false);
-  assert.throws(() => buildHolographicOperatorView({ payload: tampered }), /invalid holographic Canva payload/);
+  assert.throws(() => buildHolographicOperatorView({ payload: tampered }), /payload failed holographic integrity validation/);
 });
 
 test('fails closed when presentation authority is requested', () => {
