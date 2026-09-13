@@ -42,23 +42,23 @@
             <p class="eyebrow">HOLO STAGE / READ ONLY</p>
             <h2 id="scenarioTitle">Hierarchy Focus</h2>
           </div>
-          <div class="stage-actions">
-            <button type="button" class="chip active" data-overlay="relationships">Relationships</button>
-            <button type="button" class="chip active" data-overlay="evidence">Evidence</button>
-            <button type="button" class="chip" data-overlay="attention">Attention</button>
+          <div class="stage-actions" aria-label="Stage overlays">
+            <button type="button" class="chip active" data-overlay="relationships" aria-pressed="true">Relationships</button>
+            <button type="button" class="chip active" data-overlay="evidence" aria-pressed="true">Evidence</button>
+            <button type="button" class="chip" data-overlay="attention" aria-pressed="false">Attention</button>
           </div>
         </div>
 
         <div class="stage-viewport" id="stageViewport">
           <div class="grid-floor" aria-hidden="true"></div>
-          <div class="source-frame layer-card" id="sourceFrame">
+          <div class="source-frame layer-card" id="sourceFrame" aria-label="Source design preview">
             <span class="layer-label">SOURCE</span>
             <div class="mock-logo">MZ</div>
             <div class="mock-heading">CREATE WHAT'S NEXT</div>
             <div class="mock-copy"></div>
             <div class="mock-copy short"></div>
           </div>
-          <div class="candidate-frame layer-card" id="candidateFrame">
+          <div class="candidate-frame layer-card" id="candidateFrame" role="button" tabindex="0" aria-pressed="false" aria-label="Select candidate scenario for the prototype apply gate">
             <span class="layer-label candidate">CANDIDATE</span>
             <div class="mock-logo">MZ</div>
             <div class="mock-heading candidate-heading">CREATE WHAT'S NEXT</div>
@@ -75,6 +75,7 @@
           <span>Original</span>
           <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
           <span>Candidate</span>
+          <output id="compareValue" for="compareRange">58%</output>
           <button id="resetView" type="button" class="ghost-button text-button">Reset view</button>
         </div>
       </section>
@@ -85,7 +86,7 @@
             <p class="eyebrow">EVIDENCE</p>
             <h3>Decision record</h3>
           </div>
-          <span id="evidenceState" class="evidence-state valid">VALID</span>
+          <span id="evidenceState" class="evidence-state valid" aria-live="polite">VALID</span>
         </div>
 
         <div class="metric-grid">
