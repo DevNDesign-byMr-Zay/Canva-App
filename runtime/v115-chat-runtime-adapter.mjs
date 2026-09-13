@@ -134,29 +134,33 @@ export async function readV115ChatCompletionStream(response, { onDelta = () => {
   let content = '';
   let doneMarkerSeen = false;
 
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? '';
-    for (const line of lines) {
-      const consumed = consumeSseLine(line, onDelta);
-      content += consumed.delta;
-      if (consumed.done) {
-        doneMarkerSeen = true;
-        return { content, doneMarkerSeen };
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const consumed = consumeSseLine(line, onDelta);
+        content += consumed.delta;
+        if (consumed.done) {
+          doneMarkerSeen = true;
+          return { content, doneMarkerSeen };
+        }
       }
     }
-  }
 
-  buffer += decoder.decode();
-  if (buffer) {
-    const consumed = consumeSseLine(buffer, onDelta);
-    content += consumed.delta;
-    doneMarkerSeen = consumed.done;
+    buffer += decoder.decode();
+    if (buffer) {
+      const consumed = consumeSseLine(buffer, onDelta);
+      content += consumed.delta;
+      doneMarkerSeen = consumed.done;
+    }
+    return { content, doneMarkerSeen };
+  } finally {
+    reader.releaseLock?.();
   }
-  return { content, doneMarkerSeen };
 }
 
 export async function requestV115ChatCompletion(
