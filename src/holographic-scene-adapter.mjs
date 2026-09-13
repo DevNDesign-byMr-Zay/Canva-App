@@ -58,13 +58,13 @@ export function validateHolographicCanvaPayload(payload) {
     return value.adapterVersion === ADAPTER_VERSION
       && value.authoritativeSource === 'thergrid-decision-receipt'
       && TARGETS.includes(value.target)
-      && typeof value.snapshotId === 'string'
-      && typeof value.sceneIdentity === 'string'
-      && typeof value.provenanceRef === 'string'
+      && typeof value.snapshotId === 'string' && value.snapshotId.trim().length > 0
+      && typeof value.sceneIdentity === 'string' && value.sceneIdentity.trim().length > 0
+      && typeof value.provenanceRef === 'string' && value.provenanceRef.trim().length > 0
+      && /^[a-f0-9]{64}$/.test(value.payloadFingerprint)
       && value.safety?.authoritative === false
       && value.safety?.physicalActuation === false
-      && value.safety?.provenanceRequired === true
-      && typeof value.payloadFingerprint === 'string';
+      && value.safety?.provenanceRequired === true;
   } catch {
     return false;
   }
