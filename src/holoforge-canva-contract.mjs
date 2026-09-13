@@ -11,9 +11,32 @@ function text(value, name) {
   return value.trim();
 }
 
+function reproducibilitySeed(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  throw new TypeError('seed must be a finite number or non-empty string');
+}
+
+function validSeed(value) {
+  return (typeof value === 'number' && Number.isFinite(value))
+    || (typeof value === 'string' && value.trim().length > 0);
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+function immutableCopy(value) {
+  return deepFreeze(structuredClone(value));
+}
+
 function constraints(value) {
   if (!Array.isArray(value)) throw new TypeError('constraints must be an array');
-  return value.map((item, index) => object(item, `constraints[${index}]`));
+  return Object.freeze(
+    value.map((item, index) => immutableCopy(object(item, `constraints[${index}]`))),
+  );
 }
 
 export function createHoloForgeScenario({
@@ -35,9 +58,9 @@ export function createHoloForgeScenario({
     sourceDesignRef: text(sourceDesignRef, 'sourceDesignRef'),
     intent: text(intent, 'intent'),
     constraints: constraints(rawConstraints),
-    candidateLayout: object(candidateLayout, 'candidateLayout'),
+    candidateLayout: immutableCopy(object(candidateLayout, 'candidateLayout')),
     backend: text(backend, 'backend'),
-    seed,
+    seed: reproducibilitySeed(seed),
     objectiveScore,
     delta,
     durationMs,
@@ -63,6 +86,7 @@ export function validateHoloForgeScenario(value) {
       && scenario.constraints.every((item) => item && typeof item === 'object' && !Array.isArray(item))
       && scenario.candidateLayout && typeof scenario.candidateLayout === 'object' && !Array.isArray(scenario.candidateLayout)
       && typeof scenario.backend === 'string' && scenario.backend.trim().length > 0
+      && validSeed(scenario.seed)
       && Number.isFinite(scenario.objectiveScore)
       && Number.isFinite(scenario.delta)
       && Number.isFinite(scenario.durationMs) && scenario.durationMs >= 0
