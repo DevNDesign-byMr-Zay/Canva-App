@@ -15,6 +15,11 @@ function finite(value, name) {
   if (!Number.isFinite(value)) throw new TypeError(`${name} must be finite`);
   return value;
 }
+function nonNegative(value, name) {
+  const number = finite(value, name);
+  if (number < 0) throw new TypeError(`${name} must be non-negative`);
+  return number;
+}
 function optionalText(value, name) {
   return value == null ? null : text(value, name);
 }
@@ -34,6 +39,7 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
     topology: nodes.map((node, index) => {
       const value = object(node, `modelOutput.nodes[${index}]`);
       const animation = value.animation == null ? null : object(value.animation, `modelOutput.nodes[${index}].animation`);
+      const interaction = value.interaction == null ? null : object(value.interaction, `modelOutput.nodes[${index}].interaction`);
       return {
         id: text(value.id ?? `node-${index}`, `modelOutput.nodes[${index}].id`),
         kind: text(value.kind ?? 'asset', `modelOutput.nodes[${index}].kind`),
@@ -45,12 +51,12 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
         style: value.style == null ? null : object(value.style, `modelOutput.nodes[${index}].style`),
         animation: animation == null ? null : {
           mode: text(animation.mode, `modelOutput.nodes[${index}].animation.mode`),
-          durationMs: finite(animation.durationMs ?? 0, `modelOutput.nodes[${index}].animation.durationMs`),
+          durationMs: nonNegative(animation.durationMs ?? 0, `modelOutput.nodes[${index}].animation.durationMs`),
           loop: animation.loop === true,
         },
-        interaction: value.interaction == null ? null : {
-          action: text(value.interaction.action, `modelOutput.nodes[${index}].interaction.action`),
-          target: optionalText(value.interaction.target, `modelOutput.nodes[${index}].interaction.target`),
+        interaction: interaction == null ? null : {
+          action: text(interaction.action, `modelOutput.nodes[${index}].interaction.action`),
+          target: optionalText(interaction.target, `modelOutput.nodes[${index}].interaction.target`),
         },
       };
     }),
@@ -60,7 +66,7 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
   const attention = Array.isArray(plan.attention) ? plan.attention.map((item, index) => {
     const value = object(item, `modelOutput.attention[${index}]`);
     return {
-      priority: finite(value.priority ?? index, `modelOutput.attention[${index}].priority`),
+      priority: nonNegative(value.priority ?? index, `modelOutput.attention[${index}].priority`),
       severity: text(value.severity ?? 'info', `modelOutput.attention[${index}].severity`),
       reason: text(value.reason, `modelOutput.attention[${index}].reason`),
       evidenceRef: optionalText(value.evidenceRef, `modelOutput.attention[${index}].evidenceRef`),
