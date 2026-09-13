@@ -13,6 +13,9 @@ export function validateOptimizationMeasurement(measurement) {
   if (!measurement.result || !Number.isFinite(measurement.result.objective)) {
     throw new TypeError('measurement objective must be finite.');
   }
+  if (measurement.result.seed !== null && measurement.result.seed !== undefined && !Number.isInteger(measurement.result.seed)) {
+    throw new TypeError('measurement seed must be an integer when provided.');
+  }
   if (!Number.isFinite(measurement.durationMs) || measurement.durationMs < 0) {
     throw new TypeError('measurement duration must be non-negative.');
   }
