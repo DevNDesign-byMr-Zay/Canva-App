@@ -23,3 +23,7 @@ test('rejects non-finite coefficients before producing an invalid objective', ()
 test('rejects non-binary score inputs', () => {
   assert.throws(() => scoreBinary([1], [2]), /bits must contain only 0 or 1/);
 });
+
+test('rejects an empty score problem instead of returning a meaningless zero', () => {
+  assert.throws(() => scoreBinary([], []), /linear coefficients are required/);
+});
