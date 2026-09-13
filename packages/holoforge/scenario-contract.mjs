@@ -31,6 +31,21 @@ function finite(value, name) {
   return value;
 }
 
+function nonNegativeFinite(value, name) {
+  finite(value, name);
+  if (value < 0) {
+    throw new RangeError(`${name} must be non-negative`);
+  }
+  return value;
+}
+
+function constraintList(value) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || item.trim() === '')) {
+    throw new TypeError('constraints must be an array of non-empty strings');
+  }
+  return value.map((item) => item.trim());
+}
+
 export function createScenario({
   scenarioId,
   sourceDesignRef,
@@ -51,7 +66,7 @@ export function createScenario({
     scenarioId: nonEmpty(scenarioId, 'scenarioId'),
     sourceDesignRef: nonEmpty(sourceDesignRef, 'sourceDesignRef'),
     intent: nonEmpty(intent, 'intent'),
-    constraints: Array.isArray(constraints) ? [...constraints] : (() => { throw new TypeError('constraints must be an array'); })(),
+    constraints: constraintList(constraints),
     layout: object(layout, 'layout'),
     evidence: {
       backend: nonEmpty(backend, 'backend'),
@@ -59,7 +74,7 @@ export function createScenario({
       seed: Number.isInteger(seed) && seed >= 0 ? seed : (() => { throw new TypeError('seed must be a non-negative integer'); })(),
       objective: finite(objective, 'objective'),
       deltaFromSource: finite(deltaFromSource, 'deltaFromSource'),
-      durationMs: finite(durationMs, 'durationMs'),
+      durationMs: nonNegativeFinite(durationMs, 'durationMs'),
     },
     status: STATUSES.includes(status) ? status : (() => { throw new TypeError(`unsupported status: ${status}`); })(),
   };
@@ -81,6 +96,7 @@ export function validateScenario(value) {
       && typeof value.sourceDesignRef === 'string' && value.sourceDesignRef.trim() !== ''
       && typeof value.intent === 'string' && value.intent.trim() !== ''
       && Array.isArray(value.constraints)
+      && value.constraints.every((item) => typeof item === 'string' && item.trim() !== '')
       && value.layout && typeof value.layout === 'object' && !Array.isArray(value.layout)
       && value.evidence && typeof value.evidence === 'object'
       && typeof value.evidence.backend === 'string' && value.evidence.backend.trim() !== ''
@@ -88,7 +104,7 @@ export function validateScenario(value) {
       && Number.isInteger(value.evidence.seed) && value.evidence.seed >= 0
       && Number.isFinite(value.evidence.objective)
       && Number.isFinite(value.evidence.deltaFromSource)
-      && Number.isFinite(value.evidence.durationMs)
+      && Number.isFinite(value.evidence.durationMs) && value.evidence.durationMs >= 0
       && STATUSES.includes(value.status);
   } catch {
     return false;
