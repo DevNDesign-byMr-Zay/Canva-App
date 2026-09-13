@@ -116,7 +116,10 @@ def test_manifest_missing_required_value_fails(build_archive: Callable[..., Any]
         encoding="utf-8",
     )
 
-    with pytest.raises(ArchiveVerificationError, match="source_filename_sha256 must not be empty"):
+    with pytest.raises(
+        ArchiveVerificationError,
+        match="source_filename_sha256 must be a SHA-256 hex digest",
+    ):
         read_manifest(built.manifest_path)
 
 
@@ -228,7 +231,7 @@ def test_manifest_referencing_missing_member_fails(build_archive: Callable[..., 
 
 def test_decode_archive_rejects_invalid_data() -> None:
     with pytest.raises(ArchiveVerificationError, match="base64 decode failed"):
-        decode_archive("%%%")
+        decode_archive("%%%")[...]
 
 
 def _read_rows(path: Path) -> list[dict[str, str]]:
