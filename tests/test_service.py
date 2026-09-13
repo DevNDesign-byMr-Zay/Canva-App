@@ -231,7 +231,7 @@ def test_manifest_referencing_missing_member_fails(build_archive: Callable[..., 
 
 def test_decode_archive_rejects_invalid_data() -> None:
     with pytest.raises(ArchiveVerificationError, match="base64 decode failed"):
-        decode_archive("%%%")[...]
+        decode_archive("%" * 3)
 
 
 def _read_rows(path: Path) -> list[dict[str, str]]:
