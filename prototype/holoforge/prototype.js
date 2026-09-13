@@ -12,6 +12,12 @@ const gap = document.querySelector('#objectiveGap');
 const duration = document.querySelector('#duration');
 const objective = document.querySelector('#objectiveId');
 const seed = document.querySelector('#seed');
+const backendIdentity = document.querySelector('#backendIdentity');
+const baselineIdentity = document.querySelector('#baselineIdentity');
+const snapshotId = document.querySelector('#snapshotId');
+const optimizationFingerprint = document.querySelector('#optimizationFingerprint');
+const scenarioFingerprint = document.querySelector('#scenarioFingerprint');
+const constraintState = document.querySelector('#constraintState');
 const tradeoff = document.querySelector('#tradeoffText');
 const compare = document.querySelector('#compareRange');
 const compareValue = document.querySelector('#compareValue');
@@ -27,6 +33,11 @@ function formatMetric(value) {
   if (!Number.isFinite(value)) return '—';
   if (Number.isInteger(value)) return String(value);
   return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function shortFingerprint(value) {
+  if (typeof value !== 'string' || value.length < 16) return '—';
+  return `${value.slice(0, 8)}…${value.slice(-8)}`;
 }
 
 function renderList() {
@@ -56,9 +67,18 @@ function renderScenario() {
   duration.textContent = `${scenario.durationMs} ms`;
   objective.textContent = scenario.objective;
   seed.textContent = scenario.seed;
+  backendIdentity.textContent = `${scenario.backend} / ${scenario.algorithm}`;
+  baselineIdentity.textContent = `${scenario.baselineBackend} / ${scenario.baselineAlgorithm}`;
+  snapshotId.textContent = scenario.sourceSnapshotId;
+  optimizationFingerprint.textContent = shortFingerprint(scenario.optimizationFingerprint);
+  optimizationFingerprint.title = scenario.optimizationFingerprint;
+  scenarioFingerprint.textContent = shortFingerprint(scenario.scenarioFingerprint);
+  scenarioFingerprint.title = scenario.scenarioFingerprint;
+  constraintState.textContent = scenario.hardConstraintsPassed ? 'Passed' : 'Blocked';
+  constraintState.classList.toggle('verified', scenario.hardConstraintsPassed);
   tradeoff.textContent = scenario.tradeoff;
-  evidenceState.textContent = 'FIXTURE VALIDATED';
-  evidenceState.title = `CI-validated scenario projection for ${scenario.sourceSnapshotId} / ${scenario.target}`;
+  evidenceState.textContent = scenario.status === 'complete' ? 'EVIDENCE COMPLETE' : scenario.status.toUpperCase();
+  evidenceState.title = `CI-validated presentation projection for ${scenario.sourceSnapshotId} / ${scenario.target}`;
 }
 
 function renderCompare() {
