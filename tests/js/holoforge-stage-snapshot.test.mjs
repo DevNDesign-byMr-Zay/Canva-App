@@ -24,4 +24,24 @@ test('stage model keeps an immutable snapshot of scenario data', () => {
   assert.equal(Object.isFrozen(model), true);
   assert.equal(Object.isFrozen(model.evidence), true);
   assert.equal(Object.isFrozen(model.source.pageIds), true);
+  assert.equal(Object.isFrozen(model.comparison), true);
+  assert.equal(Object.isFrozen(model.comparison.candidate.layout), true);
+  assert.equal(Object.isFrozen(model.comparison.candidate.changedElementIds), true);
+  assert.equal(Object.isFrozen(model.controls), true);
+  assert.equal(Object.isFrozen(model.gates), true);
+});
+
+test('equivalent validated scenario snapshots produce the same stage identity', () => {
+  const first = buildHoloforgeStageModel({
+    scenario: structuredClone(hierarchyScenario),
+    currentSnapshotFingerprint: HOLOFORGE_SOURCE_FINGERPRINT,
+  });
+  const second = buildHoloforgeStageModel({
+    scenario: structuredClone(hierarchyScenario),
+    currentSnapshotFingerprint: HOLOFORGE_SOURCE_FINGERPRINT,
+  });
+
+  assert.equal(first.stageIdentity, second.stageIdentity);
+  assert.deepEqual(first.comparison, second.comparison);
+  assert.deepEqual(first.gates, second.gates);
 });
