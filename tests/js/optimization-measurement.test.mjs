@@ -16,6 +16,7 @@ test('measures validated optimization with explicit timing', () => {
   assert.equal(receipt.schema, 'canva-runtime-optimization-measurement-v1');
   assert.equal(receipt.provider, 'canva-runtime-qis-reference-v1');
   assert.equal(receipt.result.objective, -4);
+  assert.equal(receipt.result.seed, 9);
   assert.deepEqual(receipt.result.bits, [1, 0, 1]);
   assert.equal(receipt.durationMs, 5);
 });
