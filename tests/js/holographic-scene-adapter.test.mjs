@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHolographicCanvaPayload, validateHolographicCanvaPayload } from '../../src/holographic-scene-adapter.mjs';
+import {
+  buildHolographicCanvaPayload,
+  TARGETS,
+  validateHolographicCanvaPayload,
+} from '../../src/holographic-scene-adapter.mjs';
+
+const EXPECTED_TARGETS = Object.freeze([
+  'holo-mat',
+  'projector',
+  'volumetric-3d',
+  'ar-vr',
+  'web-dashboard',
+]);
 
 const scene = {
   sceneVersion: 2,
@@ -41,6 +53,15 @@ test('rejects unsupported render targets', () => {
   assert.throws(() => buildHolographicCanvaPayload({ scene, target: 'actuator' }), /unsupported holographic target/);
 });
 
+test('pins and supports every renderer-neutral holographic target', () => {
+  assert.deepEqual(TARGETS, EXPECTED_TARGETS);
+  for (const target of EXPECTED_TARGETS) {
+    const payload = buildHolographicCanvaPayload({ scene, target });
+    assert.equal(payload.target, target);
+    assert.equal(validateHolographicCanvaPayload(payload), true, target);
+  }
+});
+
 test('rejects scenes that are not THERGRID scene version 2', () => {
   assert.throws(() => buildHolographicCanvaPayload({ scene: { ...scene, sceneVersion: 1 } }), /sceneVersion must equal 2/);
 });
@@ -64,6 +85,69 @@ test('rejects payloads whose content no longer matches the fingerprint', () => {
   const payload = buildHolographicCanvaPayload({ scene, target: 'projector', designId: 'design-1' });
   const tampered = { ...payload, target: 'holo-mat' };
   assert.equal(validateHolographicCanvaPayload(tampered), false);
+  assert.equal(validateHolographicCanvaPayload(payload), true);
+});
+
+test('rejects tampering across the complete payload and safety contract', () => {
+  const enrichedScene = {
+    ...scene,
+    proposal: { id: 'proposal-1', status: 'advisory' },
+    metrics: { confidence: 0.82, horizon: 24 },
+  };
+  const payload = buildHolographicCanvaPayload({
+    scene: enrichedScene,
+    target: 'projector',
+    designId: 'design-1',
+  });
+
+  const tamperedCases = [
+    ['adapterVersion', { ...payload, adapterVersion: payload.adapterVersion + 1 }],
+    ['authoritativeSource', { ...payload, authoritativeSource: 'alternate-source' }],
+    ['designId', { ...payload, designId: 'design-2' }],
+    ['snapshotId', { ...payload, snapshotId: 'snapshot-tampered' }],
+    ['sceneIdentity', { ...payload, sceneIdentity: 'scene-tampered' }],
+    ['proposal', { ...payload, proposal: { ...payload.proposal, status: 'approved' } }],
+    ['metrics', { ...payload, metrics: { ...payload.metrics, confidence: 0.99 } }],
+    [
+      'attention',
+      {
+        ...payload,
+        attention: [
+          { ...payload.attention[0], reason: 'tampered attention' },
+          ...payload.attention.slice(1),
+        ],
+      },
+    ],
+    [
+      'layers',
+      {
+        ...payload,
+        layers: payload.layers.map((layer) => (
+          layer.id === 'topology'
+            ? { ...layer, data: { tampered: true } }
+            : layer
+        )),
+      },
+    ],
+    ['target', { ...payload, target: 'holo-mat' }],
+    ['provenanceRef', { ...payload, provenanceRef: 'experiment-tampered' }],
+    [
+      'safety.authoritative',
+      { ...payload, safety: { ...payload.safety, authoritative: true } },
+    ],
+    [
+      'safety.physicalActuation',
+      { ...payload, safety: { ...payload.safety, physicalActuation: true } },
+    ],
+    [
+      'safety.provenanceRequired',
+      { ...payload, safety: { ...payload.safety, provenanceRequired: false } },
+    ],
+  ];
+
+  for (const [field, candidate] of tamperedCases) {
+    assert.equal(validateHolographicCanvaPayload(candidate), false, field);
+  }
   assert.equal(validateHolographicCanvaPayload(payload), true);
 });
 
