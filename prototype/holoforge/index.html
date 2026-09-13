@@ -71,12 +71,19 @@
           <div class="relationship-line line-b" aria-hidden="true"></div>
         </div>
 
-        <div class="compare-strip">
-          <span>Original</span>
-          <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
-          <span>Candidate</span>
-          <output id="compareValue" for="compareRange">58%</output>
-          <button id="resetView" type="button" class="ghost-button text-button">Reset view</button>
+        <div class="stage-control-deck" aria-label="Holo Stage view controls">
+          <div class="compare-strip">
+            <span>Original</span>
+            <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
+            <span>Candidate</span>
+            <output id="compareValue" for="compareRange">58%</output>
+          </div>
+          <div class="depth-strip">
+            <span>Depth</span>
+            <input id="depthRange" type="range" min="0" max="100" value="50" aria-label="Adjust spatial layer depth" />
+            <output id="depthValue" for="depthRange">50%</output>
+            <button id="resetView" type="button" class="ghost-button text-button">Reset view</button>
+          </div>
         </div>
       </section>
 
