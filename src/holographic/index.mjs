@@ -13,3 +13,4 @@ export {
 export { createHolographicControlAdapter, HOLO_CONTROLS_SCHEMA } from './controls.mjs';
 export { bindHolographicViewportControls, HOLO_BROWSER_CONTROLS_SCHEMA } from './browser-controls.mjs';
 export { buildCss3dRenderModel, HOLO_RENDER_SCHEMA } from './renderer.mjs';
+export { createCss3dMountAdapter, HOLO_MOUNT_SCHEMA } from './mount.mjs';
