@@ -1,47 +1,10 @@
+/*
+ * Read-only presentation projection of the canonical HoloForge fixtures.
+ * Contract validation remains in src/; this browser-safe projection is
+ * regression-checked against those fixtures in Node tests.
+ */
 export const prototypeScenarios = Object.freeze([
-  Object.freeze({
-    id: 'hierarchy-first',
-    title: 'Hierarchy Focus',
-    interpretation: 'Increase headline dominance while preserving locked brand marks.',
-    score: 0.92,
-    baseline: 0.95,
-    gap: 0.029999999999999916,
-    durationMs: 12,
-    objective: 'hierarchy-balance-v1',
-    seed: 'hierarchy-seed-001',
-    tradeoff: 'Slightly increases vertical separation to improve hierarchy.',
-    changed: 2,
-    sourceSnapshotId: 'snapshot-v1',
-    target: 'web-dashboard',
-  }),
-  Object.freeze({
-    id: 'spacing-balance',
-    title: 'Spatial Balance',
-    interpretation: 'Improve spacing rhythm and edge balance with minimal movement.',
-    score: 84,
-    baseline: 86,
-    gap: 2,
-    durationMs: 12,
-    objective: 'spacing-balance-v1',
-    seed: 'spacing-seed-001',
-    tradeoff: 'Preserves content order while increasing lateral balance.',
-    changed: 2,
-    sourceSnapshotId: 'snapshot-v1',
-    target: 'web-dashboard',
-  }),
-  Object.freeze({
-    id: 'locked-brand',
-    title: 'Brand-Safe Reflow',
-    interpretation: 'Reflow supporting content without moving protected brand elements.',
-    score: 0.88,
-    baseline: 0.9,
-    gap: 0.020000000000000018,
-    durationMs: 12,
-    objective: 'brand-safe-reflow-v1',
-    seed: 'brand-seed-001',
-    tradeoff: 'Keeps protected brand geometry fixed while rebalancing support copy.',
-    changed: 2,
-    sourceSnapshotId: 'snapshot-v1',
-    target: 'web-dashboard',
-  }),
+  Object.freeze({ id: 'hierarchy-first', title: 'Hierarchy Focus', interpretation: 'Increase headline dominance while preserving locked brand marks.', score: 0.92, baseline: 0.95, gap: 0.029999999999999916, durationMs: 12, objective: 'hierarchy-balance-v1', seed: 'hierarchy-seed-001', backend: 'vaelon', algorithm: 'deterministic-candidate-v1', baselineBackend: 'classical-reference', baselineAlgorithm: 'exact-reference-v1', status: 'complete', hardConstraintsPassed: true, tradeoff: 'Slightly increases vertical separation to improve hierarchy.', changed: 2, sourceSnapshotId: 'snapshot-v1', sourceSnapshotFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', target: 'web-dashboard' }),
+  Object.freeze({ id: 'spacing-balance', title: 'Spatial Balance', interpretation: 'Improve spacing rhythm and edge balance with minimal movement.', score: 84, baseline: 86, gap: 2, durationMs: 12, objective: 'spacing-balance-v1', seed: 'spacing-seed-001', backend: 'vaelon', algorithm: 'deterministic-candidate-v1', baselineBackend: 'classical-reference', baselineAlgorithm: 'exact-reference-v1', status: 'complete', hardConstraintsPassed: true, tradeoff: 'Preserves content order while increasing lateral balance.', changed: 2, sourceSnapshotId: 'snapshot-v1', sourceSnapshotFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', target: 'web-dashboard' }),
+  Object.freeze({ id: 'locked-brand', title: 'Brand-Safe Reflow', interpretation: 'Reflow supporting content without moving protected brand elements.', score: 0.88, baseline: 0.9, gap: 0.020000000000000018, durationMs: 12, objective: 'brand-safe-reflow-v1', seed: 'brand-seed-001', backend: 'vaelon', algorithm: 'deterministic-candidate-v1', baselineBackend: 'classical-reference', baselineAlgorithm: 'exact-reference-v1', status: 'complete', hardConstraintsPassed: true, tradeoff: 'Keeps protected brand geometry fixed while rebalancing support copy.', changed: 2, sourceSnapshotId: 'snapshot-v1', sourceSnapshotFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', target: 'web-dashboard' }),
 ]);
