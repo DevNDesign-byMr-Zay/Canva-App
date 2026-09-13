@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildScenarioEnvelope,
+  computeOptimizationFingerprint,
   inspectScenarioEnvelope,
   validateScenarioEnvelope,
 } from '../../src/holoforge-scenario-contract.mjs';
@@ -26,6 +27,69 @@ test('identical scenario inputs produce identical provenance', () => {
   }));
 
   assert.equal(rebuilt.provenance.scenarioFingerprint, hierarchyScenario.provenance.scenarioFingerprint);
+  assert.equal(rebuilt.provenance.optimizationFingerprint, hierarchyScenario.provenance.optimizationFingerprint);
+});
+
+test('optimization identity is independent of candidate result metadata', () => {
+  const variant = structuredClone(hierarchyScenario);
+  variant.scenarioId = 'different-candidate-run';
+  variant.candidate.layout.elements['headline-1'].scale = 1.35;
+  variant.candidate.delta['headline-1'].scale = 0.35;
+  variant.evidence.objectiveScore = 0.81;
+  variant.evidence.objectiveGap = 0.14;
+  variant.evidence.seed = 'different-seed';
+  variant.evidence.backend = 'quantum-inspired-experimental';
+  variant.evidence.durationMs = 999;
+
+  assert.equal(computeOptimizationFingerprint(variant), hierarchyScenario.provenance.optimizationFingerprint);
+  assert.notEqual(variant.scenarioId, hierarchyScenario.scenarioId);
+});
+
+test('optimization identity changes when the source problem changes', () => {
+  const sourceChanged = structuredClone(hierarchyScenario);
+  sourceChanged.source.snapshotFingerprint = 'b'.repeat(64);
+
+  const objectiveChanged = structuredClone(hierarchyScenario);
+  objectiveChanged.intent.objectiveId = 'different-objective-v1';
+
+  const directionChanged = structuredClone(hierarchyScenario);
+  directionChanged.intent.objectiveDirection = 'minimize';
+
+  const constraintsChanged = structuredClone(hierarchyScenario);
+  constraintsChanged.constraints.soft.push({ id: 'new-preference', type: 'spacing-preference', weight: 0.9 });
+
+  const fingerprints = [
+    computeOptimizationFingerprint(sourceChanged),
+    computeOptimizationFingerprint(objectiveChanged),
+    computeOptimizationFingerprint(directionChanged),
+    computeOptimizationFingerprint(constraintsChanged),
+  ];
+
+  for (const fingerprint of fingerprints) {
+    assert.notEqual(fingerprint, hierarchyScenario.provenance.optimizationFingerprint);
+  }
+});
+
+test('tampered optimization identity fails provenance validation closed', () => {
+  const tampered = structuredClone(hierarchyScenario);
+  tampered.provenance.optimizationFingerprint = 'f'.repeat(64);
+
+  assert.equal(validateScenarioEnvelope(tampered), false);
+  assert.match(
+    inspectScenarioEnvelope(tampered).structuralReasons.join(' '),
+    /optimization problem provenance mismatch|scenario provenance mismatch/,
+  );
+});
+
+test('scenario fingerprint remains result-sensitive while optimization identity stays stable', () => {
+  const variant = structuredClone(hierarchyScenario);
+  variant.evidence.objectiveScore = 0.91;
+  variant.evidence.objectiveGap = 0.04;
+  variant.provenance = {};
+  const rebuilt = buildScenarioEnvelope(variant);
+
+  assert.equal(rebuilt.provenance.optimizationFingerprint, hierarchyScenario.provenance.optimizationFingerprint);
+  assert.notEqual(rebuilt.provenance.scenarioFingerprint, hierarchyScenario.provenance.scenarioFingerprint);
 });
 
 test('preview is allowed only with matching current source fingerprint', () => {
