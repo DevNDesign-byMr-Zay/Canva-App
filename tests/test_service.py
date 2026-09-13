@@ -106,6 +106,20 @@ def test_manifest_missing_required_column_fails(build_archive: Callable[..., Any
         read_manifest(built.manifest_path)
 
 
+def test_manifest_missing_required_value_fails(build_archive: Callable[..., Any]) -> None:
+    built = build_archive()
+    built.manifest_path.write_text(
+        "occurrence,source_filename_sha256,repository_filename,sanitized_sha256\n"
+        "1,,state-a.html,"
+        + "0" * 64
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ArchiveVerificationError, match="source_filename_sha256 must not be empty"):
+        read_manifest(built.manifest_path)
+
+
 def test_manifest_invalid_occurrence_fails(build_archive: Callable[..., Any]) -> None:
     built = build_archive()
     rows = _read_rows(built.manifest_path)
