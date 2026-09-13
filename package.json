@@ -6,7 +6,8 @@
   "description": "Developer tooling for authenticating a recovered Canva-oriented application archive and exercising maintained v115 runtime adapters.",
   "scripts": {
     "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
-    "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs"
+    "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
+    "check": "npm test"
   },
   "engines": {
     "node": ">=22"
