@@ -1,30 +1,30 @@
 import { createHash } from 'node:crypto';
 import { validateHolographicCanvaPayload, TARGETS } from './holographic-scene-adapter.mjs';
 
-const VIEW_VERSION = 1;
+const VIEW_VERSION = 2;
 
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
   return value;
 }
-
 function text(value, name) {
   if (typeof value !== 'string' || !value.trim()) throw new TypeError(`${name} must be a non-empty string`);
   return value.trim();
 }
-
-function digest(value) {
-  return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
-}
-
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
   return value;
 }
-
+function digest(value) {
+  return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
+}
 function severityRank(value) {
   return ({ critical: 0, high: 1, warning: 2, info: 3 })[value] ?? 4;
+}
+function unsignedView(value) {
+  const { viewFingerprint: _viewFingerprint, ...unsigned } = value;
+  return unsigned;
 }
 
 export function buildHolographicOperatorView({ payload, target = null } = {}) {
@@ -44,6 +44,10 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     }))
     .sort((a, b) => a.priority - b.priority || severityRank(a.severity) - severityRank(b.severity) || a.id.localeCompare(b.id));
 
+  const solverComparisonLayers = Array.isArray(value.layers)
+    ? value.layers.filter((layer) => layer.type === 'solverComparison')
+    : [];
+
   const view = {
     viewVersion: VIEW_VERSION,
     source: {
@@ -55,7 +59,8 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     target: resolvedTarget,
     attention,
     comparison: {
-      candidateCount: Array.isArray(value.layers) ? value.layers.filter((layer) => layer.type === 'solverComparison').length : 0,
+      candidateCount: solverComparisonLayers.length,
+      candidates: solverComparisonLayers.flatMap((layer) => Array.isArray(layer.data) ? layer.data : []),
       metrics: value.metrics ?? null,
     },
     presentation: {
@@ -72,20 +77,21 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
 export function validateHolographicOperatorView(view) {
   try {
     const value = object(view, 'view');
-    return value.viewVersion === VIEW_VERSION
-      && TARGETS.includes(value.target)
-      && value.source?.snapshotId
-      && value.source?.sceneId
-      && value.source?.provenanceRef
-      && /^[a-f0-9]{64}$/.test(value.source?.payloadFingerprint)
-      && Array.isArray(value.attention)
-      && value.attention.every((item) => item.advisoryOnly === true)
-      && value.presentation?.mode === 'operator-advisory'
-      && value.presentation?.interaction === 'presentation-only'
-      && value.presentation?.authoritative === false
-      && value.presentation?.physicalActuation === false
-      && /^[a-f0-9]{64}$/.test(value.viewFingerprint)
-      && value.viewFingerprint === digest({ ...value, viewFingerprint: undefined });
+    if (value.viewVersion !== VIEW_VERSION
+      || !TARGETS.includes(value.target)
+      || !value.source?.snapshotId
+      || !value.source?.sceneId
+      || !value.source?.provenanceRef
+      || !/^[a-f0-9]{64}$/.test(value.source?.payloadFingerprint)
+      || !Array.isArray(value.attention)
+      || !value.attention.every((item) => item.advisoryOnly === true)
+      || !Array.isArray(value.comparison?.candidates)
+      || value.presentation?.mode !== 'operator-advisory'
+      || value.presentation?.interaction !== 'presentation-only'
+      || value.presentation?.authoritative !== false
+      || value.presentation?.physicalActuation !== false
+      || !/^[a-f0-9]{64}$/.test(value.viewFingerprint)) return false;
+    return value.viewFingerprint === digest(unsignedView(value));
   } catch {
     return false;
   }
