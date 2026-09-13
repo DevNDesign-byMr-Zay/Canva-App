@@ -29,7 +29,7 @@
           <span>SCENARIOS</span>
           <button type="button" class="ghost-button" aria-label="Create scenario" disabled title="Scenario creation is not enabled in this read-only prototype">+</button>
         </div>
-        <div id="scenarioList" class="scenario-list" aria-label="Use arrow keys to move between scenario branches"></div>
+        <div id="scenarioList" class="scenario-list" role="radiogroup" aria-label="Scenario branches. Use arrow keys, Home, or End to move between scenarios."></div>
         <div class="rail-footer">
           <span class="micro-label">AUREN interpretation</span>
           <p id="interpretationSummary">Select a scenario.</p>
@@ -55,12 +55,13 @@
             <span class="layer-label">SOURCE</span>
             <div id="sourceCanvas" class="fixture-canvas" aria-hidden="true"></div>
           </div>
-          <div class="candidate-frame layer-card" id="candidateFrame" role="button" tabindex="0" aria-pressed="false" aria-label="Select candidate scenario for the prototype apply gate">
+          <div class="candidate-frame layer-card" id="candidateFrame" role="button" tabindex="0" aria-pressed="false" aria-describedby="applyGateDescription" aria-label="Select candidate scenario for the prototype apply gate">
             <span class="layer-label candidate">CANDIDATE</span>
             <div id="candidateCanvas" class="fixture-canvas" aria-hidden="true"></div>
           </div>
           <div class="relationship-line line-a" aria-hidden="true"></div>
           <div class="relationship-line line-b" aria-hidden="true"></div>
+          <p id="stageAnnouncement" role="status" aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></p>
         </div>
 
         <div class="stage-control-deck" aria-label="Holo Stage view controls">
@@ -131,9 +132,9 @@
         <div class="apply-gate">
           <div>
             <span class="micro-label">APPLY GATE</span>
-            <p>Source is unchanged. Explicit confirmation is required.</p>
+            <p id="applyGateDescription">Source is unchanged. Explicit confirmation is required.</p>
           </div>
-          <button id="applyButton" type="button" disabled>Apply selected scenario</button>
+          <button id="applyButton" type="button" aria-describedby="applyGateDescription" disabled>Apply selected scenario</button>
         </div>
       </aside>
     </section>
