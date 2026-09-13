@@ -8,13 +8,14 @@ export function createPrototypeState(scenarioId) {
   return Object.freeze({
     scenarioId,
     comparePercent: 58,
+    depthPercent: 50,
     selectedScenarioId: null,
     overlays: Object.freeze({ relationships: true, evidence: true, attention: false }),
   });
 }
 
-function clampPercent(value) {
-  if (!Number.isFinite(value)) throw new TypeError('compare percent must be finite');
+function clampPercent(value, label) {
+  if (!Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
   return Math.min(100, Math.max(0, value));
 }
 
@@ -33,9 +34,11 @@ export function reducePrototypeState(state, action = {}) {
       });
     }
     case 'set-compare':
-      return Object.freeze({ ...state, comparePercent: clampPercent(action.percent) });
+      return Object.freeze({ ...state, comparePercent: clampPercent(action.percent, 'compare percent') });
+    case 'set-depth':
+      return Object.freeze({ ...state, depthPercent: clampPercent(action.percent, 'depth percent') });
     case 'reset-view':
-      return Object.freeze({ ...state, comparePercent: 58 });
+      return Object.freeze({ ...state, comparePercent: 58, depthPercent: 50 });
     case 'toggle-overlay': {
       if (!OVERLAYS.has(action.overlay)) throw new TypeError('unsupported overlay');
       return Object.freeze({
