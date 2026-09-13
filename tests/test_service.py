@@ -116,7 +116,10 @@ def test_manifest_missing_required_value_fails(build_archive: Callable[..., Any]
         encoding="utf-8",
     )
 
-    with pytest.raises(ArchiveVerificationError, match="source_filename_sha256 must not be empty"):
+    with pytest.raises(
+        ArchiveVerificationError,
+        match="source_filename_sha256 must be a SHA-256 hex digest",
+    ):
         read_manifest(built.manifest_path)
 
 
