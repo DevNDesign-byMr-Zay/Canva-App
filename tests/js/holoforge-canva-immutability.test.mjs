@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHoloForgeScenario } from '../../src/holoforge-canva-contract.mjs';
+import {
+  createHoloForgeScenario,
+  validateHoloForgeScenario,
+} from '../../src/holoforge-canva-contract.mjs';
 
 const base = {
   scenarioId: 'scenario-immutable-001',
@@ -24,4 +27,14 @@ test('nested caller mutation cannot change a created scenario', () => {
   assert.equal(scenario.candidateLayout.elements[0].x, 120);
   assert.equal(Object.isFrozen(scenario.constraints[0].options), true);
   assert.equal(Object.isFrozen(scenario.candidateLayout.elements[0]), true);
+});
+
+test('requires a stable reproducibility seed', () => {
+  assert.throws(() => createHoloForgeScenario({ ...base, seed: undefined }), /seed/);
+  assert.throws(() => createHoloForgeScenario({ ...base, seed: Number.NaN }), /seed/);
+  assert.throws(() => createHoloForgeScenario({ ...base, seed: '   ' }), /seed/);
+  assert.equal(createHoloForgeScenario({ ...base, seed: ' run-001 ' }).seed, 'run-001');
+
+  const scenario = createHoloForgeScenario(base);
+  assert.equal(validateHoloForgeScenario({ ...scenario, seed: {} }), false);
 });
