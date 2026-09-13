@@ -12,14 +12,53 @@ describe('holographic display execution planning', () => {
   });
 
   for (const [displayProfile, target, operation, expectedPolicy] of [
-    ['simulator', 'simulator', 'preview-and-replay', { deterministicReplay: true }],
-    ['projector', 'projector-1', 'prepare-projector', { depth: true, perspective: true }],
-    ['holomat', 'holomat-1', 'prepare-holomat', { depth: true, surfaceMapping: true }],
+    [
+      'simulator',
+      'simulator',
+      'preview-and-replay',
+      {
+        depth: false,
+        perspective: false,
+        surfaceMapping: false,
+        platformStaging: false,
+        deterministicReplay: true,
+      },
+    ],
+    [
+      'projector',
+      'projector-1',
+      'prepare-projector',
+      {
+        depth: true,
+        perspective: true,
+        surfaceMapping: false,
+        platformStaging: false,
+        deterministicReplay: false,
+      },
+    ],
+    [
+      'holomat',
+      'holomat-1',
+      'prepare-holomat',
+      {
+        depth: true,
+        perspective: false,
+        surfaceMapping: true,
+        platformStaging: false,
+        deterministicReplay: false,
+      },
+    ],
     [
       'three-d-platform',
       'three-d-platform-1',
       'prepare-three-d-platform',
-      { depth: true, platformStaging: true },
+      {
+        depth: true,
+        perspective: false,
+        surfaceMapping: false,
+        platformStaging: true,
+        deterministicReplay: false,
+      },
     ],
   ]) {
     test(`maps ${displayProfile} profile to an explicit operation and render policy`, () => {
