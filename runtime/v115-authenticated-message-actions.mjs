@@ -17,11 +17,19 @@ function pulse(button, schedule) {
 }
 
 function doublecheckPrompt(text) {
-  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\n${text}`;
+  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
+
+Response to check:
+${text}`;
 }
 
 function reportPrompt(text) {
-  return `Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\n${text}`;
+  return `Report: I think there may be an issue with the previous response.
+
+Describe the issue briefly and suggest a fix.
+
+Response:
+${text}`;
 }
 
 function createFeedbackEmitter(feedback) {
@@ -97,7 +105,9 @@ export function createAuthenticatedV115MessageActions({
         throw new TypeError('clipboardWrite must be available for copy');
       }
       emitFeedback('pending', action);
-      try { await clipboardWrite(text); } catch {
+      try {
+        await clipboardWrite(text);
+      } catch {
         emitFeedback('failure', action);
         return { handled: true, action };
       }
@@ -109,7 +119,9 @@ export function createAuthenticatedV115MessageActions({
     if (action === 'share') {
       emitFeedback('pending', action);
       if (share) {
-        try { await share({ text }); } catch {
+        try {
+          await share({ text });
+        } catch {
           emitFeedback('failure', action);
           return { handled: true, action };
         }
@@ -118,7 +130,9 @@ export function createAuthenticatedV115MessageActions({
           emitFeedback('failure', action);
           throw new TypeError('clipboardWrite must be available when share is unavailable');
         }
-        try { await clipboardWrite(text); } catch {
+        try {
+          await clipboardWrite(text);
+        } catch {
           emitFeedback('failure', action);
           return { handled: true, action };
         }
@@ -166,7 +180,9 @@ export function createAuthenticatedV115MessageActions({
       emitFeedback('pending', action);
       const userText = getPreviousUserText(wrap) || '';
       resetConversation();
-      try { createConversation(userText, []); } catch {}
+      try {
+        createConversation(userText, []);
+      } catch {}
 
       try {
         const conversation = getActiveConversation();
@@ -194,7 +210,10 @@ export function createAuthenticatedV115MessageActions({
       }
       emitFeedback('pending', action);
       try {
-        await exportText(text, { filename: 'AETHER_response.txt', type: 'text/plain;charset=utf-8' });
+        await exportText(text, {
+          filename: 'AETHER_response.txt',
+          type: 'text/plain;charset=utf-8',
+        });
       } catch {
         emitFeedback('failure', action);
         return { handled: true, action };
@@ -221,8 +240,10 @@ export function createAuthenticatedV115MessageActions({
     const button = item ? null : event?.target?.closest?.('.act-btn');
     const trigger = item || button;
     if (!trigger) return { handled: false };
+
     const row = trigger.closest?.('.msg-actions-row');
     if (!row) return { handled: false };
+
     const candidate = row.previousElementSibling;
     const wrap = candidate?.classList?.contains?.('msg-wrap') ? candidate : null;
     const assistant = wrap?.querySelector?.('.msg.assistant');
@@ -237,12 +258,31 @@ export function createAuthenticatedV115MessageActions({
 
     const action = button.dataset?.act;
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
+
     event.stopPropagation?.();
-    return perform({ action, text: messageText(assistant), button, row, wrap });
+    return perform({
+      action,
+      text: messageText(assistant),
+      button,
+      row,
+      wrap,
+    });
   }
 
   return { perform, performMore, handleClick };
 }
 
-export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze(['copy', 'share', 'like', 'dislike', 'regen']);
-export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['branch', 'doublecheck', 'export', 'report']);
+export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
+  'copy',
+  'share',
+  'like',
+  'dislike',
+  'regen',
+]);
+
+export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze([
+  'branch',
+  'doublecheck',
+  'export',
+  'report',
+]);
