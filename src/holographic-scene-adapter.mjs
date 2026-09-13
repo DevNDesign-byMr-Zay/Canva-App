@@ -62,9 +62,9 @@ function fingerprintInput(payload) {
   const {
     payloadFingerprint: _payloadFingerprint,
     safety: _safety,
-    ...payload
+    ...unsignedPayload
   } = payload;
-  return payload;
+  return unsignedPayload;
 }
 
 export function validateHolographicCanvaPayload(payload) {
