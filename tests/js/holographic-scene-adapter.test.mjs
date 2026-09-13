@@ -60,6 +60,13 @@ test('rejects malformed payload fingerprints at the adapter boundary', () => {
   }
 });
 
+test('rejects payloads whose content no longer matches the fingerprint', () => {
+  const payload = buildHolographicCanvaPayload({ scene, target: 'projector', designId: 'design-1' });
+  const tampered = { ...payload, target: 'holo-mat' };
+  assert.equal(validateHolographicCanvaPayload(tampered), false);
+  assert.equal(validateHolographicCanvaPayload(payload), true);
+});
+
 test('preserves proposal and metrics payload data without weakening safety flags', () => {
   const enrichedScene = {
     ...scene,
