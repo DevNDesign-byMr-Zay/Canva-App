@@ -10,6 +10,18 @@ function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function deepFreeze(value) {
+  if (Array.isArray(value)) {
+    for (const item of value) deepFreeze(item);
+    return Object.freeze(value);
+  }
+  if (isObject(value)) {
+    for (const item of Object.values(value)) deepFreeze(item);
+    return Object.freeze(value);
+  }
+  return value;
+}
+
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
   if (isObject(value)) {
@@ -87,7 +99,7 @@ export function buildScenarioEnvelope(input = {}) {
   };
   scenario.provenance.optimizationFingerprint = computeOptimizationFingerprint(scenario);
   scenario.provenance.scenarioFingerprint = computeScenarioFingerprint(scenario);
-  return Object.freeze(scenario);
+  return deepFreeze(scenario);
 }
 
 function collectStructuralReasons(scenario) {
