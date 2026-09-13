@@ -30,6 +30,7 @@ export function measureOptimization(provider, problem, { now = Date.now } = {}) 
     result: {
       backend: result.backend ?? null,
       algorithm: result.algorithm ?? null,
+      seed: result.seed ?? null,
       objective: result.objective,
       bits: [...result.bits],
     },
