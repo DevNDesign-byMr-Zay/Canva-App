@@ -11,11 +11,16 @@ function text(value, name) {
   return value.trim();
 }
 
+function constraints(value) {
+  if (!Array.isArray(value)) throw new TypeError('constraints must be an array');
+  return value.map((item, index) => object(item, `constraints[${index}]`));
+}
+
 export function createHoloForgeScenario({
   scenarioId,
   sourceDesignRef,
   intent,
-  constraints = [],
+  constraints: rawConstraints = [],
   candidateLayout,
   backend,
   seed,
@@ -29,7 +34,7 @@ export function createHoloForgeScenario({
     scenarioId: text(scenarioId, 'scenarioId'),
     sourceDesignRef: text(sourceDesignRef, 'sourceDesignRef'),
     intent: text(intent, 'intent'),
-    constraints: [...object(constraints, 'constraints')],
+    constraints: constraints(rawConstraints),
     candidateLayout: object(candidateLayout, 'candidateLayout'),
     backend: text(backend, 'backend'),
     seed,
@@ -55,6 +60,7 @@ export function validateHoloForgeScenario(value) {
       && typeof scenario.sourceDesignRef === 'string' && scenario.sourceDesignRef.trim().length > 0
       && typeof scenario.intent === 'string' && scenario.intent.trim().length > 0
       && Array.isArray(scenario.constraints)
+      && scenario.constraints.every((item) => item && typeof item === 'object' && !Array.isArray(item))
       && scenario.candidateLayout && typeof scenario.candidateLayout === 'object' && !Array.isArray(scenario.candidateLayout)
       && typeof scenario.backend === 'string' && scenario.backend.trim().length > 0
       && Number.isFinite(scenario.objectiveScore)
