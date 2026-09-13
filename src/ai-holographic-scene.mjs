@@ -24,11 +24,7 @@ function optionalText(value, name) {
   return value == null ? null : text(value, name);
 }
 
-/**
- * Validate the structured scene plan returned by an AI model and translate it
- * into the existing renderer-neutral Canva payload. Model output is never
- * treated as authoritative and never receives a hardware execution primitive.
- */
+/** Validate AI scene intent while preserving editable Canva element semantics. */
 export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceRef, designId = null } = {}) {
   const plan = object(modelOutput, 'modelOutput');
   if (plan.intentVersion !== INTENT_VERSION) throw new TypeError('modelOutput.intentVersion must equal 1');
@@ -43,6 +39,8 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
       return {
         id: text(value.id ?? `node-${index}`, `modelOutput.nodes[${index}].id`),
         kind: text(value.kind ?? 'asset', `modelOutput.nodes[${index}].kind`),
+        canvaElementId: optionalText(value.canvaElementId, `modelOutput.nodes[${index}].canvaElementId`),
+        role: text(value.role ?? value.kind ?? 'asset', `modelOutput.nodes[${index}].role`),
         position: {
           x: finite(value.x ?? 0, `modelOutput.nodes[${index}].x`),
           y: finite(value.y ?? 0, `modelOutput.nodes[${index}].y`),
