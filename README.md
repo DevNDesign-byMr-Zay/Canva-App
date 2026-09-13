@@ -19,7 +19,9 @@ The maintained Python package is `archive_verifier/`, with:
 - `cli.py` / `__main__.py` — command boundary and exit-code handling.
 - `scripts/verify_legacy_archive.py` and `scripts/materialize_v115.py` — thin compatibility entrypoints.
 
-The maintained JavaScript surface lives under `runtime/` and is exercised by `tests/js/*.test.mjs`. It preserves mechanically authenticated v115 runtime boundaries such as the streaming chat request adapter, UI-to-AI bridge, authenticated DOM binding, message rendering/persistence, assistant finalization, and browser message actions. It is deliberately isolated from the immutable historical HTML so runtime behavior can be tested without rewriting provenance bytes.
+The maintained JavaScript surface lives under `runtime/` and `tests/js/*.test.mjs`. It preserves mechanically authenticated v115 runtime boundaries such as the streaming chat request adapter, UI-to-AI bridge, authenticated DOM binding, message rendering/persistence, assistant finalization, and browser message actions. It also exposes the maintained holographic presentation boundary through `src/holographic-scene-adapter.mjs`, which converts validated versioned scene evidence into renderer-neutral Canva payloads without becoming authoritative or physically actuating a display.
+
+The holographic presentation contract is intentionally downstream of decision evidence: scene identity and provenance are required, supported display targets are explicit, payload fingerprints are integrity-checked, and the adapter safety envelope remains non-authoritative/non-actuating. Browser interaction, CSS3D rendering, display-profile execution, and related viewport behavior remain separate presentation concerns rather than being folded into authenticated replay or historical source.
 
 The Node.js surface is an ordinary zero-runtime-dependency package:
 
