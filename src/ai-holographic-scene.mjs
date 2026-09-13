@@ -43,7 +43,8 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
     aiIntent: [text(plan.intent, 'modelOutput.intent')],
   };
 
-  return buildHolographicCanvaPayload({
+  const scene = {
+    sceneVersion: 2,
     snapshotId: text(snapshotId, 'snapshotId'),
     sceneId: text(plan.sceneId, 'modelOutput.sceneId'),
     provenanceRef: text(provenanceRef, 'provenanceRef'),
@@ -51,9 +52,9 @@ export function compileAiHolographicScene({ modelOutput, snapshotId, provenanceR
     layers,
     metrics: plan.metrics ?? null,
     proposal: null,
-    target,
-    designId,
-  });
+  };
+
+  return buildHolographicCanvaPayload({ scene, target, designId });
 }
 
 export { INTENT_VERSION };
