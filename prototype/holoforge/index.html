@@ -27,9 +27,9 @@
       <aside class="scenario-rail" aria-label="Scenario branches">
         <div class="rail-heading">
           <span>SCENARIOS</span>
-          <button type="button" class="ghost-button" aria-label="Create scenario">+</button>
+          <button type="button" class="ghost-button" aria-label="Create scenario" disabled title="Scenario creation is not enabled in this read-only prototype">+</button>
         </div>
-        <div id="scenarioList" class="scenario-list"></div>
+        <div id="scenarioList" class="scenario-list" aria-label="Use arrow keys to move between scenario branches"></div>
         <div class="rail-footer">
           <span class="micro-label">AUREN interpretation</span>
           <p id="interpretationSummary">Select a scenario.</p>
@@ -69,6 +69,11 @@
             <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
             <span>Candidate</span>
             <output id="compareValue" for="compareRange">58%</output>
+          </div>
+          <div class="stage-actions" style="padding:0 20px 8px" aria-label="Compare presets">
+            <button type="button" class="chip" data-compare-preset="original" aria-pressed="false">Original</button>
+            <button type="button" class="chip active" data-compare-preset="split" aria-pressed="true">Split</button>
+            <button type="button" class="chip" data-compare-preset="candidate" aria-pressed="false">Candidate</button>
           </div>
           <div class="depth-strip">
             <span>Depth</span>
