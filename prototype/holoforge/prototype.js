@@ -2,6 +2,8 @@ import { prototypeScenarios } from './scenarios.js';
 import { createPrototypeState, isScenarioSelected, reducePrototypeState } from './state.js';
 
 const scenarios = prototypeScenarios;
+const DESIGN_WIDTH = 600;
+const DESIGN_HEIGHT = 500;
 
 const list = document.querySelector('#scenarioList');
 const title = document.querySelector('#scenarioTitle');
@@ -25,6 +27,8 @@ const depth = document.querySelector('#depthRange');
 const depthValue = document.querySelector('#depthValue');
 const source = document.querySelector('#sourceFrame');
 const candidate = document.querySelector('#candidateFrame');
+const sourceCanvas = document.querySelector('#sourceCanvas');
+const candidateCanvas = document.querySelector('#candidateCanvas');
 const applyButton = document.querySelector('#applyButton');
 const evidenceState = document.querySelector('#evidenceState');
 const stageViewport = document.querySelector('#stageViewport');
@@ -42,6 +46,113 @@ function shortFingerprint(value) {
   return `${value.slice(0, 8)}…${value.slice(-8)}`;
 }
 
+function sourceConfig(candidateConfig, delta = {}) {
+  const candidateScale = Number.isFinite(candidateConfig.scale) ? candidateConfig.scale : 1;
+  return {
+    ...candidateConfig,
+    x: candidateConfig.x - (delta.x ?? 0),
+    y: candidateConfig.y - (delta.y ?? 0),
+    z: (candidateConfig.z ?? 0) - (delta.z ?? 0),
+    scale: candidateScale - (delta.scale ?? 0),
+  };
+}
+
+function visualKind(id) {
+  if (id.startsWith('logo')) return 'logo';
+  if (id.startsWith('headline')) return 'headline';
+  if (id.startsWith('body')) return 'body';
+  if (id.startsWith('card')) return 'card';
+  if (id.startsWith('brand-block')) return 'brand-block';
+  if (id.startsWith('caption')) return 'caption';
+  return 'generic';
+}
+
+function appendVisualContent(node, id, kind) {
+  if (kind === 'logo') {
+    node.textContent = 'MZ';
+    return;
+  }
+  if (kind === 'headline') {
+    node.textContent = "CREATE WHAT'S NEXT";
+    return;
+  }
+  if (kind === 'brand-block') {
+    node.textContent = 'BRAND';
+    return;
+  }
+  if (kind === 'caption') {
+    node.textContent = id.endsWith('1') ? 'Supporting copy' : 'Secondary detail';
+    return;
+  }
+  if (kind === 'body') {
+    node.append(document.createElement('span'), document.createElement('span'));
+    return;
+  }
+  if (kind === 'card') {
+    const label = document.createElement('strong');
+    label.textContent = id.replace('-', ' ').toUpperCase();
+    node.append(label, document.createElement('span'), document.createElement('span'));
+    return;
+  }
+  node.textContent = id;
+}
+
+function createFixtureElement(id, config, { changed = false, evidenceIndex = null, view }) {
+  const kind = visualKind(id);
+  const element = document.createElement('div');
+  element.className = `fixture-element fixture-${kind}`;
+  element.dataset.elementId = id;
+  element.dataset.view = view;
+  if (config.locked === true) element.classList.add('locked');
+  if (changed) element.classList.add('changed');
+
+  element.style.left = `${(config.x / DESIGN_WIDTH) * 100}%`;
+  element.style.top = `${(config.y / DESIGN_HEIGHT) * 100}%`;
+  const scale = Number.isFinite(config.scale) ? config.scale : 1;
+  element.style.transform = `translate(-50%,-50%) translateZ(${(config.z ?? 0) * 2}px) scale(${scale})`;
+  appendVisualContent(element, id, kind);
+
+  if (config.locked === true) {
+    const lock = document.createElement('span');
+    lock.className = 'lock-badge';
+    lock.textContent = 'LOCK';
+    element.append(lock);
+  }
+
+  if (changed && view === 'candidate' && evidenceIndex != null) {
+    const pin = document.createElement('span');
+    pin.className = 'evidence-pin fixture-pin';
+    pin.textContent = String(evidenceIndex + 1).padStart(2, '0');
+    element.append(pin);
+  }
+
+  return element;
+}
+
+function renderFixtureStage(scenario) {
+  const sourceElements = [];
+  const candidateElements = [];
+  const changedIds = new Set(scenario.changedElementIds);
+  const changedOrder = new Map(scenario.changedElementIds.map((id, index) => [id, index]));
+
+  for (const [id, candidateConfig] of Object.entries(scenario.layout)) {
+    const delta = scenario.delta[id] ?? {};
+    sourceElements.push(createFixtureElement(
+      id,
+      sourceConfig(candidateConfig, delta),
+      { changed: changedIds.has(id), evidenceIndex: changedOrder.get(id), view: 'source' },
+    ));
+    candidateElements.push(createFixtureElement(
+      id,
+      candidateConfig,
+      { changed: changedIds.has(id), evidenceIndex: changedOrder.get(id), view: 'candidate' },
+    ));
+  }
+
+  sourceCanvas.replaceChildren(...sourceElements);
+  candidateCanvas.replaceChildren(...candidateElements);
+}
+
 function renderList() {
   list.replaceChildren(...scenarios.map((scenario) => {
     const button = document.createElement('button');
@@ -49,7 +160,7 @@ function renderList() {
     button.className = `scenario-card${scenario.id === state.scenarioId ? ' active' : ''}`;
     button.dataset.scenario = scenario.id;
     button.setAttribute('aria-pressed', String(scenario.id === state.scenarioId));
-    button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>${scenario.changed} changes</span></span>`;
+    button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>gap ${formatMetric(scenario.gap)}</span><span>${scenario.changed} changes</span></span>`;
     button.addEventListener('click', () => {
       state = reducePrototypeState(state, { type: 'select-scenario', scenarioId: scenario.id });
       applyButton.textContent = 'Apply selected scenario';
@@ -81,6 +192,7 @@ function renderScenario() {
   tradeoff.textContent = scenario.tradeoff;
   evidenceState.textContent = scenario.status === 'complete' ? 'EVIDENCE COMPLETE' : scenario.status.toUpperCase();
   evidenceState.title = `CI-validated presentation projection for ${scenario.sourceSnapshotId} / ${scenario.target}`;
+  renderFixtureStage(scenario);
 }
 
 function renderCompare() {
