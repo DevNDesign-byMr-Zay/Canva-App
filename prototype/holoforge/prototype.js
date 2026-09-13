@@ -37,6 +37,7 @@ const candidateCanvas = document.querySelector('#candidateCanvas');
 const applyButton = document.querySelector('#applyButton');
 const evidenceState = document.querySelector('#evidenceState');
 const stageViewport = document.querySelector('#stageViewport');
+const stageAnnouncement = document.querySelector('#stageAnnouncement');
 
 let state = createPrototypeState(scenarios[0].id);
 
@@ -49,6 +50,14 @@ function formatMetric(value) {
 function shortFingerprint(value) {
   if (typeof value !== 'string' || value.length < 16) return '—';
   return `${value.slice(0, 8)}…${value.slice(-8)}`;
+}
+
+function currentScenario() {
+  return scenarios.find((scenario) => scenario.id === state.scenarioId);
+}
+
+function announce(message) {
+  stageAnnouncement.textContent = message;
 }
 
 function visualKind(id) {
@@ -131,16 +140,20 @@ function renderFixtureStage(scenario) {
 
   for (const [id, candidateConfig] of Object.entries(scenario.layout)) {
     const delta = scenario.delta[id] ?? {};
-    sourceElements.push(createFixtureElement(
-      id,
-      reconstructSourceConfig(candidateConfig, delta),
-      { changed: changedIds.has(id), evidenceIndex: changedOrder.get(id), view: 'source' },
-    ));
-    candidateElements.push(createFixtureElement(
-      id,
-      candidateConfig,
-      { changed: changedIds.has(id), evidenceIndex: changedOrder.get(id), view: 'candidate' },
-    ));
+    sourceElements.push(
+      createFixtureElement(id, reconstructSourceConfig(candidateConfig, delta), {
+        changed: changedIds.has(id),
+        evidenceIndex: changedOrder.get(id),
+        view: 'source',
+      }),
+    );
+    candidateElements.push(
+      createFixtureElement(id, candidateConfig, {
+        changed: changedIds.has(id),
+        evidenceIndex: changedOrder.get(id),
+        view: 'candidate',
+      }),
+    );
   }
 
   sourceCanvas.replaceChildren(...sourceElements);
@@ -148,10 +161,18 @@ function renderFixtureStage(scenario) {
 }
 
 function selectScenario(scenarioId, { focus = false } = {}) {
-  if (scenarioId === state.scenarioId && !focus) return;
+  const changed = scenarioId !== state.scenarioId;
+  if (!changed && !focus) return;
   state = reducePrototypeState(state, { type: 'select-scenario', scenarioId });
   applyButton.textContent = 'Apply selected scenario';
   render();
+
+  if (changed) {
+    const scenario = currentScenario();
+    announce(
+      `${scenario.title} loaded. ${scenario.changed} changes. ${scenario.status === 'complete' ? 'Evidence complete.' : `Evidence ${scenario.status}.`} Source unchanged.`,
+    );
+  }
 
   if (focus) {
     const activeButton = list.querySelector(`[data-scenario="${scenarioId}"]`);
@@ -160,28 +181,32 @@ function selectScenario(scenarioId, { focus = false } = {}) {
 }
 
 function renderList() {
-  list.replaceChildren(...scenarios.map((scenario) => {
-    const active = scenario.id === state.scenarioId;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `scenario-card${active ? ' active' : ''}`;
-    button.dataset.scenario = scenario.id;
-    button.setAttribute('aria-pressed', String(active));
-    if (active) button.setAttribute('aria-current', 'true');
-    button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>gap ${formatMetric(scenario.gap)}</span><span>${scenario.changed} changes</span></span>`;
-    button.addEventListener('click', () => selectScenario(scenario.id));
-    button.addEventListener('keydown', (event) => {
-      const nextId = resolveScenarioNavigation(scenarioIds, state.scenarioId, event.key);
-      if (nextId === state.scenarioId) return;
-      event.preventDefault();
-      selectScenario(nextId, { focus: true });
-    });
-    return button;
-  }));
+  list.replaceChildren(
+    ...scenarios.map((scenario) => {
+      const active = scenario.id === state.scenarioId;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `scenario-card${active ? ' active' : ''}`;
+      button.dataset.scenario = scenario.id;
+      button.setAttribute('role', 'radio');
+      button.setAttribute('aria-checked', String(active));
+      button.tabIndex = active ? 0 : -1;
+      if (active) button.setAttribute('aria-current', 'true');
+      button.innerHTML = `<strong>${scenario.title}</strong><span class="scenario-meta"><span class="score-badge">score ${formatMetric(scenario.score)}</span><span>gap ${formatMetric(scenario.gap)}</span><span>${scenario.changed} changes</span></span>`;
+      button.addEventListener('click', () => selectScenario(scenario.id));
+      button.addEventListener('keydown', (event) => {
+        const nextId = resolveScenarioNavigation(scenarioIds, state.scenarioId, event.key);
+        if (nextId === state.scenarioId) return;
+        event.preventDefault();
+        selectScenario(nextId, { focus: true });
+      });
+      return button;
+    }),
+  );
 }
 
 function renderScenario() {
-  const scenario = scenarios.find((item) => item.id === state.scenarioId);
+  const scenario = currentScenario();
   title.textContent = scenario.title;
   interpretation.textContent = scenario.interpretation;
   candidateScore.textContent = formatMetric(scenario.score);
@@ -200,7 +225,8 @@ function renderScenario() {
   constraintState.textContent = scenario.hardConstraintsPassed ? 'Passed' : 'Blocked';
   constraintState.classList.toggle('verified', scenario.hardConstraintsPassed);
   tradeoff.textContent = scenario.tradeoff;
-  evidenceState.textContent = scenario.status === 'complete' ? 'EVIDENCE COMPLETE' : scenario.status.toUpperCase();
+  evidenceState.textContent =
+    scenario.status === 'complete' ? 'EVIDENCE COMPLETE' : scenario.status.toUpperCase();
   evidenceState.title = `CI-validated presentation projection for ${scenario.sourceSnapshotId} / ${scenario.target}`;
   renderFixtureStage(scenario);
 }
@@ -251,8 +277,13 @@ function renderOverlays() {
 
 function renderSelection() {
   const selected = isScenarioSelected(state);
+  const scenario = currentScenario();
   candidate.style.outline = selected ? '2px solid rgba(210,169,74,.85)' : '';
   candidate.setAttribute('aria-pressed', String(selected));
+  candidate.setAttribute(
+    'aria-label',
+    `${scenario.title} candidate. ${scenario.changed} changed elements. ${selected ? 'Selected' : 'Not selected'} for prototype apply review.`,
+  );
   applyButton.disabled = !selected;
 }
 
@@ -269,6 +300,7 @@ document.querySelectorAll('[data-overlay]').forEach((button) => {
   button.addEventListener('click', () => {
     state = reducePrototypeState(state, { type: 'toggle-overlay', overlay: button.dataset.overlay });
     renderOverlays();
+    announce(`${button.textContent} overlay ${state.overlays[button.dataset.overlay] ? 'shown' : 'hidden'}.`);
   });
 });
 
@@ -279,6 +311,7 @@ document.querySelectorAll('[data-compare-preset]').forEach((button) => {
       preset: button.dataset.comparePreset,
     });
     renderCompare();
+    announce(`Compare view set to ${button.textContent}.`);
   });
 });
 
@@ -296,16 +329,27 @@ document.querySelector('#resetView').addEventListener('click', () => {
   state = reducePrototypeState(state, { type: 'reset-view' });
   renderCompare();
   renderDepth();
+  announce('Stage view reset to split comparison and default depth.');
 });
 
 function toggleCandidateSelection() {
   state = reducePrototypeState(state, { type: 'toggle-selection' });
   applyButton.textContent = 'Apply selected scenario';
   renderSelection();
+  announce(
+    isScenarioSelected(state)
+      ? `${currentScenario().title} selected for prototype apply review. Source remains unchanged.`
+      : 'Candidate selection cleared. Source remains unchanged.',
+  );
 }
 
 candidate.addEventListener('click', toggleCandidateSelection);
 candidate.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && isScenarioSelected(state)) {
+    event.preventDefault();
+    toggleCandidateSelection();
+    return;
+  }
   if (event.key !== 'Enter' && event.key !== ' ') return;
   event.preventDefault();
   toggleCandidateSelection();
@@ -315,6 +359,7 @@ applyButton.addEventListener('click', () => {
   if (!isScenarioSelected(state)) return;
   applyButton.textContent = 'Prototype only — source unchanged';
   applyButton.disabled = true;
+  announce('Prototype apply acknowledged. No Canva source mutation was performed.');
 });
 
 render();
