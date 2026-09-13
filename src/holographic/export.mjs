@@ -2,7 +2,7 @@ import { validateDisplayProfile } from './display-profiles.mjs';
 
 const EXPORT_SCHEMA = 'canva.holographic-export.v1';
 
-export function exportHolographicScene(scene, { format = 'json', target = 'simulator', displayProfile = 'default' } = {}) {
+export function exportHolographicScene(scene, { format = 'json', target = 'simulator', displayProfile = 'simulator' } = {}) {
   if (!scene || scene.schema !== 'holo.scene.v1') throw new TypeError('A holo.scene.v1 scene is required.');
   if (format !== 'json') throw new TypeError(`Unsupported holographic export format: ${format}`);
   const normalizedTarget = typeof target === 'string' ? target.trim() : '';
@@ -15,6 +15,7 @@ export function exportHolographicScene(scene, { format = 'json', target = 'simul
     target: normalizedTarget,
     displayProfile: profile.id,
     displayProfileSchema: profile.schema,
+    capabilities: profile.capabilities,
     scene,
   });
 
