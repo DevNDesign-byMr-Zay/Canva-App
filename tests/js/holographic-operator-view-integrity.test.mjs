@@ -33,25 +33,18 @@ test('operator view remains deterministic and carries solver comparison data', (
   assert.equal(validateHolographicOperatorView(first), true);
 });
 
-test('operator view carries the exact solver candidate count across multiple layers', () => {
+test('operator view counts only the canonical solverComparison layer', () => {
   const multiLayerScene = {
     ...scene,
     layers: {
       ...scene.layers,
-      solverComparison: undefined,
-      solverComparisonClassical: undefined,
+      solverComparisonSecondary: [{ candidate: 'untrusted-extra', objective: 99 }],
     },
-  };
-  multiLayerScene.layers = {
-    topology: scene.layers.topology,
-    attention: scene.layers.attention,
-    solverComparison: [{ candidate: 'classical-reference', objective: 1 }],
-    solverComparisonSecondary: [{ candidate: 'quantum-inspired', objective: 0.5 }],
   };
   const payload = buildHolographicCanvaPayload({ scene: multiLayerScene });
   const view = buildHolographicOperatorView({ payload });
-  assert.equal(view.comparison.candidateCount, 1);
-  assert.equal(view.comparison.candidates.length, 1);
+  assert.equal(view.comparison.candidateCount, scene.layers.solverComparison.length);
+  assert.deepEqual(view.comparison.candidates, scene.layers.solverComparison);
   assert.equal(validateHolographicOperatorView(view), true);
 });
 
