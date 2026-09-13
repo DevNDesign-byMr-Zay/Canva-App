@@ -7,40 +7,43 @@ import {
 } from '../../src/holoforge-canva-read-adapter.mjs';
 
 function page(overrides = {}) {
-  const elements = overrides.elements ?? [
-    {
-      type: 'text',
-      top: 120,
-      left: 80,
-      width: 420,
-      height: 90,
-      rotation: 0,
-      transparency: 1,
-      locked: false,
-    },
-    {
-      type: 'rect',
-      top: 260,
-      left: 120,
-      width: 320,
-      height: 180,
-      rotation: 2,
-      transparency: 0.85,
-      locked: true,
-    },
-  ];
+  const {
+    elements: elementValues = [
+      {
+        type: 'text',
+        top: 120,
+        left: 80,
+        width: 420,
+        height: 90,
+        rotation: 0,
+        transparency: 1,
+        locked: false,
+      },
+      {
+        type: 'rect',
+        top: 260,
+        left: 120,
+        width: 320,
+        height: 180,
+        rotation: 2,
+        transparency: 0.85,
+        locked: true,
+      },
+    ],
+    ...pageOverrides
+  } = overrides;
 
   return {
     type: 'absolute',
     id: 'page-001',
     locked: false,
     dimensions: { width: 1080, height: 1080 },
+    ...pageOverrides,
     elements: {
       toArray() {
-        return elements;
+        return elementValues;
       },
     },
-    ...overrides,
   };
 }
 
