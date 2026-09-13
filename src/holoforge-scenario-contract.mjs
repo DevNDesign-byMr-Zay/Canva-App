@@ -36,9 +36,28 @@ function unsignedScenario(scenario) {
   return clone;
 }
 
+function optimizationProblemDefinition(scenario) {
+  return {
+    sourceSnapshotFingerprint: scenario.source?.snapshotFingerprint ?? null,
+    objective: {
+      id: scenario.intent?.objectiveId ?? null,
+      direction: scenario.intent?.objectiveDirection ?? null,
+    },
+    constraints: {
+      hard: scenario.constraints?.hard ?? [],
+      soft: scenario.constraints?.soft ?? [],
+    },
+  };
+}
+
 export function computeScenarioFingerprint(scenario) {
   if (!isObject(scenario)) throw new TypeError('scenario must be an object');
   return digest(unsignedScenario(scenario));
+}
+
+export function computeOptimizationFingerprint(scenario) {
+  if (!isObject(scenario)) throw new TypeError('scenario must be an object');
+  return digest(optimizationProblemDefinition(scenario));
 }
 
 export function computeObjectiveGap({ direction, candidateScore, baselineScore }) {
@@ -57,7 +76,9 @@ export function buildScenarioEnvelope(input = {}) {
   scenario.provenance = {
     ...(isObject(scenario.provenance) ? scenario.provenance : {}),
     scenarioFingerprint: '',
+    optimizationFingerprint: '',
   };
+  scenario.provenance.optimizationFingerprint = computeOptimizationFingerprint(scenario);
   scenario.provenance.scenarioFingerprint = computeScenarioFingerprint(scenario);
   return Object.freeze(scenario);
 }
@@ -139,6 +160,12 @@ function collectStructuralReasons(scenario) {
       if (Math.abs(expectedGap - evidence.objectiveGap) > Number.EPSILON * 16) {
         reasons.push('objective gap does not match measured scores');
       }
+    }
+
+    const optimizationFingerprint = scenario.provenance?.optimizationFingerprint;
+    if (!HEX_64.test(optimizationFingerprint ?? '')) reasons.push('invalid optimization fingerprint');
+    else if (optimizationFingerprint !== computeOptimizationFingerprint(scenario)) {
+      reasons.push('optimization problem provenance mismatch');
     }
   }
 
