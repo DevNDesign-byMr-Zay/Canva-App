@@ -47,6 +47,24 @@ test('replay boundary rejects invalid inputs before mutating the rendered conver
   assert.deepEqual(events, []);
 });
 
+test('replay validates the complete record list before clearing existing conversation DOM', () => {
+  const events = [];
+  const chatInner = validTarget(events);
+
+  assert.throws(
+    () => replayAuthenticatedV115Conversation(
+      [
+        { role: 'user', content: 'safe first record' },
+        { role: 'system', content: 'invalid later record' },
+      ],
+      { chatInner, renderers: validRenderers(events) },
+    ),
+    /records\[1\]\.role must be user or assistant/,
+  );
+
+  assert.deepEqual(events, []);
+});
+
 test('replay boundary resets once before dispatching records in persisted order', () => {
   const events = [];
   const handles = replayAuthenticatedV115Conversation(
