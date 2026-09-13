@@ -47,24 +47,25 @@ export function replayAuthenticatedV115Conversation(
     'renderers.renderPersistedAssistantMessage',
   );
 
-  resetChatInner(chatInner);
-
-  const handles = [];
   for (const [index, record] of records.entries()) {
     if (!record || typeof record !== 'object' || Array.isArray(record)) {
       throw new TypeError(`records[${index}] must be an object`);
     }
 
+    if (record.role !== 'user' && record.role !== 'assistant') {
+      throw new TypeError(`records[${index}].role must be user or assistant`);
+    }
+  }
+
+  resetChatInner(chatInner);
+
+  const handles = [];
+  for (const record of records) {
     if (record.role === 'user') {
       handles.push(renderPersistedUserMessage(record, { chatInner }));
       continue;
     }
-    if (record.role === 'assistant') {
-      handles.push(renderPersistedAssistantMessage(record, { chatInner }));
-      continue;
-    }
-
-    throw new TypeError(`records[${index}].role must be user or assistant`);
+    handles.push(renderPersistedAssistantMessage(record, { chatInner }));
   }
 
   return handles;
