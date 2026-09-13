@@ -6,6 +6,14 @@ import {
   validateHolographicCanvaPayload,
 } from '../../src/holographic-scene-adapter.mjs';
 
+const EXPECTED_TARGETS = Object.freeze([
+  'holo-mat',
+  'projector',
+  'volumetric-3d',
+  'ar-vr',
+  'web-dashboard',
+]);
+
 const scene = {
   sceneVersion: 2,
   sceneId: 'scene-001',
@@ -45,8 +53,9 @@ test('rejects unsupported render targets', () => {
   assert.throws(() => buildHolographicCanvaPayload({ scene, target: 'actuator' }), /unsupported holographic target/);
 });
 
-test('supports every renderer-neutral holographic target', () => {
-  for (const target of TARGETS) {
+test('pins and supports every renderer-neutral holographic target', () => {
+  assert.deepEqual(TARGETS, EXPECTED_TARGETS);
+  for (const target of EXPECTED_TARGETS) {
     const payload = buildHolographicCanvaPayload({ scene, target });
     assert.equal(payload.target, target);
     assert.equal(validateHolographicCanvaPayload(payload), true, target);
@@ -79,7 +88,7 @@ test('rejects payloads whose content no longer matches the fingerprint', () => {
   assert.equal(validateHolographicCanvaPayload(payload), true);
 });
 
-test('fingerprint validation rejects tampering across every signed presentation field', () => {
+test('rejects tampering across the complete payload and safety contract', () => {
   const enrichedScene = {
     ...scene,
     proposal: { id: 'proposal-1', status: 'advisory' },
@@ -92,6 +101,11 @@ test('fingerprint validation rejects tampering across every signed presentation 
   });
 
   const tamperedCases = [
+    ['adapterVersion', { ...payload, adapterVersion: payload.adapterVersion + 1 }],
+    ['authoritativeSource', { ...payload, authoritativeSource: 'alternate-source' }],
+    ['designId', { ...payload, designId: 'design-2' }],
+    ['snapshotId', { ...payload, snapshotId: 'snapshot-tampered' }],
+    ['sceneIdentity', { ...payload, sceneIdentity: 'scene-tampered' }],
     ['proposal', { ...payload, proposal: { ...payload.proposal, status: 'approved' } }],
     ['metrics', { ...payload, metrics: { ...payload.metrics, confidence: 0.99 } }],
     [
@@ -116,13 +130,18 @@ test('fingerprint validation rejects tampering across every signed presentation 
       },
     ],
     ['target', { ...payload, target: 'holo-mat' }],
-    ['provenance', { ...payload, provenanceRef: 'experiment-tampered' }],
+    ['provenanceRef', { ...payload, provenanceRef: 'experiment-tampered' }],
     [
-      'authority',
-      {
-        ...payload,
-        safety: { ...payload.safety, authoritative: true },
-      },
+      'safety.authoritative',
+      { ...payload, safety: { ...payload.safety, authoritative: true } },
+    ],
+    [
+      'safety.physicalActuation',
+      { ...payload, safety: { ...payload.safety, physicalActuation: true } },
+    ],
+    [
+      'safety.provenanceRequired',
+      { ...payload, safety: { ...payload.safety, provenanceRequired: false } },
     ],
   ];
 
