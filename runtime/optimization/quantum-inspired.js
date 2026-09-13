@@ -13,11 +13,9 @@ function requireFiniteLinear(linear) {
 }
 
 export function scoreBinary(linear, bits) {
-  if (!Array.isArray(linear) || !Array.isArray(bits) || linear.length !== bits.length) {
+  requireFiniteLinear(linear);
+  if (!Array.isArray(bits) || linear.length !== bits.length) {
     throw new TypeError('linear coefficients and bits must have equal lengths.');
-  }
-  if (linear.some((coefficient) => !Number.isFinite(coefficient))) {
-    throw new TypeError('linear coefficients must be finite numbers.');
   }
   if (bits.some((bit) => bit !== 0 && bit !== 1)) {
     throw new TypeError('bits must contain only 0 or 1.');
