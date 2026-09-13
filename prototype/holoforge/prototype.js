@@ -1,9 +1,8 @@
+import { reconstructSourceConfig, projectDesignConfig } from './geometry.js';
 import { prototypeScenarios } from './scenarios.js';
 import { createPrototypeState, isScenarioSelected, reducePrototypeState } from './state.js';
 
 const scenarios = prototypeScenarios;
-const DESIGN_WIDTH = 600;
-const DESIGN_HEIGHT = 500;
 
 const list = document.querySelector('#scenarioList');
 const title = document.querySelector('#scenarioTitle');
@@ -44,17 +43,6 @@ function formatMetric(value) {
 function shortFingerprint(value) {
   if (typeof value !== 'string' || value.length < 16) return '—';
   return `${value.slice(0, 8)}…${value.slice(-8)}`;
-}
-
-function sourceConfig(candidateConfig, delta = {}) {
-  const candidateScale = Number.isFinite(candidateConfig.scale) ? candidateConfig.scale : 1;
-  return {
-    ...candidateConfig,
-    x: candidateConfig.x - (delta.x ?? 0),
-    y: candidateConfig.y - (delta.y ?? 0),
-    z: (candidateConfig.z ?? 0) - (delta.z ?? 0),
-    scale: candidateScale - (delta.scale ?? 0),
-  };
 }
 
 function visualKind(id) {
@@ -99,6 +87,7 @@ function appendVisualContent(node, id, kind) {
 
 function createFixtureElement(id, config, { changed = false, evidenceIndex = null, view }) {
   const kind = visualKind(id);
+  const projected = projectDesignConfig(config);
   const element = document.createElement('div');
   element.className = `fixture-element fixture-${kind}`;
   element.dataset.elementId = id;
@@ -106,10 +95,9 @@ function createFixtureElement(id, config, { changed = false, evidenceIndex = nul
   if (config.locked === true) element.classList.add('locked');
   if (changed) element.classList.add('changed');
 
-  element.style.left = `${(config.x / DESIGN_WIDTH) * 100}%`;
-  element.style.top = `${(config.y / DESIGN_HEIGHT) * 100}%`;
-  const scale = Number.isFinite(config.scale) ? config.scale : 1;
-  element.style.transform = `translate(-50%,-50%) translateZ(${(config.z ?? 0) * 2}px) scale(${scale})`;
+  element.style.left = `${projected.leftPercent}%`;
+  element.style.top = `${projected.topPercent}%`;
+  element.style.transform = `translate(-50%,-50%) translateZ(${projected.z * 2}px) scale(${projected.scale})`;
   appendVisualContent(element, id, kind);
 
   if (config.locked === true) {
@@ -139,7 +127,7 @@ function renderFixtureStage(scenario) {
     const delta = scenario.delta[id] ?? {};
     sourceElements.push(createFixtureElement(
       id,
-      sourceConfig(candidateConfig, delta),
+      reconstructSourceConfig(candidateConfig, delta),
       { changed: changedIds.has(id), evidenceIndex: changedOrder.get(id), view: 'source' },
     ));
     candidateElements.push(createFixtureElement(
