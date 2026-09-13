@@ -15,6 +15,7 @@
   "exports": {
     ".": "./src/holographic-scene-adapter.mjs",
     "./holographic-scene": "./src/holographic-scene-adapter.mjs",
-    "./holographic-operator-view": "./src/holographic-operator-view.mjs"
+    "./holographic-operator-view": "./src/holographic-operator-view.mjs",
+    "./holoforge-canva-contract": "./src/holoforge-canva-contract.mjs"
   }
 }
