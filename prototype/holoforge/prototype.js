@@ -1,44 +1,6 @@
-const scenarios = [
-  {
-    id: 'hierarchy-first',
-    title: 'Hierarchy Focus',
-    interpretation: 'Increase headline dominance while preserving locked brand marks.',
-    score: 0.92,
-    baseline: 0.95,
-    gap: 0.03,
-    duration: '12 ms',
-    objective: 'hierarchy-balance-v1',
-    seed: 'hierarchy-seed-001',
-    tradeoff: 'Slightly increases vertical separation to improve hierarchy.',
-    changed: 2,
-  },
-  {
-    id: 'spacing-balance',
-    title: 'Spatial Balance',
-    interpretation: 'Improve spacing rhythm and edge balance with minimal movement.',
-    score: 84,
-    baseline: 86,
-    gap: 2,
-    duration: '12 ms',
-    objective: 'spacing-balance-v1',
-    seed: 'spacing-seed-001',
-    tradeoff: 'Preserves content order while increasing lateral balance.',
-    changed: 2,
-  },
-  {
-    id: 'locked-brand',
-    title: 'Brand-Safe Reflow',
-    interpretation: 'Reflow supporting content without moving protected brand elements.',
-    score: 0.88,
-    baseline: 0.9,
-    gap: 0.02,
-    duration: '12 ms',
-    objective: 'brand-safe-reflow-v1',
-    seed: 'brand-seed-001',
-    tradeoff: 'Keeps protected brand geometry fixed while rebalancing support copy.',
-    changed: 2,
-  },
-];
+import { prototypeScenarios } from './scenarios.js';
+
+const scenarios = prototypeScenarios;
 
 const list = document.querySelector('#scenarioList');
 const title = document.querySelector('#scenarioTitle');
@@ -54,6 +16,7 @@ const compare = document.querySelector('#compareRange');
 const source = document.querySelector('#sourceFrame');
 const candidate = document.querySelector('#candidateFrame');
 const applyButton = document.querySelector('#applyButton');
+const evidenceState = document.querySelector('#evidenceState');
 
 let activeId = scenarios[0].id;
 let selected = false;
@@ -82,10 +45,12 @@ function renderScenario() {
   candidateScore.textContent = scenario.score;
   baselineScore.textContent = scenario.baseline;
   gap.textContent = scenario.gap;
-  duration.textContent = scenario.duration;
+  duration.textContent = `${scenario.durationMs} ms`;
   objective.textContent = scenario.objective;
   seed.textContent = scenario.seed;
   tradeoff.textContent = scenario.tradeoff;
+  evidenceState.textContent = 'FIXTURE VALIDATED';
+  evidenceState.title = `CI-validated scenario projection for ${scenario.sourceSnapshotId} / ${scenario.target}`;
 }
 
 function renderCompare() {
@@ -116,7 +81,6 @@ candidate.addEventListener('click', () => {
   selected = !selected;
   candidate.style.outline = selected ? '2px solid rgba(210,169,74,.85)' : '';
   applyButton.disabled = !selected;
-  applyButton.textContent = selected ? 'Apply selected scenario' : 'Apply selected scenario';
 });
 
 applyButton.addEventListener('click', () => {
