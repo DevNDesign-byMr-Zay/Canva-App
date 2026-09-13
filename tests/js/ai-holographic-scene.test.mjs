@@ -8,7 +8,13 @@ const modelOutput = {
   sceneId: 'canva-scene-001',
   intent: 'Turn the poster into a floating presentation',
   target: 'volumetric-3d',
-  nodes: [{ id: 'title', kind: 'text', x: 1, y: 2, z: 3 }],
+  nodes: [{
+    id: 'title', kind: 'text', x: 1, y: 2, z: 3,
+    style: { emphasis: 'high' },
+    animation: { mode: 'float', durationMs: 1200, loop: true },
+    interaction: { action: 'focus', target: 'title' },
+  }],
+  attention: [{ priority: 1, severity: 'info', reason: 'Primary title', evidenceRef: 'design-receipt-001' }],
 };
 
 test('compiles structured AI output into an integrity-protected Canva payload', () => {
@@ -23,6 +29,10 @@ test('compiles structured AI output into an integrity-protected Canva payload', 
   assert.equal(payload.designId, 'canva-design-001');
   assert.equal(payload.layers[0].type, 'topology');
   assert.equal(payload.layers[0].data[0].position.z, 3);
+  assert.equal(payload.layers[0].data[0].style.emphasis, 'high');
+  assert.equal(payload.layers[0].data[0].animation.mode, 'float');
+  assert.equal(payload.layers[0].data[0].interaction.action, 'focus');
+  assert.equal(payload.attention[0].advisoryOnly, true);
   assert.equal(payload.safety.physicalActuation, false);
   assert.equal(validateHolographicCanvaPayload(payload), true);
 });
@@ -35,5 +45,33 @@ test('rejects unsupported AI-selected targets', () => {
       provenanceRef: 'receipt-001',
     }),
     /unsupported holographic target/,
+  );
+});
+
+test('rejects malformed animation semantics', () => {
+  assert.throws(
+    () => compileAiHolographicScene({
+      modelOutput: {
+        ...modelOutput,
+        nodes: [{ ...modelOutput.nodes[0], animation: { mode: 'float', durationMs: -1 } }],
+      },
+      snapshotId: 'snapshot-001',
+      provenanceRef: 'receipt-001',
+    }),
+    /durationMs/,
+  );
+});
+
+test('rejects malformed interaction semantics', () => {
+  assert.throws(
+    () => compileAiHolographicScene({
+      modelOutput: {
+        ...modelOutput,
+        nodes: [{ ...modelOutput.nodes[0], interaction: { action: '' } }],
+      },
+      snapshotId: 'snapshot-001',
+      provenanceRef: 'receipt-001',
+    }),
+    /interaction.action/,
   );
 });
