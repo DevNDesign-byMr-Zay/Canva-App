@@ -15,17 +15,17 @@ const scene = {
   sceneId: 'thergrid-scene-runtime-001',
   snapshotId: 'snapshot-runtime-001',
   rendererContract: { mode: 'renderer-neutral', authoritativeSource: 'thergrid-decision-receipt' },
-  layers: [
-    { id: 'topology', type: 'topology', data: { nodes: 3 } },
-    { id: 'solver-primary', type: 'solverComparison', data: [
+  layers: {
+    topology: { nodes: 3 },
+    solverComparison: [
       { id: 'classical', objective: 0.12, feasible: true, runtimeMs: 8 },
       { id: 'quantum-inspired', objective: 0.09, feasible: true, runtimeMs: 14 },
-    ] },
-  ],
-  attention: [
-    { id: 'a-low', priority: 1, severity: 'info', reason: 'Review forecast', evidenceRef: 'receipt-001', advisoryOnly: true },
-    { id: 'a-high', priority: 3, severity: 'warning', reason: 'Review constrained candidate', evidenceRef: 'solver-002', advisoryOnly: true },
-  ],
+    ],
+    attention: [
+      { id: 'a-low', priority: 1, severity: 'info', reason: 'Review forecast', evidenceRef: 'receipt-001', advisoryOnly: true },
+      { id: 'a-high', priority: 3, severity: 'warning', reason: 'Review constrained candidate', evidenceRef: 'solver-002', advisoryOnly: true },
+    ],
+  },
   provenanceRef: 'experiment-runtime-001',
   proposal: { id: 'proposal-001', status: 'advisory' },
   metrics: { balanceKw: 0, renewableShare: 0.72 },
