@@ -76,16 +76,18 @@ test('reads the current page without syncing or mutating Canva state', async () 
   assert.equal(snapshot.capabilities.read, true);
   assert.equal(snapshot.capabilities.apply, false);
   assert.equal(snapshot.page.elements.length, 2);
+  assert.equal(snapshot.page.elements[0].elementKey, 'element-0000');
+  assert.equal(snapshot.page.elements[1].elementKey, 'element-0001');
   assert.equal(Object.isFrozen(snapshot), true);
   assert.equal(Object.isFrozen(snapshot.page.elements), true);
 });
 
-test('produces the same source identity for equivalent page state', () => {
-  const first = buildCanvaCurrentPageSnapshot({
+test('produces the same source identity for equivalent page state', async () => {
+  const first = await buildCanvaCurrentPageSnapshot({
     verifiedDesignId: 'design-001',
     page: page(),
   });
-  const second = buildCanvaCurrentPageSnapshot({
+  const second = await buildCanvaCurrentPageSnapshot({
     verifiedDesignId: 'design-001',
     page: page(),
   });
@@ -95,12 +97,12 @@ test('produces the same source identity for equivalent page state', () => {
   assert.deepEqual(first.page, second.page);
 });
 
-test('changes snapshot identity when page geometry changes', () => {
-  const original = buildCanvaCurrentPageSnapshot({
+test('changes snapshot identity when page geometry changes', async () => {
+  const original = await buildCanvaCurrentPageSnapshot({
     verifiedDesignId: 'design-001',
     page: page(),
   });
-  const changed = buildCanvaCurrentPageSnapshot({
+  const changed = await buildCanvaCurrentPageSnapshot({
     verifiedDesignId: 'design-001',
     page: page({
       elements: [
@@ -122,7 +124,7 @@ test('changes snapshot identity when page geometry changes', () => {
   assert.notEqual(original.source.snapshotId, changed.source.snapshotId);
 });
 
-test('keeps the captured snapshot isolated from later caller mutation', () => {
+test('keeps the captured snapshot isolated from later caller mutation', async () => {
   const element = {
     type: 'rect',
     top: 10,
@@ -134,7 +136,7 @@ test('keeps the captured snapshot isolated from later caller mutation', () => {
     locked: false,
   };
   const currentPage = page({ elements: [element] });
-  const snapshot = buildCanvaCurrentPageSnapshot({
+  const snapshot = await buildCanvaCurrentPageSnapshot({
     verifiedDesignId: 'design-001',
     page: currentPage,
   });
@@ -148,22 +150,43 @@ test('keeps the captured snapshot isolated from later caller mutation', () => {
   assert.equal(snapshot.page.dimensions.width, 1080);
 });
 
-test('fails closed on unsupported or unbounded pages', () => {
-  assert.throws(
-    () =>
-      buildCanvaCurrentPageSnapshot({
-        verifiedDesignId: 'design-001',
-        page: { type: 'unsupported' },
-      }),
+test('captures locked and empty bounded pages as readable snapshots', async () => {
+  const snapshot = await buildCanvaCurrentPageSnapshot({
+    verifiedDesignId: 'design-001',
+    page: page({ locked: true, elements: [] }),
+  });
+
+  assert.equal(snapshot.page.locked, true);
+  assert.deepEqual(snapshot.page.elements, []);
+  assert.equal(snapshot.capabilities.read, true);
+  assert.equal(snapshot.capabilities.apply, false);
+});
+
+test('fails closed on unsupported or unbounded pages', async () => {
+  await assert.rejects(
+    buildCanvaCurrentPageSnapshot({
+      verifiedDesignId: 'design-001',
+      page: { type: 'unsupported' },
+    }),
     /not supported/,
   );
 
-  assert.throws(
-    () =>
-      buildCanvaCurrentPageSnapshot({
-        verifiedDesignId: 'design-001',
-        page: page({ dimensions: undefined }),
-      }),
+  await assert.rejects(
+    buildCanvaCurrentPageSnapshot({
+      verifiedDesignId: 'design-001',
+      page: page({ dimensions: undefined }),
+    }),
     /bounded dimensions/,
+  );
+});
+
+test('fails closed when browser SHA-256 support is unavailable', async () => {
+  await assert.rejects(
+    buildCanvaCurrentPageSnapshot({
+      verifiedDesignId: 'design-001',
+      page: page(),
+      cryptoApi: {},
+    }),
+    /Web Crypto SHA-256 support is required/,
   );
 });
