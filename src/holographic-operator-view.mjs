@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { validateHolographicCanvaPayload, TARGETS } from './holographic-scene-adapter.mjs';
 
-const VIEW_VERSION = 2;
+const VIEW_VERSION = 3;
 
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
@@ -45,8 +45,9 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     .sort((a, b) => a.priority - b.priority || severityRank(a.severity) - severityRank(b.severity) || a.id.localeCompare(b.id));
 
   const solverComparisonLayers = Array.isArray(value.layers)
-    ? value.layers.filter((layer) => layer.type === 'solverComparison')
+    ? value.layers.filter((layer) => layer.type === 'solverComparison' && Array.isArray(layer.data))
     : [];
+  const candidates = solverComparisonLayers.flatMap((layer) => layer.data);
 
   const view = {
     viewVersion: VIEW_VERSION,
@@ -59,8 +60,8 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     target: resolvedTarget,
     attention,
     comparison: {
-      candidateCount: solverComparisonLayers.length,
-      candidates: solverComparisonLayers.flatMap((layer) => Array.isArray(layer.data) ? layer.data : []),
+      candidateCount: candidates.length,
+      candidates,
       metrics: value.metrics ?? null,
     },
     presentation: {
@@ -86,6 +87,7 @@ export function validateHolographicOperatorView(view) {
       || !Array.isArray(value.attention)
       || !value.attention.every((item) => item.advisoryOnly === true)
       || !Array.isArray(value.comparison?.candidates)
+      || value.comparison.candidateCount !== value.comparison.candidates.length
       || value.presentation?.mode !== 'operator-advisory'
       || value.presentation?.interaction !== 'presentation-only'
       || value.presentation?.authoritative !== false
