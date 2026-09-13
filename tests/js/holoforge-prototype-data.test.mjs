@@ -16,9 +16,18 @@ function projectScenario(scenario) {
     durationMs: scenario.evidence.durationMs,
     objective: scenario.intent.objectiveId,
     seed: scenario.evidence.seed,
+    backend: scenario.evidence.backend,
+    algorithm: scenario.evidence.algorithm,
+    baselineBackend: scenario.evidence.baseline.backend,
+    baselineAlgorithm: scenario.evidence.baseline.algorithm,
+    status: scenario.evidence.status,
+    hardConstraintsPassed: scenario.evidence.hardConstraintsPassed,
     tradeoff: scenario.interpretation.tradeoffs[0] ?? '',
     changed: scenario.candidate.changedElementIds.length,
     sourceSnapshotId: scenario.source.snapshotId,
+    sourceSnapshotFingerprint: scenario.source.snapshotFingerprint,
+    optimizationFingerprint: scenario.provenance.optimizationFingerprint,
+    scenarioFingerprint: scenario.provenance.scenarioFingerprint,
     target: scenario.presentation.target,
   };
 }
@@ -32,6 +41,14 @@ test('browser prototype projection matches validated HoloForge fixtures exactly'
     prototypeScenarios.map((scenario) => ({ ...scenario })),
     holoforgeScenarioFixtures.map(projectScenario),
   );
+});
+
+test('prototype projection exposes problem and result identity separately', () => {
+  for (const scenario of prototypeScenarios) {
+    assert.match(scenario.optimizationFingerprint, /^[a-f0-9]{64}$/);
+    assert.match(scenario.scenarioFingerprint, /^[a-f0-9]{64}$/);
+    assert.notEqual(scenario.optimizationFingerprint, scenario.scenarioFingerprint);
+  }
 });
 
 test('prototype projection remains presentation-only', () => {
