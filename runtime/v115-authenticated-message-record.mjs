@@ -12,11 +12,16 @@ function requireRole(role) {
  */
 export function snapshotAuthenticatedV115Attachments(attachments = []) {
   if (!Array.isArray(attachments)) throw new TypeError('attachments must be an array');
-  return attachments.map((attachment = {}) => ({
-    name: attachment.name,
-    type: attachment.type,
-    size: attachment.size,
-  }));
+  return attachments.map((attachment, index) => {
+    if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) {
+      throw new TypeError(`attachments[${index}] must be an object`);
+    }
+    return {
+      name: attachment.name,
+      type: attachment.type,
+      size: attachment.size,
+    };
+  });
 }
 
 /**
