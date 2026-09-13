@@ -29,6 +29,8 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
   if (!TARGETS.includes(target)) throw new TypeError(`unsupported holographic target: ${target}`);
   const snapshotId = text(value.snapshotId, 'scene.snapshotId');
   const provenanceRef = text(value.provenanceRef, 'scene.provenanceRef');
+  const layers = object(value.layers, 'scene.layers');
+  const attentionItems = Array.isArray(layers.attention) ? layers.attention : [];
 
   const payload = {
     adapterVersion: ADAPTER_VERSION,
@@ -38,18 +40,18 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
     designId: designId == null ? null : text(designId, 'designId'),
     sceneIdentity: text(value.sceneId, 'scene.sceneId'),
     provenanceRef,
-    layers: Array.isArray(value.layers) ? value.layers.map((layer) => ({
-      id: text(layer.id ?? layer.type, 'layer.id'),
-      type: text(layer.type, 'layer.type'),
-      visible: layer.visible !== false,
-    })) : [],
-    attention: Array.isArray(value.attention) ? value.attention.map((item) => ({
-      priority: item.priority ?? 'normal',
-      severity: item.severity ?? 'info',
+    layers: Object.keys(layers).map((type) => ({
+      id: type,
+      type,
+      visible: type === 'alerts' || type === 'attention' ? layers[type].length > 0 : layers[type] === true,
+    })),
+    attention: attentionItems.map((item) => ({
+      priority: item.priority,
+      severity: text(item.severity, 'attention.severity'),
       reason: text(item.reason, 'attention.reason'),
-      evidenceRef: text(item.evidenceRef, 'attention.evidenceRef'),
+      evidenceRef: item.evidenceRef == null ? null : text(item.evidenceRef, 'attention.evidenceRef'),
       advisoryOnly: item.advisoryOnly === true,
-    })) : [],
+    })),
   };
 
   return Object.freeze({
