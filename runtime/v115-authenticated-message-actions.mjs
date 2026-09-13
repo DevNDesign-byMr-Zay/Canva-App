@@ -17,29 +17,19 @@ function pulse(button, schedule) {
 }
 
 function doublecheckPrompt(text) {
-  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.
-
-Response to check:
-${text}`;
+  return `Double-check the previous response for accuracy. If anything is off, correct it and cite sources when possible.\n\nResponse to check:\n${text}`;
 }
 
 function reportPrompt(text) {
-  return `Report: I think there may be an issue with the previous response.
-
-Describe the issue briefly and suggest a fix.
-
-Response:
-${text}`;
+  return `Report: I think there may be an issue with the previous response.\n\nDescribe the issue briefly and suggest a fix.\n\nResponse:\n${text}`;
 }
 
 /**
  * Maintained behavioral adapter for the mechanically authenticated v115 `gn`
  * assistant-action boundary.
  *
- * v115 delegates clicks from `.msg-actions-row` buttons and preserves these
- * actions: copy, share (with clipboard fallback), mutually exclusive
- * like/dislike state, regeneration from the preceding user prompt, and the
- * separately promoted More-drawer branch/double-check/export/report paths.
+ * Optional feedback is injected so UI hosts can show clear pending/success/error
+ * states without coupling the maintained adapter to a particular notification UI.
  */
 export function createAuthenticatedV115MessageActions({
   clipboardWrite,
@@ -55,125 +45,131 @@ export function createAuthenticatedV115MessageActions({
   persistConversations,
   renderConversationList,
   renderActiveConversation,
+  feedback,
 } = {}) {
   requireFunction(schedule, 'schedule');
   requireFunction(getPreviousUserText, 'getPreviousUserText');
   requireFunction(setPrompt, 'setPrompt');
   requireFunction(submit, 'submit');
+  if (feedback !== undefined) {
+    requireFunction(feedback.pending, 'feedback.pending');
+    requireFunction(feedback.success, 'feedback.success');
+    requireFunction(feedback.failure, 'feedback.failure');
+  }
   if (clipboardWrite !== undefined) requireFunction(clipboardWrite, 'clipboardWrite');
   if (share !== undefined) requireFunction(share, 'share');
   if (exportText !== undefined) requireFunction(exportText, 'exportText');
   if (resetConversation !== undefined) requireFunction(resetConversation, 'resetConversation');
   if (createConversation !== undefined) requireFunction(createConversation, 'createConversation');
-  if (getActiveConversation !== undefined) {
-    requireFunction(getActiveConversation, 'getActiveConversation');
-  }
-  if (persistConversations !== undefined) {
-    requireFunction(persistConversations, 'persistConversations');
-  }
-  if (renderConversationList !== undefined) {
-    requireFunction(renderConversationList, 'renderConversationList');
-  }
-  if (renderActiveConversation !== undefined) {
-    requireFunction(renderActiveConversation, 'renderActiveConversation');
-  }
+  if (getActiveConversation !== undefined) requireFunction(getActiveConversation, 'getActiveConversation');
+  if (persistConversations !== undefined) requireFunction(persistConversations, 'persistConversations');
+  if (renderConversationList !== undefined) requireFunction(renderConversationList, 'renderConversationList');
+  if (renderActiveConversation !== undefined) requireFunction(renderActiveConversation, 'renderActiveConversation');
+
+  const pending = (action) => feedback?.pending(action);
+  const success = (action) => feedback?.success(action);
+  const failure = (action) => feedback?.failure(action);
 
   async function perform({ action, text = '', button, row, wrap } = {}) {
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
+    pending(action);
 
-    if (action === 'copy') {
-      if (!clipboardWrite) throw new TypeError('clipboardWrite must be available for copy');
-      try {
+    try {
+      if (action === 'copy') {
+        if (!clipboardWrite) throw new TypeError('clipboardWrite must be available for copy');
         await clipboardWrite(text);
-      } catch {
+        pulse(button, schedule);
+        success(action);
         return { handled: true, action };
       }
-      pulse(button, schedule);
-      return { handled: true, action };
-    }
 
-    if (action === 'share') {
-      if (share) {
-        try {
+      if (action === 'share') {
+        if (share) {
           await share({ text });
-        } catch {
-          return { handled: true, action };
-        }
-      } else {
-        if (!clipboardWrite) {
-          throw new TypeError('clipboardWrite must be available when share is unavailable');
-        }
-        try {
+        } else {
+          if (!clipboardWrite) throw new TypeError('clipboardWrite must be available when share is unavailable');
           await clipboardWrite(text);
-        } catch {
-          return { handled: true, action };
+          pulse(button, schedule);
         }
-        pulse(button, schedule);
+        success(action);
+        return { handled: true, action };
       }
-      return { handled: true, action };
-    }
 
-    if (action === 'like' || action === 'dislike') {
-      const opposite = row?.querySelector?.(
-        action === 'like' ? '[data-act="dislike"]' : '[data-act="like"]',
-      );
-      button?.classList?.toggle('is-on');
-      opposite?.classList?.remove('is-on');
-      return { handled: true, action };
-    }
+      if (action === 'like' || action === 'dislike') {
+        const opposite = row?.querySelector?.(
+          action === 'like' ? '[data-act="dislike"]' : '[data-act="like"]',
+        );
+        button?.classList?.toggle('is-on');
+        opposite?.classList?.remove('is-on');
+        success(action);
+        return { handled: true, action };
+      }
 
-    const prompt = getPreviousUserText(wrap);
-    if (!prompt) return { handled: true, action, submitted: false };
-    setPrompt(prompt);
-    await submit();
-    return { handled: true, action, submitted: true, prompt };
+      const prompt = getPreviousUserText(wrap);
+      if (!prompt) {
+        success(action);
+        return { handled: true, action, submitted: false };
+      }
+      setPrompt(prompt);
+      await submit();
+      success(action);
+      return { handled: true, action, submitted: true, prompt };
+    } catch (error) {
+      failure(action);
+      return { handled: true, action, error };
+    }
   }
 
   async function performMore({ action, text = '', wrap } = {}) {
     if (!SUPPORTED_MORE_ACTIONS.has(action)) return { handled: false };
+    pending(action);
 
-    if (action === 'branch') {
-      requireFunction(resetConversation, 'resetConversation');
-      requireFunction(createConversation, 'createConversation');
-      requireFunction(getActiveConversation, 'getActiveConversation');
-      requireFunction(persistConversations, 'persistConversations');
-      requireFunction(renderConversationList, 'renderConversationList');
-      requireFunction(renderActiveConversation, 'renderActiveConversation');
+    try {
+      if (action === 'branch') {
+        requireFunction(resetConversation, 'resetConversation');
+        requireFunction(createConversation, 'createConversation');
+        requireFunction(getActiveConversation, 'getActiveConversation');
+        requireFunction(persistConversations, 'persistConversations');
+        requireFunction(renderConversationList, 'renderConversationList');
+        requireFunction(renderActiveConversation, 'renderActiveConversation');
 
-      const userText = getPreviousUserText(wrap) || '';
-      resetConversation();
-      try {
-        createConversation(userText, []);
-      } catch {}
+        const userText = getPreviousUserText(wrap) || '';
+        resetConversation();
+        try {
+          createConversation(userText, []);
+        } catch {}
 
-      const conversation = getActiveConversation();
-      if (conversation) {
-        if (userText) conversation.messages.push({ role: 'user', content: userText });
-        if (text) conversation.messages.push({ role: 'assistant', content: text });
-        persistConversations();
-        renderConversationList();
-        renderActiveConversation();
+        const conversation = getActiveConversation();
+        if (conversation) {
+          if (userText) conversation.messages.push({ role: 'user', content: userText });
+          if (text) conversation.messages.push({ role: 'assistant', content: text });
+          persistConversations();
+          renderConversationList();
+          renderActiveConversation();
+        }
+        success(action);
+        return { handled: true, action, branched: Boolean(conversation) };
       }
-      return { handled: true, action, branched: Boolean(conversation) };
-    }
 
-    if (action === 'export') {
-      if (!exportText) throw new TypeError('exportText must be available for export');
-      try {
+      if (action === 'export') {
+        if (!exportText) throw new TypeError('exportText must be available for export');
         await exportText(text, {
           filename: 'AETHER_response.txt',
           type: 'text/plain;charset=utf-8',
         });
-      } catch {
+        success(action);
         return { handled: true, action };
       }
-      return { handled: true, action };
-    }
 
-    const prompt = action === 'doublecheck' ? doublecheckPrompt(text) : reportPrompt(text);
-    setPrompt(prompt);
-    await submit();
-    return { handled: true, action, submitted: true, prompt };
+      const prompt = action === 'doublecheck' ? doublecheckPrompt(text) : reportPrompt(text);
+      setPrompt(prompt);
+      await submit();
+      success(action);
+      return { handled: true, action, submitted: true, prompt };
+    } catch (error) {
+      failure(action);
+      return { handled: true, action, error };
+    }
   }
 
   async function handleClick(event) {
@@ -201,29 +197,11 @@ export function createAuthenticatedV115MessageActions({
     if (!SUPPORTED_ACTIONS.has(action)) return { handled: false };
 
     event.stopPropagation?.();
-    return perform({
-      action,
-      text: messageText(assistant),
-      button,
-      row,
-      wrap,
-    });
+    return perform({ action, text: messageText(assistant), button, row, wrap });
   }
 
   return { perform, performMore, handleClick };
 }
 
-export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze([
-  'copy',
-  'share',
-  'like',
-  'dislike',
-  'regen',
-]);
-
-export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze([
-  'branch',
-  'doublecheck',
-  'export',
-  'report',
-]);
+export const AUTHENTICATED_V115_MESSAGE_ACTIONS = Object.freeze(['copy', 'share', 'like', 'dislike', 'regen']);
+export const AUTHENTICATED_V115_MORE_ACTIONS = Object.freeze(['branch', 'doublecheck', 'export', 'report']);
