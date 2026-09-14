@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { validateHolographicCanvaPayload, TARGETS } from './holographic-scene-adapter.mjs';
 
 const VIEW_VERSION = 4;
+const INTERACTION_ACTIONS = Object.freeze(['focus', 'select', 'inspect', 'activate', 'dismiss']);
 
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
@@ -103,7 +104,7 @@ export function validateHolographicOperatorView(view) {
       || !Array.isArray(value.attention)
       || !value.attention.every((item) => item.advisoryOnly === true)
       || !Array.isArray(value.interactions)
-      || !value.interactions.every((item) => item.advisoryOnly === true && item.physicalActuation === false && typeof item.action === 'string' && typeof item.target === 'string')
+      || !value.interactions.every((item) => item.advisoryOnly === true && item.physicalActuation === false && INTERACTION_ACTIONS.includes(item.action) && typeof item.target === 'string' && item.target.trim().length > 0)
       || !Array.isArray(value.comparison?.candidates)
       || value.comparison.candidateCount !== value.comparison.candidates.length
       || value.presentation?.mode !== 'operator-advisory'
@@ -117,4 +118,4 @@ export function validateHolographicOperatorView(view) {
   }
 }
 
-export { VIEW_VERSION };
+export { INTERACTION_ACTIONS, VIEW_VERSION };
