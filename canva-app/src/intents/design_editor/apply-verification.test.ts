@@ -9,6 +9,7 @@ import {
 import {
   computeOptimizationFingerprint,
   computeScenarioFingerprint,
+  hasCanonicalProvenance,
   sha256,
   type HoloForgeScenario,
 } from "./scenario-contract";
@@ -92,6 +93,11 @@ async function fixture() {
 }
 
 describe("HoloForge post-apply evidence", () => {
+  it("builds a fixture with canonical provenance before receipt creation", async () => {
+    const { scenario } = await fixture();
+    expect(await hasCanonicalProvenance(scenario)).toBe(true);
+  });
+
   it("projects the exact writable post-state without mutating the reviewed snapshot", async () => {
     const { snapshot, scenario } = await fixture();
     const before = structuredClone(snapshot);
