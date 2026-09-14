@@ -6,7 +6,12 @@ import {
   validateApplyVerificationReceipt,
   type VerificationDesignSnapshot,
 } from "./apply-verification";
-import { sha256, type HoloForgeScenario } from "./scenario-contract";
+import {
+  computeOptimizationFingerprint,
+  computeScenarioFingerprint,
+  sha256,
+  type HoloForgeScenario,
+} from "./scenario-contract";
 
 async function fixture() {
   const snapshot: VerificationDesignSnapshot = {
@@ -75,10 +80,13 @@ async function fixture() {
     interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
     presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
     provenance: {
-      scenarioFingerprint: "b".repeat(64),
-      optimizationFingerprint: "c".repeat(64),
+      scenarioFingerprint: "",
+      optimizationFingerprint: "",
     },
   };
+
+  scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+  scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
 
   return { snapshot, scenario };
 }
@@ -142,6 +150,21 @@ describe("HoloForge post-apply evidence", () => {
       authoritative: false,
       physicalActuation: false,
     });
+  });
+
+  it("rejects a receipt whose changed-element scope diverges from the scenario", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+
+    await expect(
+      createApplyVerificationReceipt({
+        scenario,
+        sourceFingerprint: snapshot.fingerprint,
+        expectedFingerprint,
+        resultingFingerprint: expectedFingerprint,
+        changedElementIds: ["element-2"],
+      }),
+    ).rejects.toThrow(/element scope does not match/);
   });
 
   it("rejects post-state mismatch and tampered authority evidence", async () => {

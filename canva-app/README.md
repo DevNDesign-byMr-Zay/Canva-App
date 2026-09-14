@@ -4,7 +4,7 @@ This directory is the Canva Apps SDK surface for HoloForge. It is intentionally 
 
 ## Product contract
 
-`Canva design → current snapshot → upstream scenario → evidence review → explicit apply`
+`Canva design → current snapshot → upstream scenario → evidence review → explicit apply → verified result`
 
 The Canva app owns:
 
@@ -14,12 +14,13 @@ The Canva app owns:
 - Context/capability detection.
 - Stale-snapshot protection.
 - Explicit, user-triggered write-back.
+- Post-apply verification of the expected live state.
 
 The Canva app does **not** own:
 
 - Scenario generation or optimization.
 - A second scenario/evidence schema.
-- Autonomous edits.
+- Autonomous edits or retry loops.
 - Persistence authority for historical artifacts.
 - Physical actuation or holographic control.
 
@@ -31,7 +32,8 @@ The Canva app does **not** own:
 - Uses `useFeatureSupport` so the app can fail gracefully when design editing is unavailable in the current Canva context.
 - Reads the current page through `openDesign({ type: "current_page" })` and checks for an absolute page with stable dimensions.
 - Applies all selected element changes inside one `openDesign` session and calls `sync()` once, producing one coherent Canva undo action.
-- Refuses to apply a scenario when the source snapshot fingerprint is stale, evidence is incomplete, hard constraints failed, provenance fingerprints are missing, the scenario is not advisory-only, or the target is unsupported.
+- Re-reads the live page after that sync inside the same design session and refuses to report success unless the resulting fingerprint equals the reviewed expected post-state.
+- Refuses to apply a scenario when the source snapshot fingerprint is stale, evidence is incomplete, hard constraints failed, provenance fingerprints are missing, the scenario is not advisory-only, the target is unsupported, or a requested transform is outside the stable Canva write set.
 
 ## Design identity trust boundary
 
@@ -46,6 +48,21 @@ The Canva Design Token is the intended bridge for backend identity verification.
 The app consumes the canonical HoloForge scenario envelope maintained outside this Canva-specific package. The envelope must provide source identity, snapshot provenance, candidate layout, evidence, and preview/apply safety gates.
 
 The browser-side gate intentionally does not generate or mutate scenario evidence. It checks the minimum conditions required before a user-selected scenario can reach Canva's write API. Full scenario provenance validation remains the upstream contract authority.
+
+## Post-apply verification receipt
+
+A successful Canva `sync()` is not treated as proof by itself. The write boundary first projects an expected post-state from the reviewed snapshot using only the supported writable transform set (`x`, `y`, and `rotation`). After the single user-triggered `sync()`, the live page is fingerprinted again and must exactly match that expected state.
+
+When it does, the app creates an immutable version-1 verification receipt containing:
+
+- scenario identity and canonical scenario fingerprint;
+- reviewed source fingerprint;
+- expected and resulting post-state fingerprints;
+- the unique changed-element identities;
+- a deterministic receipt fingerprint;
+- explicit safety markers proving user-triggered apply, no auto-apply, non-authoritative behavior, and no physical actuation.
+
+The receipt is evidence of the observed state transition, not a replacement for the upstream scenario contract. A postcondition mismatch clears the success state and requires a fresh read/review; there is no silent retry.
 
 ## Local development
 
