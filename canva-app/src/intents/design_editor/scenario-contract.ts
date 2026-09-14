@@ -117,6 +117,11 @@ export async function hasCanonicalProvenance(scenario: HoloForgeScenario): Promi
     && scenarioFingerprint === scenario.provenance.scenarioFingerprint;
 }
 
+export function hasUniqueChangedElementIds(scenario: HoloForgeScenario): boolean {
+  const ids = scenario.candidate.changedElementIds;
+  return new Set(ids).size === ids.length;
+}
+
 export function isSafeTransform(value: CanonicalCandidateElement): boolean {
   return [value.x, value.y, value.width, value.height, value.rotation, value.scale]
     .every((number) => number === undefined || Number.isFinite(number))

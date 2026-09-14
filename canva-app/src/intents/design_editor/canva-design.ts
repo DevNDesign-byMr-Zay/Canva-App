@@ -3,6 +3,7 @@ import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/de
 import {
   HEX_64,
   hasCanonicalProvenance,
+  hasUniqueChangedElementIds,
   isCanvaWritableTransform,
   sha256,
   type HoloForgeScenario,
@@ -115,6 +116,7 @@ export async function canApplyScenario(
   if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false || scenario.presentation.target !== "web-dashboard") return false;
   if (!scenario.intent?.objectiveId || !scenario.intent?.objectiveDirection) return false;
   if (!Array.isArray(scenario.candidate.changedElementIds) || scenario.candidate.changedElementIds.length === 0) return false;
+  if (!hasUniqueChangedElementIds(scenario)) return false;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return false;
 
   const knownIds = new Set(snapshot.elements.map(({ id }) => id));
