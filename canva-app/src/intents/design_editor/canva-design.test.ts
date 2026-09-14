@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  computeCanvaSnapshotFingerprint,
+} from "./canva-design";
+import {
   computeOptimizationFingerprint,
   computeScenarioFingerprint,
   hasCanonicalProvenance,
@@ -69,5 +72,59 @@ describe("canonical scenario provenance", () => {
     scenario.provenance.scenarioFingerprint = "not-a-sha256";
     scenario.provenance.optimizationFingerprint = "b".repeat(64);
     expect(await hasCanonicalProvenance(scenario)).toBe(false);
+  });
+});
+
+describe("Canva snapshot fingerprint", () => {
+  const base = {
+    designId: "design-1",
+    pageId: "page-1",
+    pageDimensions: { width: 1200, height: 800 },
+    elements: [{
+      id: "element-1",
+      type: "RECTANGLE",
+      top: 20,
+      left: 40,
+      width: 200,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    }],
+  } as const;
+
+  it("is deterministic for equivalent snapshots", async () => {
+    const first = await computeCanvaSnapshotFingerprint(base);
+    const second = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: base.elements.map((element) => ({ ...element })),
+    });
+    expect(first).toBe(second);
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("binds identity, geometry, and element order into the fingerprint", async () => {
+    const original = await computeCanvaSnapshotFingerprint(base);
+    const identityChanged = await computeCanvaSnapshotFingerprint({ ...base, designId: "design-2" });
+    const geometryChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: [{ ...base.elements[0], left: 41 }],
+    });
+    const orderChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: [
+        { ...base.elements[0], id: "element-2" },
+        { ...base.elements[0], id: "element-1", left: 10 },
+      ],
+    });
+
+    expect(identityChanged).not.toBe(original);
+    expect(geometryChanged).not.toBe(original);
+    expect(orderChanged).not.toBe(original);
+  });
+
+  it("normalizes an absent trusted design identity to null", async () => {
+    const withoutIdentity = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
+    const explicitNull = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
+    expect(withoutIdentity).toBe(explicitNull);
   });
 });
