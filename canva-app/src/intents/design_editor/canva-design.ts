@@ -87,7 +87,7 @@ async function sha256(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function snapshotElements(elements: SnapshotElementInput[]): CanvaElementSnapshot[] {
+function snapshotElements(elements: readonly SnapshotElementInput[]): CanvaElementSnapshot[] {
   return elements.map((element, index) => ({
     id: `element-${index + 1}`,
     type: element.type,
