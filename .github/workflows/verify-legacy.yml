@@ -50,6 +50,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Test maintained runtime adapter with coverage
         run: npm test
+      - name: Run diagnostic energy runtime demo
+        run: npm run demo:energy-runtime
 
   static-analysis:
     name: Ruff and mypy
