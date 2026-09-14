@@ -1,5 +1,9 @@
 import type { CanvaDesignSnapshot } from "./canva-design";
-import type { CanonicalCandidateElement, HoloForgeScenario } from "./scenario-contract";
+import {
+  isCanvaWritableTransform,
+  type CanonicalCandidateElement,
+  type HoloForgeScenario,
+} from "./scenario-contract";
 
 export type ScenarioElementReview = {
   elementId: string;
@@ -17,7 +21,7 @@ export type ScenarioElementReview = {
     height: number;
     rotation: number;
   };
-  changedFields: Array<"x" | "y" | "width" | "height" | "rotation" | "scale">;
+  changedFields: Array<"x" | "y" | "rotation">;
 };
 
 function projectTransform(
@@ -27,8 +31,8 @@ function projectTransform(
   return {
     top: transform.y ?? element.top,
     left: transform.x ?? element.left,
-    width: transform.scale === undefined ? (transform.width ?? element.width) : (transform.width ?? element.width) * transform.scale,
-    height: transform.scale === undefined ? (transform.height ?? element.height) : (transform.height ?? element.height) * transform.scale,
+    width: element.width,
+    height: element.height,
     rotation: transform.rotation ?? element.rotation,
   };
 }
@@ -42,11 +46,11 @@ export function buildScenarioReview(
   return scenario.candidate.changedElementIds.flatMap((elementId) => {
     const element = elements.get(elementId);
     const transform = scenario.candidate.layout.elements[elementId];
-    if (!element || !transform) return [];
+    if (!element || !transform || !isCanvaWritableTransform(transform)) return [];
 
     const changedFields = (Object.keys(transform) as Array<keyof CanonicalCandidateElement>)
-      .filter((field): field is "x" | "y" | "width" | "height" | "rotation" | "scale" =>
-        ["x", "y", "width", "height", "rotation", "scale"].includes(field));
+      .filter((field): field is "x" | "y" | "rotation" =>
+        ["x", "y", "rotation"].includes(field));
 
     return [{
       elementId,
