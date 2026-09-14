@@ -99,9 +99,11 @@ export async function computeOptimizationFingerprint(scenario: HoloForgeScenario
 }
 
 export async function computeScenarioFingerprint(scenario: HoloForgeScenario): Promise<string> {
-  const unsigned = structuredClone(scenario) as HoloForgeScenario;
-  delete unsigned.provenance.scenarioFingerprint;
-  return sha256(unsigned);
+  const unsigned = structuredClone(scenario);
+  const provenance = Object.fromEntries(
+    Object.entries(unsigned.provenance).filter(([key]) => key !== "scenarioFingerprint"),
+  );
+  return sha256({ ...unsigned, provenance });
 }
 
 export async function hasCanonicalProvenance(scenario: HoloForgeScenario): Promise<boolean> {
@@ -119,4 +121,12 @@ export function isSafeTransform(value: CanonicalCandidateElement): boolean {
   return [value.x, value.y, value.width, value.height, value.rotation, value.scale]
     .every((number) => number === undefined || Number.isFinite(number))
     && (value.scale === undefined || value.scale > 0);
+}
+
+export function isCanvaWritableTransform(value: CanonicalCandidateElement): boolean {
+  return isSafeTransform(value)
+    && value.width === undefined
+    && value.height === undefined
+    && value.scale === undefined
+    && value.locked === undefined;
 }
