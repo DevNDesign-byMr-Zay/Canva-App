@@ -99,7 +99,10 @@ export async function computeOptimizationFingerprint(scenario: HoloForgeScenario
 }
 
 export async function computeScenarioFingerprint(scenario: HoloForgeScenario): Promise<string> {
-  const unsigned = structuredClone(scenario) as HoloForgeScenario;
+  const unsigned = structuredClone(scenario) as unknown as {
+    provenance: Record<string, string>;
+    [key: string]: unknown;
+  };
   delete unsigned.provenance.scenarioFingerprint;
   return sha256(unsigned);
 }
@@ -111,12 +114,16 @@ export async function hasCanonicalProvenance(scenario: HoloForgeScenario): Promi
     computeOptimizationFingerprint(scenario),
     computeScenarioFingerprint(scenario),
   ]);
-  return optimizationFingerprint === scenario.provenance.optimizationFingerprint
-    && scenarioFingerprint === scenario.provenance.scenarioFingerprint;
+  return (
+    optimizationFingerprint === scenario.provenance.optimizationFingerprint &&
+    scenarioFingerprint === scenario.provenance.scenarioFingerprint
+  );
 }
 
 export function isSafeTransform(value: CanonicalCandidateElement): boolean {
-  return [value.x, value.y, value.width, value.height, value.rotation, value.scale]
-    .every((number) => number === undefined || Number.isFinite(number))
-    && (value.scale === undefined || value.scale > 0);
+  return (
+    [value.x, value.y, value.width, value.height, value.rotation, value.scale].every(
+      (number) => number === undefined || Number.isFinite(number),
+    ) && (value.scale === undefined || value.scale > 0)
+  );
 }
