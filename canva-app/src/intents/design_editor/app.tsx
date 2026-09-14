@@ -2,7 +2,7 @@ import { Alert, Button, Rows, Text, Title } from "@canva/app-ui-kit";
 import { useFeatureSupport } from "@canva/app-hooks";
 import { openDesign } from "@canva/design";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   applyScenario,
@@ -20,10 +20,12 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
   const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [scenarioVerified, setScenarioVerified] = useState(false);
 
   const refresh = useCallback(async () => {
     setStatus("reading");
     setMessage(null);
+    setScenarioVerified(false);
 
     try {
       setSnapshot(await readCurrentDesignSnapshot());
@@ -37,7 +39,19 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
     }
   }, [intl]);
 
-  const readyToApply = designEditingSupported && canApplyScenario(scenario, snapshot);
+  useEffect(() => {
+    let cancelled = false;
+    setScenarioVerified(false);
+    if (!scenario || !snapshot || !designEditingSupported) return () => { cancelled = true; };
+
+    void canApplyScenario(scenario, snapshot).then((safe) => {
+      if (!cancelled) setScenarioVerified(safe);
+    });
+
+    return () => { cancelled = true; };
+  }, [designEditingSupported, scenario, snapshot]);
+
+  const readyToApply = designEditingSupported && scenarioVerified;
 
   const apply = useCallback(async () => {
     if (!scenario || !snapshot || !readyToApply) return;
@@ -53,8 +67,10 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
         description: "Confirmation after applying one selected HoloForge scenario to Canva.",
       }, { count: result.changedElementIds.length }));
       setSnapshot(await readCurrentDesignSnapshot());
+      setScenarioVerified(false);
     } catch (error) {
       setStatus("error");
+      setScenarioVerified(false);
       setMessage(error instanceof Error ? error.message : intl.formatMessage({
         defaultMessage: "The selected scenario could not be applied.",
         description: "Error shown when a selected HoloForge scenario fails to apply.",
@@ -143,7 +159,7 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
           {!readyToApply && (
             <Text>
               <FormattedMessage
-                defaultMessage="Apply stays locked until the scenario is verified, matches this snapshot, passes its gates, and is supported here."
+                defaultMessage="Apply stays locked until the canonical scenario provenance and current Canva snapshot are verified."
                 description="Explains why HoloForge keeps the apply action disabled."
               />
             </Text>
