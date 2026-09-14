@@ -1,5 +1,6 @@
 import { reconstructSourceConfig, projectDesignConfig } from './geometry.js';
 import { prototypeScenarios } from './scenarios.js';
+import { getPrototypeApplyState } from './scenario-gate.js';
 import {
   createPrototypeState,
   isScenarioSelected,
@@ -278,13 +279,19 @@ function renderOverlays() {
 function renderSelection() {
   const selected = isScenarioSelected(state);
   const scenario = currentScenario();
+  const gateState = getPrototypeApplyState(scenario, {
+    selectedScenarioId: state.selectedScenarioId,
+    currentSnapshotFingerprint: scenario.sourceSnapshotFingerprint,
+    explicitApply: true,
+  });
   candidate.style.outline = selected ? '2px solid rgba(210,169,74,.85)' : '';
   candidate.setAttribute('aria-pressed', String(selected));
   candidate.setAttribute(
     'aria-label',
     `${scenario.title} candidate. ${scenario.changed} changed elements. ${selected ? 'Selected' : 'Not selected'} for prototype apply review.`,
   );
-  applyButton.disabled = !selected;
+  applyButton.disabled = !gateState.canApply;
+  applyButton.title = gateState.canApply ? 'Ready for explicit prototype acknowledgement.' : `Blocked: ${gateState.blockReason}`;
 }
 
 function render() {
