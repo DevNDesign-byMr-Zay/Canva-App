@@ -16,6 +16,7 @@ from archive_verifier.materializer import (
     TARGET_SHA256,
     TARGET_SOURCE_FILENAME_SHA256,
     AuthenticatedV115Identity,
+    _atomic_write_bytes,
     extract_authenticated_v115,
     materialize,
     provenance_json_text,
@@ -136,6 +137,37 @@ def test_materialize_writes_exact_authenticated_bytes(tmp_path: Path) -> None:
     output = materialize(tmp_path / "app" / "index.html")
     assert output.exists()
     assert hashlib.sha256(output.read_bytes()).hexdigest() == TARGET_SHA256
+
+
+def test_atomic_write_replaces_existing_file_only_after_verified_bytes(tmp_path: Path) -> None:
+    output = tmp_path / "app" / "index.html"
+    output.parent.mkdir()
+    output.write_bytes(b"known-good")
+
+    _atomic_write_bytes(output, b"replacement")
+
+    assert output.read_bytes() == b"replacement"
+    assert list(output.parent.glob(".index.html.*.tmp")) == []
+
+
+def test_atomic_write_preserves_destination_and_cleans_temp_on_replace_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "app" / "index.html"
+    output.parent.mkdir()
+    output.write_bytes(b"known-good")
+
+    def fail_replace(_source: object, _destination: object) -> None:
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr("archive_verifier.materializer.os.replace", fail_replace)
+
+    with pytest.raises(OSError, match="simulated replace failure"):
+        _atomic_write_bytes(output, b"replacement")
+
+    assert output.read_bytes() == b"known-good"
+    assert list(output.parent.glob(".index.html.*.tmp")) == []
 
 
 def test_provenance_identifies_exact_source_and_sha(tmp_path: Path) -> None:
