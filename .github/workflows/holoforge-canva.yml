@@ -14,7 +14,7 @@ on:
       - ".github/workflows/holoforge-canva.yml"
 
 jobs:
-  typecheck:
+  verify:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,3 +28,4 @@ jobs:
           cache-dependency-path: canva-app/package.json
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
+      - run: npm test
