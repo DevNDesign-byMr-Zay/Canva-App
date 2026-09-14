@@ -114,6 +114,22 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
   };
 }
 
+export function getReviewedElementBinding(
+  scenario: HoloForgeScenario,
+  snapshot: CanvaDesignSnapshot,
+): ReadonlyMap<string, CanvaElementSnapshot> | null {
+  if (!Array.isArray(scenario.candidate.changedElementIds) || !hasUniqueChangedElementIds(scenario)) return null;
+
+  const byId = new Map(snapshot.elements.map((element) => [element.id, element] as const));
+  const binding = new Map<string, CanvaElementSnapshot>();
+  for (const scenarioElementId of scenario.candidate.changedElementIds) {
+    const element = byId.get(scenarioElementId);
+    if (!element || !scenario.candidate.layout.elements[scenarioElementId]) return null;
+    binding.set(scenarioElementId, element);
+  }
+  return binding;
+}
+
 function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
   return scenario.candidate.changedElementIds.filter((id) => Boolean(scenario.candidate.layout.elements[id]));
 }
@@ -136,10 +152,11 @@ export async function canApplyScenario(
   if (!hasUniqueChangedElementIds(scenario)) return false;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return false;
 
-  const knownIds = new Set(snapshot.elements.map(({ id }) => id));
+  const binding = getReviewedElementBinding(scenario, snapshot);
+  if (!binding) return false;
   const changedIds = scenarioTransformIds(scenario);
   if (changedIds.length !== scenario.candidate.changedElementIds.length) return false;
-  if (!changedIds.every((id) => knownIds.has(id))) return false;
+  if (!changedIds.every((id) => binding.has(id))) return false;
   if (!changedIds.every((id) => isCanvaWritableTransform(scenario.candidate.layout.elements[id]))) return false;
 
   return hasCanonicalProvenance(scenario);
