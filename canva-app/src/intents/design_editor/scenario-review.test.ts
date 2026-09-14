@@ -21,7 +21,7 @@ const scenario: HoloForgeScenario = {
   constraints: { hard: [], soft: [] },
   candidate: {
     changedElementIds: ["element-1"],
-    layout: { elements: { "element-1": { x: 40, y: 30, width: 120, height: 90, rotation: 15, scale: 0.5 } } },
+    layout: { elements: { "element-1": { x: 40, y: 30, rotation: 15 } } },
     delta: { "element-1": { x: 20 } },
   },
   evidence: {
@@ -42,12 +42,12 @@ const scenario: HoloForgeScenario = {
 };
 
 describe("buildScenarioReview", () => {
-  it("projects the same geometry semantics used by apply", () => {
+  it("projects the same stable geometry semantics used by apply", () => {
     expect(buildScenarioReview(scenario, snapshot)).toEqual([{
       elementId: "element-1",
       before: { top: 10, left: 20, width: 100, height: 80, rotation: 5 },
-      after: { top: 30, left: 40, width: 60, height: 45, rotation: 15 },
-      changedFields: ["x", "y", "width", "height", "rotation", "scale"],
+      after: { top: 30, left: 40, width: 100, height: 80, rotation: 15 },
+      changedFields: ["x", "y", "rotation"],
     }]);
   });
 
@@ -56,5 +56,11 @@ describe("buildScenarioReview", () => {
     missing.candidate.changedElementIds = ["missing"];
     missing.candidate.layout.elements = { missing: { x: 1 } };
     expect(buildScenarioReview(missing, snapshot)).toEqual([]);
+  });
+
+  it("refuses to preview transforms the stable SDK cannot write", () => {
+    const unsupported = structuredClone(scenario);
+    unsupported.candidate.layout.elements["element-1"] = { x: 40, width: 120, scale: 1.2 };
+    expect(buildScenarioReview(unsupported, snapshot)).toEqual([]);
   });
 });
