@@ -13,20 +13,32 @@ on:
       - "canva-app/**"
       - ".github/workflows/holoforge-canva.yml"
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: canva-app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: canva-app/package.json
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible SDK install
+        run: npm ci --ignore-scripts
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: Reject high-severity tooling advisories
+        run: npm audit --audit-level=high
+      - name: Type-check Canva app
+        run: npm run typecheck
+      - name: Test Canva app
+        run: npm test
+      - name: Build Canva app
+        run: npm run build
