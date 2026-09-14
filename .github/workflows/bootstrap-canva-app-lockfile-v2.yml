@@ -1,0 +1,46 @@
+name: Refresh Canva app lockfile
+
+on:
+  push:
+    branches:
+      - "mrzay/canva-app-reproducible-install-v2"
+    paths:
+      - "canva-app/package.json"
+      - ".github/workflows/bootstrap-canva-app-lockfile-v2.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canva-app-lock-refresh-v2
+  cancel-in-progress: true
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: mrzay/canva-app-reproducible-install-v2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Resolve updated lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit updated lockfile
+        working-directory: .
+        run: |
+          if git diff --quiet -- canva-app/package-lock.json; then
+            echo "Canva app lockfile already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add canva-app/package-lock.json
+          git commit -m "build(canva-app): refresh locked SDK graph"
+          git pull --rebase origin mrzay/canva-app-reproducible-install-v2
+          git push origin HEAD:mrzay/canva-app-reproducible-install-v2
