@@ -1,21 +1,14 @@
 import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/design";
 
 import {
-  createApplyVerificationReceipt,
-  projectExpectedPostApplyFingerprint,
-  type ApplyVerificationReceipt,
-} from "./apply-verification";
-import {
   HEX_64,
   hasCanonicalProvenance,
-  hasUniqueChangedElementIds,
   isCanvaWritableTransform,
   sha256,
   type HoloForgeScenario,
 } from "./scenario-contract";
 
 export type { HoloForgeScenario } from "./scenario-contract";
-export type { ApplyVerificationReceipt } from "./apply-verification";
 
 export type CanvaElementSnapshot = {
   id: string;
@@ -122,7 +115,6 @@ export async function canApplyScenario(
   if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false || scenario.presentation.target !== "web-dashboard") return false;
   if (!scenario.intent?.objectiveId || !scenario.intent?.objectiveDirection) return false;
   if (!Array.isArray(scenario.candidate.changedElementIds) || scenario.candidate.changedElementIds.length === 0) return false;
-  if (!hasUniqueChangedElementIds(scenario)) return false;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return false;
 
   const knownIds = new Set(snapshot.elements.map(({ id }) => id));
@@ -147,13 +139,10 @@ async function currentFingerprint(page: ReadableAbsolutePage, designId: string):
 export async function applyScenario(
   scenario: HoloForgeScenario,
   snapshot: CanvaDesignSnapshot,
-): Promise<ApplyVerificationReceipt> {
+): Promise<{ scenarioId: string; changedElementIds: string[] }> {
   if (!(await canApplyScenario(scenario, snapshot))) {
     throw new Error("Scenario is not safe to apply: it is stale, incomplete, unsupported, or unverified.");
   }
-
-  const expectedPostFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
-  let verificationReceipt: ApplyVerificationReceipt | null = null;
 
   await openDesign({ type: "current_page" }, async (session) => {
     if (session.page.type !== "absolute" || session.page.locked || session.page.id !== snapshot.pageId) {
@@ -182,19 +171,7 @@ export async function applyScenario(
       if (transform.rotation !== undefined) element.rotation = transform.rotation;
     }
     await session.sync();
-
-    const resultingFingerprint = await currentFingerprint(session.page, snapshot.designId!);
-    verificationReceipt = await createApplyVerificationReceipt({
-      scenario,
-      sourceFingerprint: snapshot.fingerprint,
-      expectedFingerprint: expectedPostFingerprint,
-      resultingFingerprint,
-      changedElementIds: scenario.candidate.changedElementIds,
-    });
   });
 
-  if (!verificationReceipt) {
-    throw new Error("Canva apply completed without verifiable post-apply evidence.");
-  }
-  return verificationReceipt;
+  return { scenarioId: scenario.scenarioId, changedElementIds: [...scenario.candidate.changedElementIds] };
 }

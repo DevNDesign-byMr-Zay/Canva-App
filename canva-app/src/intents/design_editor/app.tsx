@@ -8,7 +8,6 @@ import {
   applyScenario,
   canApplyScenario,
   readCurrentDesignSnapshot,
-  type ApplyVerificationReceipt,
   type CanvaDesignSnapshot,
 } from "./canva-design";
 import { buildScenarioReview } from "./scenario-review";
@@ -29,7 +28,6 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
-  const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
 
   const refreshLabel = intl.formatMessage({
     defaultMessage: "Read current design",
@@ -44,7 +42,6 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     setStatus("reading");
     setMessage(null);
     setScenarioVerified(false);
-    setReceipt(null);
 
     try {
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
@@ -82,22 +79,19 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
 
     setStatus("applying");
     setMessage(null);
-    setReceipt(null);
 
     try {
       const result = await applyScenario(scenario, snapshot);
-      setReceipt(result);
       setStatus("done");
       setMessage(intl.formatMessage({
-        defaultMessage: "Applied {count, number} selected change(s) and verified the resulting Canva state.",
-        description: "Confirmation after applying and verifying one selected HoloForge scenario in Canva.",
+        defaultMessage: "Applied {count, number} selected change(s) as one Canva undo action.",
+        description: "Confirmation after applying one selected HoloForge scenario to Canva.",
       }, { count: result.changedElementIds.length }));
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setScenarioVerified(false);
     } catch (error) {
       setStatus("error");
       setScenarioVerified(false);
-      setReceipt(null);
       setMessage(error instanceof Error ? error.message : intl.formatMessage({
         defaultMessage: "The selected scenario could not be applied.",
         description: "Error shown when a selected HoloForge scenario fails to apply.",
@@ -108,7 +102,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   return (
     <Rows spacing="2u">
       <Title>
-        <FormattedMessage defaultMessage="HoloForge" description="Name of the HoloForge Canva app." />
+        <FormattedMessage
+          defaultMessage="HoloForge"
+          description="Name of the HoloForge Canva app."
+        />
       </Title>
 
       <Text>
@@ -130,7 +127,13 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       {message && <Alert tone={status === "error" ? "critical" : "positive"}>{message}</Alert>}
 
       <Rows spacing="1u">
-        <Button variant="secondary" onClick={refresh} loading={status === "reading"} disabled={status === "applying"} stretch>
+        <Button
+          variant="secondary"
+          onClick={refresh}
+          loading={status === "reading"}
+          disabled={status === "applying"}
+          stretch
+        >
           {refreshLabel}
         </Button>
 
@@ -185,7 +188,13 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             </Rows>
           )}
 
-          <Button variant="primary" onClick={apply} loading={status === "applying"} disabled={!readyToApply || status === "reading"} stretch>
+          <Button
+            variant="primary"
+            onClick={apply}
+            loading={status === "applying"}
+            disabled={!readyToApply || status === "reading"}
+            stretch
+          >
             {applyLabel}
           </Button>
           {!readyToApply && (
@@ -204,38 +213,6 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             description="Explains that scenario generation happens upstream and HoloForge is not an autonomous solver."
           />
         </Alert>
-      )}
-
-      {receipt && (
-        <Rows spacing="0.5u">
-          <Title>
-            <FormattedMessage
-              defaultMessage="Verified result"
-              description="Heading for the post-apply verification receipt shown after a successful apply."
-            />
-          </Title>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Scenario {id} · {count, number} changed element(s) · post-apply state matched the reviewed expectation."
-              description="Summarizes the immutable verification receipt after apply."
-              values={{ id: receipt.scenarioId, count: receipt.changedElementIds.length }}
-            />
-          </Text>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Expected {expected} · Result {result}"
-              description="Shows the expected and resulting state fingerprints from the verification receipt."
-              values={{ expected: `${receipt.expectedFingerprint.slice(0, 12)}…`, result: `${receipt.resultingFingerprint.slice(0, 12)}…` }}
-            />
-          </Text>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Receipt {fingerprint} · explicit apply · no auto-apply"
-              description="Shows the receipt fingerprint and its safety posture."
-              values={{ fingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…` }}
-            />
-          </Text>
-        </Rows>
       )}
     </Rows>
   );
