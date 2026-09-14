@@ -1,6 +1,11 @@
 import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/design";
 
 import {
+  createApplyVerificationReceipt,
+  projectExpectedPostApplyFingerprint,
+  type ApplyVerificationReceipt,
+} from "./apply-verification";
+import {
   HEX_64,
   hasCanonicalProvenance,
   hasUniqueChangedElementIds,
@@ -10,6 +15,7 @@ import {
 } from "./scenario-contract";
 
 export type { HoloForgeScenario } from "./scenario-contract";
+export type { ApplyVerificationReceipt } from "./apply-verification";
 
 export type CanvaElementSnapshot = {
   id: string;
@@ -141,10 +147,13 @@ async function currentFingerprint(page: ReadableAbsolutePage, designId: string):
 export async function applyScenario(
   scenario: HoloForgeScenario,
   snapshot: CanvaDesignSnapshot,
-): Promise<{ scenarioId: string; changedElementIds: string[] }> {
+): Promise<ApplyVerificationReceipt> {
   if (!(await canApplyScenario(scenario, snapshot))) {
     throw new Error("Scenario is not safe to apply: it is stale, incomplete, unsupported, or unverified.");
   }
+
+  const expectedPostFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+  let verificationReceipt: ApplyVerificationReceipt | null = null;
 
   await openDesign({ type: "current_page" }, async (session) => {
     if (session.page.type !== "absolute" || session.page.locked || session.page.id !== snapshot.pageId) {
@@ -173,7 +182,19 @@ export async function applyScenario(
       if (transform.rotation !== undefined) element.rotation = transform.rotation;
     }
     await session.sync();
+
+    const resultingFingerprint = await currentFingerprint(session.page, snapshot.designId!);
+    verificationReceipt = await createApplyVerificationReceipt({
+      scenario,
+      sourceFingerprint: snapshot.fingerprint,
+      expectedFingerprint: expectedPostFingerprint,
+      resultingFingerprint,
+      changedElementIds: scenario.candidate.changedElementIds,
+    });
   });
 
-  return { scenarioId: scenario.scenarioId, changedElementIds: [...scenario.candidate.changedElementIds] };
+  if (!verificationReceipt) {
+    throw new Error("Canva apply completed without verifiable post-apply evidence.");
+  }
+  return verificationReceipt;
 }
