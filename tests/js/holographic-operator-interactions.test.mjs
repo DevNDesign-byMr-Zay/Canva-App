@@ -5,13 +5,27 @@ import { buildHolographicOperatorView, validateHolographicOperatorView } from '.
 
 test('operator view carries Canva interactions as presentation-only controls', () => {
   const payload = buildHolographicCanvaPayload({
-    sceneVersion: 2,
-    designId: 'design-interactions',
-    snapshotId: 'snapshot-interactions',
-    sceneIdentity: 'scene-interactions',
-    provenanceRef: 'prov-interactions',
+    scene: {
+      sceneVersion: 2,
+      snapshotId: 'snapshot-interactions',
+      sceneId: 'scene-interactions',
+      provenanceRef: 'prov-interactions',
+      rendererContract: { authoritativeSource: 'thergrid-decision-receipt' },
+      layers: {
+        topology: [
+          {
+            id: 'node-1',
+            canvaElementId: 'button-1',
+            role: 'button',
+            interaction: { action: 'select', target: 'button-1' },
+          },
+        ],
+      },
+      proposal: null,
+      metrics: null,
+    },
     target: 'holo-mat',
-    topology: [{ id: 'node-1', canvaElementId: 'button-1', role: 'button', interaction: { action: 'select', target: 'button-1' }, x: 0, y: 0, z: 1 }],
+    designId: 'design-interactions',
   });
   const view = buildHolographicOperatorView({ payload });
   assert.equal(view.interactions.length, 1);
