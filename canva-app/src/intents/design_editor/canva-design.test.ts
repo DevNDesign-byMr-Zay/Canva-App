@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeCanvaSnapshotFingerprint,
+  getReviewedElementBinding,
 } from "./canva-design";
 import {
   computeOptimizationFingerprint,
@@ -126,5 +127,38 @@ describe("Canva snapshot fingerprint", () => {
     const withoutIdentity = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
     const explicitNull = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
     expect(withoutIdentity).toBe(explicitNull);
+  });
+});
+
+describe("reviewed element binding", () => {
+  const snapshot = {
+    designId: "design-1",
+    pageId: "page-1",
+    pageType: "absolute" as const,
+    pageDimensions: { width: 1200, height: 800 },
+    elements: [
+      { id: "element-1", type: "RECTANGLE", top: 20, left: 40, width: 200, height: 100, rotation: 0, locked: false },
+      { id: "element-2", type: "TEXT", top: 60, left: 80, width: 300, height: 50, rotation: 0, locked: false },
+    ],
+    fingerprint,
+  };
+
+  it("binds canonical changed-element keys only to the reviewed snapshot", async () => {
+    const binding = getReviewedElementBinding(await signedScenario(), snapshot);
+    expect(binding?.get("element-1")).toBe(snapshot.elements[0]);
+    expect(binding?.size).toBe(1);
+  });
+
+  it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
+    const scenario = await signedScenario();
+    scenario.candidate.changedElementIds = ["element-3"];
+    scenario.candidate.layout.elements["element-3"] = { x: 90 };
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed when duplicate changed-element keys are supplied", async () => {
+    const scenario = await signedScenario();
+    scenario.candidate.changedElementIds = ["element-1", "element-1"];
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
   });
 });
