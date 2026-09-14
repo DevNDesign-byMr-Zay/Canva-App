@@ -2,7 +2,6 @@ import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/de
 
 import {
   HEX_64,
-  computeScenarioFingerprint,
   hasCanonicalProvenance,
   isSafeTransform,
   sha256,
