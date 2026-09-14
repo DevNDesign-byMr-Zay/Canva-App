@@ -6,7 +6,8 @@ import { createMeasurementReceipt } from '../../packages/holoforge/measurement-r
 
 test('measurement receipt compares candidate against exact reference', () => {
   const graph = createSpatialGraph({
-    nodes: [
+    designRef: 'measurement-test-design',
+    elements: [
       { id: 'a', x: 0, y: 0, width: 20, height: 20, z: 0 },
       { id: 'b', x: 10, y: 10, width: 20, height: 20, z: 0 },
     ],
@@ -23,7 +24,7 @@ test('measurement receipt compares candidate against exact reference', () => {
 });
 
 test('exact reference remains deterministic', () => {
-  const graph = createSpatialGraph({ nodes: [{ id: 'a', x: 0, y: 0, width: 10, height: 10, z: 2 }] });
+  const graph = createSpatialGraph({ designRef: 'measurement-test-design', elements: [{ id: 'a', x: 0, y: 0, width: 10, height: 10, z: 2 }] });
   const qubo = buildPlacementQubo(graph);
   const first = createMeasurementReceipt({ qubo, seed: 1, iterations: 8, durationMs: 0 });
   const second = createMeasurementReceipt({ qubo, seed: 1, iterations: 8, durationMs: 0 });
