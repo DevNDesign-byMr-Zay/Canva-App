@@ -36,6 +36,7 @@ test('public interaction mapper preserves advisory interaction semantics', () =>
     designId: 'design-1',
   });
   const interactions = mapCanvaHolographicInteractions(payload);
+  assert.equal(interactions.length, 1);
   assert.deepEqual(interactions[0], {
     canvaElementId: 'el-1',
     target: 'el-1',
