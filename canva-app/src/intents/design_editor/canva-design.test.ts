@@ -1,39 +1,20 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { canApplyScenario, type CanvaDesignSnapshot } from "./canva-design";
+import {
+  computeOptimizationFingerprint,
+  computeScenarioFingerprint,
+  hasCanonicalProvenance,
+  type HoloForgeScenario,
+} from "./scenario-contract";
 
 const fingerprint = "a".repeat(64);
 
-const snapshot: CanvaDesignSnapshot = {
-  designId: "design-1",
-  pageId: "page-1",
-  pageType: "absolute",
-  pageDimensions: { width: 1000, height: 800 },
-  elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 100, rotation: 0, locked: false }],
-  fingerprint,
-};
-
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>).sort().map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
-    );
-  }
-  return value;
-}
-
-function digest(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonical(value)), "utf8").digest("hex");
-}
-
-function buildScenario() {
-  const scenario = {
-    contractVersion: 1 as const,
+function buildScenario(): HoloForgeScenario {
+  return {
+    contractVersion: 1,
     scenarioId: "scenario-1",
     source: { designId: "design-1", snapshotId: "snapshot-1", pageIds: ["page-1"], snapshotFingerprint: fingerprint },
-    intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" as const },
+    intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" },
     constraints: { hard: [{ id: "keep-element", elementId: "element-1" }], soft: [{ id: "spacing", weight: 0.4 }] },
     candidate: {
       changedElementIds: ["element-1"],
@@ -53,58 +34,40 @@ function buildScenario() {
       warnings: [],
     },
     interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
-    presentation: { advisoryOnly: true as const, autoApply: false as const, target: "web-dashboard" as const },
+    presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
     provenance: { scenarioFingerprint: "", optimizationFingerprint: "" },
   };
+}
 
-  scenario.provenance.optimizationFingerprint = digest({
-    sourceSnapshotFingerprint: scenario.source.snapshotFingerprint,
-    objective: { id: scenario.intent.objectiveId, direction: scenario.intent.objectiveDirection },
-    constraints: {
-      hard: scenario.constraints.hard.map(canonical).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
-      soft: scenario.constraints.soft.map(canonical).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
-    },
-  });
-  const unsigned = structuredClone(scenario);
-  delete unsigned.provenance.scenarioFingerprint;
-  scenario.provenance.scenarioFingerprint = digest(unsigned);
+async function signedScenario(): Promise<HoloForgeScenario> {
+  const scenario = buildScenario();
+  scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+  scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
   return scenario;
 }
 
-describe("canApplyScenario", () => {
-  it("accepts a canonical scenario bound to the current design", async () => {
-    expect(await canApplyScenario(buildScenario(), snapshot)).toBe(true);
+describe("canonical scenario provenance", () => {
+  it("accepts a correctly signed canonical scenario", async () => {
+    expect(await hasCanonicalProvenance(await signedScenario())).toBe(true);
   });
 
-  it("rejects a scenario when the Canva design identity is not trusted", async () => {
-    expect(await canApplyScenario(buildScenario(), { ...snapshot, designId: undefined })).toBe(false);
-  });
-
-  it("rejects a scenario from another Canva design", async () => {
-    const scenario = buildScenario();
-    scenario.source.designId = "design-2";
-    expect(await canApplyScenario(scenario, snapshot)).toBe(false);
-  });
-
-  it("rejects stale snapshots", async () => {
-    const scenario = buildScenario();
-    scenario.source.snapshotFingerprint = "d".repeat(64);
-    expect(await canApplyScenario(scenario, snapshot)).toBe(false);
-  });
-
-  it("rejects tampered canonical provenance", async () => {
-    const scenario = buildScenario();
+  it("rejects tampered evidence", async () => {
+    const scenario = await signedScenario();
     scenario.evidence.objectiveScore = 0.1;
-    expect(await canApplyScenario(scenario, snapshot)).toBe(false);
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
   });
 
-  it("rejects non-advisory or automatic scenarios", async () => {
-    const advisory = buildScenario();
-    advisory.presentation.advisoryOnly = false as never;
-    expect(await canApplyScenario(advisory, snapshot)).toBe(false);
+  it("rejects a tampered optimization input", async () => {
+    const scenario = await signedScenario();
+    scenario.constraints.soft = [{ id: "spacing", weight: 0.9 }];
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+  });
 
-    const automatic = buildScenario();
-    automatic.presentation.autoApply = true as never;
-    expect(await canApplyScenario(automatic, snapshot)).toBe(false);
+  it("rejects missing or malformed fingerprints", async () => {
+    const scenario = buildScenario();
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+    scenario.provenance.scenarioFingerprint = "not-a-sha256";
+    scenario.provenance.optimizationFingerprint = "b".repeat(64);
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
   });
 });
