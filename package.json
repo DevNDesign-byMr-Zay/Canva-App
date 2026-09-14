@@ -18,6 +18,7 @@
     "./holographic-operator-view": "./src/holographic-operator-view.mjs",
     "./ai-holographic-scene": "./src/ai-holographic-scene.mjs",
     "./holographic-roundtrip": "./src/holographic-scene-roundtrip.mjs",
-    "./holographic-roundtrip-view": "./src/holographic-roundtrip-view.mjs"
+    "./holographic-roundtrip-view": "./src/holographic-roundtrip-view.mjs",
+    "./holographic-interaction-map": "./src/holographic-interaction-map.mjs"
   }
 }
