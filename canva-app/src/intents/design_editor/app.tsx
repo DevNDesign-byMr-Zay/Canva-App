@@ -25,9 +25,20 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
-  const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">(
+    "idle",
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
+
+  const readDesignLabel = intl.formatMessage({
+    defaultMessage: "Read current design",
+    description: "Button that captures the current Canva design snapshot for scenario comparison.",
+  });
+  const applyScenarioLabel = intl.formatMessage({
+    defaultMessage: "Apply selected scenario",
+    description: "Explicit action to apply the selected HoloForge scenario to the Canva design.",
+  });
 
   const refresh = useCallback(async () => {
     setStatus("reading");
@@ -39,23 +50,33 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       setStatus("idle");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "We couldn't read the current Canva design.",
-        description: "Error shown when HoloForge cannot read the current Canva design.",
-      }));
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "We couldn't read the current Canva design.",
+              description: "Error shown when HoloForge cannot read the current Canva design.",
+            }),
+      );
     }
   }, [intl, trustedDesignId]);
 
   useEffect(() => {
     let cancelled = false;
     setScenarioVerified(false);
-    if (!scenario || !snapshot || !designEditingSupported) return () => { cancelled = true; };
+    if (!scenario || !snapshot || !designEditingSupported) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void canApplyScenario(scenario, snapshot).then((safe) => {
       if (!cancelled) setScenarioVerified(safe);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [designEditingSupported, scenario, snapshot]);
 
   const review = useMemo(
@@ -74,19 +95,28 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     try {
       const result = await applyScenario(scenario, snapshot);
       setStatus("done");
-      setMessage(intl.formatMessage({
-        defaultMessage: "Applied {count, number} selected change(s) as one Canva undo action.",
-        description: "Confirmation after applying one selected HoloForge scenario to Canva.",
-      }, { count: result.changedElementIds.length }));
+      setMessage(
+        intl.formatMessage(
+          {
+            defaultMessage: "Applied {count, number} selected change(s) as one Canva undo action.",
+            description: "Confirmation after applying one selected HoloForge scenario to Canva.",
+          },
+          { count: result.changedElementIds.length },
+        ),
+      );
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setScenarioVerified(false);
     } catch (error) {
       setStatus("error");
       setScenarioVerified(false);
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "The selected scenario could not be applied.",
-        description: "Error shown when a selected HoloForge scenario fails to apply.",
-      }));
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "The selected scenario could not be applied.",
+              description: "Error shown when a selected HoloForge scenario fails to apply.",
+            }),
+      );
     }
   }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
 
@@ -107,7 +137,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       </Text>
 
       {!designEditingSupported && (
-        <Alert tone="warning">
+        <Alert tone="warn">
           <FormattedMessage
             defaultMessage="Design editing isn't supported in this Canva context. Preview remains read-only."
             description="Capability warning when Canva does not support design editing in the current context."
@@ -125,10 +155,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
           disabled={status === "applying"}
           stretch
         >
-          <FormattedMessage
-            defaultMessage="Read current design"
-            description="Button that captures the current Canva design snapshot for scenario comparison."
-          />
+          {readDesignLabel}
         </Button>
 
         <Text>
@@ -136,7 +163,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             <FormattedMessage
               defaultMessage="Snapshot ready · {count, number} element(s) · fingerprint {fingerprint}"
               description="Shows the current Canva snapshot state used for stale-scenario protection."
-              values={{ count: snapshot.elements.length, fingerprint: `${snapshot.fingerprint.slice(0, 12)}…` }}
+              values={{
+                count: snapshot.elements.length,
+                fingerprint: `${snapshot.fingerprint.slice(0, 12)}…`,
+              }}
             />
           ) : (
             <FormattedMessage
@@ -168,7 +198,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               </Text>
               {review.map(({ elementId, before, after, changedFields }) => (
                 <Text key={elementId}>
-                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
+                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×
+                  {after.top} {after.width}×{after.height} · {changedFields.join(", ")}
                 </Text>
               ))}
               {review.length === 0 && (
@@ -189,10 +220,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             disabled={!readyToApply || status === "reading"}
             stretch
           >
-            <FormattedMessage
-              defaultMessage="Apply selected scenario"
-              description="Explicit action to apply the selected HoloForge scenario to the Canva design."
-            />
+            {applyScenarioLabel}
           </Button>
           {!readyToApply && (
             <Text>
