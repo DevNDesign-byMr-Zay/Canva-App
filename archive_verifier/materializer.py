@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import tarfile
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -123,10 +125,31 @@ def extract_authenticated_v115(config: VerificationConfig | None = None) -> byte
     return data
 
 
+def _atomic_write_bytes(output_path: Path, data: bytes) -> None:
+    """Write a verified artifact without exposing a partially-written destination."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=output_path.parent,
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, output_path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def materialize(output_path: Path = OUTPUT_PATH) -> Path:
     data = extract_authenticated_v115()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(data)
+    _atomic_write_bytes(output_path, data)
     return output_path
 
 
