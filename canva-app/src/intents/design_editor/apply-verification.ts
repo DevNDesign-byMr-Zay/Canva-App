@@ -1,5 +1,6 @@
 import {
   HEX_64,
+  hasCanonicalProvenance,
   isCanvaWritableTransform,
   sha256,
   type HoloForgeScenario,
@@ -73,6 +74,10 @@ function deepFreeze<T>(value: T): T {
   return Object.freeze(value);
 }
 
+function sameElementScope(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
 export async function projectExpectedPostApplyFingerprint(
   snapshot: VerificationDesignSnapshot,
   scenario: HoloForgeScenario,
@@ -120,6 +125,12 @@ export async function createApplyVerificationReceipt({
   resultingFingerprint: string;
   changedElementIds: string[];
 }): Promise<ApplyVerificationReceipt> {
+  if (!(await hasCanonicalProvenance(scenario))) {
+    throw new TypeError("scenario provenance is not canonical");
+  }
+  if (!sameElementScope(changedElementIds, scenario.candidate.changedElementIds)) {
+    throw new TypeError("verification receipt element scope does not match the scenario");
+  }
   for (const [name, value] of Object.entries({
     scenarioFingerprint: scenario.provenance.scenarioFingerprint,
     sourceFingerprint,
