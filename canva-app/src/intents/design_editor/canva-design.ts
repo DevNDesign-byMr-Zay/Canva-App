@@ -42,7 +42,7 @@ type SnapshotFingerprintInput = {
   readonly designId?: string;
   readonly pageId: string;
   readonly pageDimensions: { readonly width: number; readonly height: number };
-  readonly elements: readonly CanvaElementSnapshot[];
+  readonly elements: readonly Readonly<CanvaElementSnapshot>[];
 };
 
 type ReadableAbsoluteElement = {
