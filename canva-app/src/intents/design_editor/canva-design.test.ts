@@ -29,6 +29,10 @@ describe("canApplyScenario", () => {
     expect(canApplyScenario(scenario, snapshot)).toBe(true);
   });
 
+  it("rejects a scenario when the Canva design identity is not trusted", () => {
+    expect(canApplyScenario(scenario, { ...snapshot, designId: undefined })).toBe(false);
+  });
+
   it("rejects a scenario from another Canva design", () => {
     expect(canApplyScenario({ ...scenario, source: { ...scenario.source, designId: "design-2" } }, snapshot)).toBe(false);
   });
