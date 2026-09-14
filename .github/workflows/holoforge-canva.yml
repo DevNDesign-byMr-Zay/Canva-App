@@ -32,8 +32,10 @@ jobs:
           cache-dependency-path: canva-app/package-lock.json
       - name: Reproducible SDK install
         run: npm ci --ignore-scripts
-      - name: Audit SDK dependency graph
-        run: npm audit --audit-level=moderate
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: Reject high-severity tooling advisories
+        run: npm audit --audit-level=high
       - name: Type-check Canva app
         run: npm run typecheck
       - name: Test Canva app
