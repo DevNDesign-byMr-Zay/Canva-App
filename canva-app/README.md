@@ -27,11 +27,19 @@ The Canva app does **not** own:
 
 - Uses the current Design Editor intent pattern with `prepareDesignEditor`.
 - Uses `AppUiProvider` and `AppI18nProvider` rather than custom editor chrome.
-- Uses GA `@canva/design` APIs only in this slice.
+- Uses the current supported `@canva/design` APIs in this slice.
 - Uses `useFeatureSupport` so the app can fail gracefully when design editing is unavailable in the current Canva context.
 - Reads the current page through `openDesign({ type: "current_page" })` and checks for an absolute page with stable dimensions.
 - Applies all selected element changes inside one `openDesign` session and calls `sync()` once, producing one coherent Canva undo action.
 - Refuses to apply a scenario when the source snapshot fingerprint is stale, evidence is incomplete, hard constraints failed, provenance fingerprints are missing, the scenario is not advisory-only, or the target is unsupported.
+
+## Design identity trust boundary
+
+`getDesignMetadata()` is used here for presentation metadata such as the design title; it is **not** treated as the source of truth for a design ID.
+
+A write-capable scenario must arrive with a design identity that has been trusted by the upstream integration. The browser snapshot accepts that identity through `readCurrentDesignSnapshot({ trustedDesignId })`; without it, the snapshot remains useful for read/preview work but `canApplyScenario()` fails closed.
+
+The Canva Design Token is the intended bridge for backend identity verification. The browser must not decode or verify the token itself. The integration should send the signed token to its backend, let the backend verify it and obtain the design ID, then provide that trusted identity alongside the canonical upstream scenario. This keeps authentication/authorization and scenario provenance out of the Canva UI layer.
 
 ## Scenario boundary
 
