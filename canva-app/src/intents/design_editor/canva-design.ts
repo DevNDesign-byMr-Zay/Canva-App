@@ -31,8 +31,55 @@ export type CanvaDesignSnapshot = {
   fingerprint: string;
 };
 
-export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
-  const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
+type SnapshotElementInput = {
+  type: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  rotation: number;
+  locked: boolean;
+};
+
+function snapshotElements(elements: readonly SnapshotElementInput[]): CanvaElementSnapshot[] {
+  return elements.map((element, index) => ({
+    id: `element-${index + 1}`,
+    type: element.type,
+    top: element.top,
+    left: element.left,
+    width: element.width,
+    height: element.height,
+    rotation: element.rotation,
+    locked: element.locked,
+  }));
+}
+
+async function fingerprintPage({
+  designId,
+  pageId,
+  pageDimensions,
+  elements,
+}: {
+  designId?: string;
+  pageId: string;
+  pageDimensions: { width: number; height: number };
+  elements: readonly CanvaElementSnapshot[];
+}): Promise<string> {
+  return sha256({
+    designId: designId ?? null,
+    pageId,
+    pageDimensions,
+    elements,
+  });
+}
+
+export async function readCurrentDesignSnapshot(
+  options: { trustedDesignId?: string } = {},
+): Promise<CanvaDesignSnapshot> {
+  const [{ title }, pageMetadata] = await Promise.all([
+    getDesignMetadata(),
+    getCurrentPageMetadata(),
+  ]);
   if (pageMetadata.type !== "absolute" || !pageMetadata.id || !pageMetadata.dimensions) {
     throw new Error("HoloForge currently requires an absolute Canva page with stable dimensions.");
   }
@@ -43,20 +90,11 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
     if (session.page.type !== "absolute" || session.page.id !== pageMetadata.id) {
       throw new Error("The current Canva page changed while HoloForge was reading it.");
     }
-    elements = session.page.elements.toArray().map((element) => ({
-      id: element.id,
-      type: element.type,
-      top: element.top,
-      left: element.left,
-      width: element.width,
-      height: element.height,
-      rotation: element.rotation,
-      locked: element.locked,
-    }));
+    elements = snapshotElements(session.page.elements.toArray());
   });
 
-  const fingerprint = await sha256({
-    designId: designId ?? null,
+  const fingerprint = await fingerprintPage({
+    designId,
     pageId: pageMetadata.id,
     pageDimensions: pageMetadata.dimensions,
     elements,
@@ -76,22 +114,44 @@ function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
   return scenario.candidate.changedElementIds.filter((id) => Boolean(scenario.candidate.layout.elements[id]));
 }
 
+function hasUnsupportedDimensionTransform(scenario: HoloForgeScenario): boolean {
+  return scenario.candidate.changedElementIds.some((id) => {
+    const transform = scenario.candidate.layout.elements[id];
+    return Boolean(
+      transform &&
+        (transform.width !== undefined ||
+          transform.height !== undefined ||
+          transform.scale !== undefined),
+    );
+  });
+}
+
 export async function canApplyScenario(
   scenario: HoloForgeScenario | null | undefined,
   snapshot: CanvaDesignSnapshot | null | undefined,
 ): Promise<boolean> {
   if (!scenario || !snapshot) return false;
   if (scenario.contractVersion !== 1) return false;
-  if (!snapshot.designId || !scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) return false;
+  if (!snapshot.designId || !scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) {
+    return false;
+  }
   if (scenario.source.designId !== snapshot.designId) return false;
   if (!Array.isArray(scenario.source.pageIds) || !scenario.source.pageIds.includes(snapshot.pageId)) return false;
   if (!HEX_64.test(scenario.source.snapshotFingerprint)) return false;
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) return false;
   if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true) return false;
-  if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false || scenario.presentation.target !== "web-dashboard") return false;
+  if (
+    scenario.presentation.advisoryOnly !== true ||
+    scenario.presentation.autoApply !== false ||
+    scenario.presentation.target !== "web-dashboard"
+  ) {
+    return false;
+  }
   if (!scenario.intent?.objectiveId || !scenario.intent?.objectiveDirection) return false;
   if (!Array.isArray(scenario.candidate.changedElementIds) || scenario.candidate.changedElementIds.length === 0) return false;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return false;
+  if (new Set(scenario.candidate.changedElementIds).size !== scenario.candidate.changedElementIds.length) return false;
+  if (hasUnsupportedDimensionTransform(scenario)) return false;
 
   const knownIds = new Set(snapshot.elements.map(({ id }) => id));
   const changedIds = scenarioTransformIds(scenario);
@@ -102,22 +162,15 @@ export async function canApplyScenario(
   return hasCanonicalProvenance(scenario);
 }
 
-async function currentFingerprint(session: { page: { type: string; id: string; dimensions?: { width: number; height: number }; elements: { toArray: () => Array<CanvaElementSnapshot> } } }, designId: string): Promise<string> {
-  const elements = session.page.elements.toArray().map((element) => ({
-    id: element.id,
-    type: element.type,
-    top: element.top,
-    left: element.left,
-    width: element.width,
-    height: element.height,
-    rotation: element.rotation,
-    locked: element.locked,
-  }));
-  return sha256({
-    designId,
-    pageId: session.page.id,
-    pageDimensions: session.page.dimensions,
-    elements,
+async function currentFingerprint(
+  elements: readonly SnapshotElementInput[],
+  snapshot: CanvaDesignSnapshot,
+): Promise<string> {
+  return fingerprintPage({
+    designId: snapshot.designId,
+    pageId: snapshot.pageId,
+    pageDimensions: snapshot.pageDimensions,
+    elements: snapshotElements(elements),
   });
 }
 
@@ -134,7 +187,8 @@ export async function applyScenario(
       throw new Error("The Canva page is no longer compatible with the selected scenario.");
     }
 
-    const liveFingerprint = await currentFingerprint(session, snapshot.designId!);
+    const liveElements = session.page.elements.toArray();
+    const liveFingerprint = await currentFingerprint(liveElements, snapshot);
     if (liveFingerprint !== scenario.source.snapshotFingerprint) {
       throw new Error("The Canva design changed after review. Read the current design again before applying.");
     }
@@ -142,7 +196,10 @@ export async function applyScenario(
       throw new Error("The selected scenario provenance no longer matches its canonical fingerprints.");
     }
 
-    const elements = new Map(session.page.elements.toArray().map((element) => [element.id, element]));
+    const liveSnapshots = snapshotElements(liveElements);
+    const elements = new Map(
+      liveSnapshots.map((elementSnapshot, index) => [elementSnapshot.id, liveElements[index]]),
+    );
     for (const elementId of scenario.candidate.changedElementIds) {
       const transform = scenario.candidate.layout.elements[elementId];
       const element = elements.get(elementId);
@@ -151,16 +208,13 @@ export async function applyScenario(
       }
       if (transform.x !== undefined) element.left = transform.x;
       if (transform.y !== undefined) element.top = transform.y;
-      if (transform.width !== undefined) element.width = transform.width;
-      if (transform.height !== undefined) element.height = transform.height;
-      if (transform.scale !== undefined) {
-        element.width *= transform.scale;
-        element.height *= transform.scale;
-      }
       if (transform.rotation !== undefined) element.rotation = transform.rotation;
     }
     await session.sync();
   });
 
-  return { scenarioId: scenario.scenarioId, changedElementIds: [...scenario.candidate.changedElementIds] };
+  return {
+    scenarioId: scenario.scenarioId,
+    changedElementIds: [...scenario.candidate.changedElementIds],
+  };
 }
