@@ -144,6 +144,21 @@ describe("HoloForge post-apply evidence", () => {
     });
   });
 
+  it("rejects a receipt whose changed-element scope diverges from the scenario", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+
+    await expect(
+      createApplyVerificationReceipt({
+        scenario,
+        sourceFingerprint: snapshot.fingerprint,
+        expectedFingerprint,
+        resultingFingerprint: expectedFingerprint,
+        changedElementIds: ["element-2"],
+      }),
+    ).rejects.toThrow(/element scope does not match/);
+  });
+
   it("rejects post-state mismatch and tampered authority evidence", async () => {
     const { snapshot, scenario } = await fixture();
     const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
