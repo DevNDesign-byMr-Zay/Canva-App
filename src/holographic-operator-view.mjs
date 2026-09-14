@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { validateHolographicCanvaPayload, TARGETS } from './holographic-scene-adapter.mjs';
 
-const VIEW_VERSION = 3;
+const VIEW_VERSION = 4;
 
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
@@ -44,6 +44,21 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     }))
     .sort((a, b) => a.priority - b.priority || severityRank(a.severity) - severityRank(b.severity) || a.id.localeCompare(b.id));
 
+  const interactions = [];
+  for (const layer of value.layers ?? []) {
+    if (!Array.isArray(layer.data)) continue;
+    for (const item of layer.data) {
+      if (!item?.interaction) continue;
+      interactions.push({
+        canvaElementId: item.canvaElementId ?? null,
+        target: item.interaction.target ?? item.canvaElementId ?? item.id,
+        action: item.interaction.action,
+        advisoryOnly: true,
+        physicalActuation: false,
+      });
+    }
+  }
+
   const solverComparisonLayers = Array.isArray(value.layers)
     ? value.layers.filter((layer) => layer.type === 'solverComparison' && Array.isArray(layer.data))
     : [];
@@ -59,6 +74,7 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     },
     target: resolvedTarget,
     attention,
+    interactions,
     comparison: {
       candidateCount: candidates.length,
       candidates,
@@ -86,6 +102,8 @@ export function validateHolographicOperatorView(view) {
       || !/^[a-f0-9]{64}$/.test(value.source?.payloadFingerprint)
       || !Array.isArray(value.attention)
       || !value.attention.every((item) => item.advisoryOnly === true)
+      || !Array.isArray(value.interactions)
+      || !value.interactions.every((item) => item.advisoryOnly === true && item.physicalActuation === false && typeof item.action === 'string' && typeof item.target === 'string')
       || !Array.isArray(value.comparison?.candidates)
       || value.comparison.candidateCount !== value.comparison.candidates.length
       || value.presentation?.mode !== 'operator-advisory'
