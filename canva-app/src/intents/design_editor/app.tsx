@@ -14,7 +14,13 @@ import { buildScenarioReview } from "./scenario-review";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
 
-export function App({ scenario = null }: { scenario?: AppScenario }) {
+type AppProps = {
+  scenario?: AppScenario;
+  /** Design ID returned by the trusted backend/token verification seam. */
+  trustedDesignId?: string;
+};
+
+export function App({ scenario = null, trustedDesignId }: AppProps) {
   const intl = useIntl();
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
@@ -29,7 +35,7 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
     setScenarioVerified(false);
 
     try {
-      setSnapshot(await readCurrentDesignSnapshot());
+      setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setStatus("idle");
     } catch (error) {
       setStatus("error");
@@ -38,7 +44,7 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
         description: "Error shown when HoloForge cannot read the current Canva design.",
       }));
     }
-  }, [intl]);
+  }, [intl, trustedDesignId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +78,7 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
         defaultMessage: "Applied {count, number} selected change(s) as one Canva undo action.",
         description: "Confirmation after applying one selected HoloForge scenario to Canva.",
       }, { count: result.changedElementIds.length }));
-      setSnapshot(await readCurrentDesignSnapshot());
+      setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setScenarioVerified(false);
     } catch (error) {
       setStatus("error");
@@ -82,7 +88,7 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
         description: "Error shown when a selected HoloForge scenario fails to apply.",
       }));
     }
-  }, [intl, readyToApply, scenario, snapshot]);
+  }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
 
   return (
     <Rows spacing="2u">
