@@ -3,14 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": {
-    "node": "^22 || ^24"
-  },
+  "engines": { "node": "^22 || ^24" },
   "scripts": {
     "start": "npx @canva/cli apps start",
     "start:preview": "npx @canva/cli apps start --preview",
     "build": "npx @canva/cli apps build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@canva/app-hooks": "^0.0.0-beta.4",
@@ -27,6 +26,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@types/webpack-env": "^1.18.8",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }
