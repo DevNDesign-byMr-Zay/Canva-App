@@ -29,6 +29,15 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
 
+  const refreshLabel = intl.formatMessage({
+    defaultMessage: "Read current design",
+    description: "Button that captures the current Canva design snapshot for scenario comparison.",
+  });
+  const applyLabel = intl.formatMessage({
+    defaultMessage: "Apply selected scenario",
+    description: "Explicit action to apply the selected HoloForge scenario to the Canva design.",
+  });
+
   const refresh = useCallback(async () => {
     setStatus("reading");
     setMessage(null);
@@ -107,7 +116,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       </Text>
 
       {!designEditingSupported && (
-        <Alert tone="warning">
+        <Alert tone="warn">
           <FormattedMessage
             defaultMessage="Design editing isn't supported in this Canva context. Preview remains read-only."
             description="Capability warning when Canva does not support design editing in the current context."
@@ -125,10 +134,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
           disabled={status === "applying"}
           stretch
         >
-          <FormattedMessage
-            defaultMessage="Read current design"
-            description="Button that captures the current Canva design snapshot for scenario comparison."
-          />
+          {refreshLabel}
         </Button>
 
         <Text>
@@ -189,10 +195,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             disabled={!readyToApply || status === "reading"}
             stretch
           >
-            <FormattedMessage
-              defaultMessage="Apply selected scenario"
-              description="Explicit action to apply the selected HoloForge scenario to the Canva design."
-            />
+            {applyLabel}
           </Button>
           {!readyToApply && (
             <Text>
