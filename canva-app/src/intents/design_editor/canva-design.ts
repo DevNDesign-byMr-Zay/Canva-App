@@ -1,5 +1,16 @@
 import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/design";
 
+import {
+  HEX_64,
+  computeScenarioFingerprint,
+  hasCanonicalProvenance,
+  isSafeTransform,
+  sha256,
+  type HoloForgeScenario,
+} from "./scenario-contract";
+
+export type { HoloForgeScenario } from "./scenario-contract";
+
 export type CanvaElementSnapshot = {
   id: string;
   type: string;
@@ -20,123 +31,6 @@ export type CanvaDesignSnapshot = {
   elements: CanvaElementSnapshot[];
   fingerprint: string;
 };
-
-type CanonicalCandidateElement = {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  scale?: number;
-  locked?: boolean;
-};
-
-type HoloForgeScenario = {
-  contractVersion: 1;
-  scenarioId: string;
-  source: {
-    designId: string;
-    snapshotId: string;
-    pageIds: string[];
-    snapshotFingerprint: string;
-  };
-  intent: {
-    summary: string;
-    objectiveId: string;
-    objectiveDirection: "maximize" | "minimize";
-  };
-  constraints: { hard: unknown[]; soft: unknown[] };
-  candidate: {
-    layout: { elements: Record<string, CanonicalCandidateElement> };
-    changedElementIds: string[];
-    delta: Record<string, unknown>;
-  };
-  evidence: {
-    backend: string;
-    algorithm: string;
-    seed: string;
-    status: string;
-    objectiveScore: number;
-    baseline: { backend: string; algorithm: string; objectiveScore: number };
-    objectiveGap: number;
-    durationMs: number;
-    hardConstraintsPassed: boolean;
-    warnings: string[];
-  };
-  interpretation: {
-    producer: string;
-    label: string;
-    summary: string;
-    tradeoffs: string[];
-  };
-  presentation: {
-    advisoryOnly: true;
-    autoApply: false;
-    target: "web-dashboard";
-  };
-  provenance: {
-    scenarioFingerprint: string;
-    optimizationFingerprint: string;
-  };
-};
-
-const HEX_64 = /^[a-f0-9]{64}$/;
-
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>)
-        .sort()
-        .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
-    );
-  }
-  return value;
-}
-
-async function sha256(value: unknown): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)));
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function canonicalConstraintSet(value: unknown): unknown[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((constraint) => canonical(constraint))
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-}
-
-async function computeOptimizationFingerprint(scenario: HoloForgeScenario): Promise<string> {
-  return sha256({
-    sourceSnapshotFingerprint: scenario.source.snapshotFingerprint,
-    objective: {
-      id: scenario.intent.objectiveId,
-      direction: scenario.intent.objectiveDirection,
-    },
-    constraints: {
-      hard: canonicalConstraintSet(scenario.constraints.hard),
-      soft: canonicalConstraintSet(scenario.constraints.soft),
-    },
-  });
-}
-
-async function computeScenarioFingerprint(scenario: HoloForgeScenario): Promise<string> {
-  const unsigned = structuredClone(scenario) as HoloForgeScenario;
-  delete unsigned.provenance.scenarioFingerprint;
-  return sha256(unsigned);
-}
-
-async function hasCanonicalProvenance(scenario: HoloForgeScenario): Promise<boolean> {
-  if (!HEX_64.test(scenario.provenance.scenarioFingerprint)) return false;
-  if (!HEX_64.test(scenario.provenance.optimizationFingerprint)) return false;
-  const [optimizationFingerprint, scenarioFingerprint] = await Promise.all([
-    computeOptimizationFingerprint(scenario),
-    computeScenarioFingerprint(scenario),
-  ]);
-  return optimizationFingerprint === scenario.provenance.optimizationFingerprint
-    && scenarioFingerprint === scenario.provenance.scenarioFingerprint;
-}
 
 export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
   const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
@@ -181,12 +75,6 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
 
 function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
   return scenario.candidate.changedElementIds.filter((id) => Boolean(scenario.candidate.layout.elements[id]));
-}
-
-function isSafeTransform(value: CanonicalCandidateElement): boolean {
-  return [value.x, value.y, value.width, value.height, value.rotation, value.scale]
-    .every((number) => number === undefined || Number.isFinite(number))
-    && (value.scale === undefined || value.scale > 0);
 }
 
 export async function canApplyScenario(
