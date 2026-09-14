@@ -10,6 +10,8 @@ test('operator view fingerprint covers interaction semantics', () => {
     designId: 'design-interaction-integrity',
     modelOutput: {
       intentVersion: 1,
+      sceneId: 'scene-interaction-integrity',
+      intent: 'inspect interaction integrity',
       target: 'volumetric-3d',
       nodes: [{
         id: 'node-1',
@@ -41,6 +43,8 @@ test('operator view rejects interaction safety tampering', () => {
     designId: 'design-interaction-safety',
     modelOutput: {
       intentVersion: 1,
+      sceneId: 'scene-interaction-safety',
+      intent: 'select interaction safely',
       target: 'holo-mat',
       nodes: [{ id: 'node-1', x: 0, y: 0, z: 0, interaction: { action: 'select' } }],
     },
