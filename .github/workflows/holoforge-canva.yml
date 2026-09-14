@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - "mrzay/**"
+      - "tara/**"
     paths:
       - "canva-app/**"
       - ".github/workflows/holoforge-canva.yml"
