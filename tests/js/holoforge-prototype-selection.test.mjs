@@ -41,6 +41,10 @@ test('prototype evidence validator rejects incomplete or malformed identity', ()
   assert.equal(validatePrototypeScenario({ ...validScenario, sourceSnapshotFingerprint: 'a'.repeat(63) }), false);
   assert.equal(validatePrototypeScenario({ ...validScenario, durationMs: -1 }), false);
   assert.equal(validatePrototypeScenario({ ...validScenario, score: Number.NaN }), false);
+  assert.equal(validatePrototypeScenario({ ...validScenario, backend: '' }), false);
+  assert.equal(validatePrototypeScenario({ ...validScenario, objective: '   ' }), false);
+  assert.equal(validatePrototypeScenario({ ...validScenario, changedElementIds: [''] }), false);
+  assert.equal(validatePrototypeScenario({ ...validScenario, target: '' }), false);
 });
 
 test('prototype gate permits only an explicitly selected, current scenario', () => {
