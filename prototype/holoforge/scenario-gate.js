@@ -7,30 +7,34 @@
  */
 const FINGERPRINT = /^[a-f0-9]{64}$/;
 
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function validatePrototypeScenario(scenario) {
   if (!scenario || typeof scenario !== 'object') return false;
-  return typeof scenario.id === 'string'
-    && scenario.id.length > 0
-    && typeof scenario.title === 'string'
-    && typeof scenario.interpretation === 'string'
+  return nonEmptyString(scenario.id)
+    && nonEmptyString(scenario.title)
+    && nonEmptyString(scenario.interpretation)
     && Number.isFinite(scenario.score)
     && Number.isFinite(scenario.baseline)
     && Number.isFinite(scenario.gap)
     && Number.isInteger(scenario.durationMs)
     && scenario.durationMs >= 0
-    && typeof scenario.objective === 'string'
-    && typeof scenario.seed === 'string'
-    && typeof scenario.backend === 'string'
-    && typeof scenario.algorithm === 'string'
-    && typeof scenario.baselineBackend === 'string'
-    && typeof scenario.baselineAlgorithm === 'string'
+    && nonEmptyString(scenario.objective)
+    && nonEmptyString(scenario.seed)
+    && nonEmptyString(scenario.backend)
+    && nonEmptyString(scenario.algorithm)
+    && nonEmptyString(scenario.baselineBackend)
+    && nonEmptyString(scenario.baselineAlgorithm)
     && (scenario.status === 'complete' || scenario.status === 'partial' || scenario.status === 'running' || scenario.status === 'failed')
     && typeof scenario.hardConstraintsPassed === 'boolean'
     && Array.isArray(scenario.changedElementIds)
+    && scenario.changedElementIds.every(nonEmptyString)
     && FINGERPRINT.test(scenario.sourceSnapshotFingerprint)
     && FINGERPRINT.test(scenario.optimizationFingerprint)
     && FINGERPRINT.test(scenario.scenarioFingerprint)
-    && typeof scenario.target === 'string';
+    && nonEmptyString(scenario.target);
 }
 
 export function findPrototypeScenario(scenarios, scenarioId) {
