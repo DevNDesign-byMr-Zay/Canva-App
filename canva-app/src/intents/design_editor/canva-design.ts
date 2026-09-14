@@ -13,7 +13,7 @@ export type CanvaElementSnapshot = {
 
 export type CanvaDesignSnapshot = {
   designTitle?: string;
-  designId: string;
+  designId?: string;
   pageId: string;
   pageType: "absolute";
   pageDimensions: { width: number; height: number };
@@ -55,12 +55,13 @@ async function sha256(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function readCurrentDesignSnapshot(): Promise<CanvaDesignSnapshot> {
-  const [{ title, designId }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
+export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
+  const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
   if (pageMetadata.type !== "absolute" || !pageMetadata.id || !pageMetadata.dimensions) {
     throw new Error("HoloForge currently requires an absolute Canva page with stable dimensions.");
   }
 
+  const designId = options.trustedDesignId?.trim() || undefined;
   let elements: CanvaElementSnapshot[] = [];
   await openDesign({ type: "current_page" }, async (session) => {
     if (session.page.type !== "absolute" || session.page.id !== pageMetadata.id) {
@@ -72,13 +73,13 @@ export async function readCurrentDesignSnapshot(): Promise<CanvaDesignSnapshot> 
     }));
   });
 
-  const fingerprint = await sha256({ designId, pageId: pageMetadata.id, pageDimensions: pageMetadata.dimensions, elements });
+  const fingerprint = await sha256({ designId: designId ?? null, pageId: pageMetadata.id, pageDimensions: pageMetadata.dimensions, elements });
   return { designTitle: title, designId, pageId: pageMetadata.id, pageType: "absolute", pageDimensions: pageMetadata.dimensions, elements, fingerprint };
 }
 
 export function canApplyScenario(scenario: HoloForgeScenario | null | undefined, snapshot: CanvaDesignSnapshot | null | undefined): boolean {
   if (!scenario || !snapshot) return false;
-  if (!scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) return false;
+  if (!snapshot.designId || !scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) return false;
   if (scenario.source.designId !== snapshot.designId) return false;
   if (!HEX_64.test(scenario.source.snapshotFingerprint)) return false;
   if (!HEX_64.test(scenario.provenance?.scenarioFingerprint ?? "") || !HEX_64.test(scenario.provenance?.optimizationFingerprint ?? "")) return false;
