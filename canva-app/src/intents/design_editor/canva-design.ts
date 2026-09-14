@@ -3,7 +3,7 @@ import { getCurrentPageMetadata, getDesignMetadata, openDesign } from "@canva/de
 import {
   HEX_64,
   hasCanonicalProvenance,
-  isSafeTransform,
+  isCanvaWritableTransform,
   sha256,
   type HoloForgeScenario,
 } from "./scenario-contract";
@@ -31,6 +31,39 @@ export type CanvaDesignSnapshot = {
   fingerprint: string;
 };
 
+type ReadableAbsoluteElement = {
+  readonly type: string;
+  readonly top: number;
+  readonly left: number;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation: number;
+  readonly locked: boolean;
+};
+
+type ReadableAbsolutePage = {
+  readonly id: string;
+  readonly dimensions?: { readonly width: number; readonly height: number };
+  readonly elements: { toArray(): readonly ReadableAbsoluteElement[] };
+};
+
+function snapshotElementId(index: number): string {
+  return `element-${index + 1}`;
+}
+
+function snapshotElements(elements: readonly ReadableAbsoluteElement[]): CanvaElementSnapshot[] {
+  return elements.map((element, index) => ({
+    id: snapshotElementId(index),
+    type: element.type,
+    top: element.top,
+    left: element.left,
+    width: element.width,
+    height: element.height,
+    rotation: element.rotation,
+    locked: element.locked,
+  }));
+}
+
 export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
   const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
   if (pageMetadata.type !== "absolute" || !pageMetadata.id || !pageMetadata.dimensions) {
@@ -43,16 +76,7 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
     if (session.page.type !== "absolute" || session.page.id !== pageMetadata.id) {
       throw new Error("The current Canva page changed while HoloForge was reading it.");
     }
-    elements = session.page.elements.toArray().map((element) => ({
-      id: element.id,
-      type: element.type,
-      top: element.top,
-      left: element.left,
-      width: element.width,
-      height: element.height,
-      rotation: element.rotation,
-      locked: element.locked,
-    }));
+    elements = snapshotElements(session.page.elements.toArray());
   });
 
   const fingerprint = await sha256({
@@ -97,26 +121,17 @@ export async function canApplyScenario(
   const changedIds = scenarioTransformIds(scenario);
   if (changedIds.length !== scenario.candidate.changedElementIds.length) return false;
   if (!changedIds.every((id) => knownIds.has(id))) return false;
-  if (!changedIds.every((id) => isSafeTransform(scenario.candidate.layout.elements[id]))) return false;
+  if (!changedIds.every((id) => isCanvaWritableTransform(scenario.candidate.layout.elements[id]))) return false;
 
   return hasCanonicalProvenance(scenario);
 }
 
-async function currentFingerprint(session: { page: { type: string; id: string; dimensions?: { width: number; height: number }; elements: { toArray: () => Array<CanvaElementSnapshot> } } }, designId: string): Promise<string> {
-  const elements = session.page.elements.toArray().map((element) => ({
-    id: element.id,
-    type: element.type,
-    top: element.top,
-    left: element.left,
-    width: element.width,
-    height: element.height,
-    rotation: element.rotation,
-    locked: element.locked,
-  }));
+async function currentFingerprint(page: ReadableAbsolutePage, designId: string): Promise<string> {
+  const elements = snapshotElements(page.elements.toArray());
   return sha256({
     designId,
-    pageId: session.page.id,
-    pageDimensions: session.page.dimensions,
+    pageId: page.id,
+    pageDimensions: page.dimensions,
     elements,
   });
 }
@@ -134,7 +149,7 @@ export async function applyScenario(
       throw new Error("The Canva page is no longer compatible with the selected scenario.");
     }
 
-    const liveFingerprint = await currentFingerprint(session, snapshot.designId!);
+    const liveFingerprint = await currentFingerprint(session.page, snapshot.designId!);
     if (liveFingerprint !== scenario.source.snapshotFingerprint) {
       throw new Error("The Canva design changed after review. Read the current design again before applying.");
     }
@@ -142,21 +157,17 @@ export async function applyScenario(
       throw new Error("The selected scenario provenance no longer matches its canonical fingerprints.");
     }
 
-    const elements = new Map(session.page.elements.toArray().map((element) => [element.id, element]));
+    const elements = new Map(
+      session.page.elements.toArray().map((element, index) => [snapshotElementId(index), element] as const),
+    );
     for (const elementId of scenario.candidate.changedElementIds) {
       const transform = scenario.candidate.layout.elements[elementId];
       const element = elements.get(elementId);
-      if (!transform || !element || element.locked || element.type === "unsupported") {
-        throw new Error(`Scenario references an unavailable element: ${elementId}`);
+      if (!transform || !isCanvaWritableTransform(transform) || !element || element.locked || element.type === "unsupported") {
+        throw new Error(`Scenario references an unavailable or unsupported element: ${elementId}`);
       }
       if (transform.x !== undefined) element.left = transform.x;
       if (transform.y !== undefined) element.top = transform.y;
-      if (transform.width !== undefined) element.width = transform.width;
-      if (transform.height !== undefined) element.height = transform.height;
-      if (transform.scale !== undefined) {
-        element.width *= transform.scale;
-        element.height *= transform.scale;
-      }
       if (transform.rotation !== undefined) element.rotation = transform.rotation;
     }
     await session.sync();
