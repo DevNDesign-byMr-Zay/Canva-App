@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   canApplyPrototypeScenario,
   findPrototypeScenario,
+  getPrototypeApplyState,
 } from '../../prototype/holoforge/scenario-gate.js';
 
 const sourceFingerprint = 'a'.repeat(64);
@@ -48,4 +49,16 @@ test('prototype gate rejects stale, unselected, incomplete, or failed scenarios'
     selectedScenarioId: scenario.id,
     currentSnapshotFingerprint: sourceFingerprint,
   }), false);
+});
+
+test('prototype gate exposes a stable UI decision state', () => {
+  assert.deepEqual(getPrototypeApplyState(scenario, {
+    selectedScenarioId: scenario.id,
+    currentSnapshotFingerprint: sourceFingerprint,
+    explicitApply: true,
+  }), { canApply: true, blockReason: null });
+  assert.deepEqual(getPrototypeApplyState(scenario, {
+    selectedScenarioId: scenario.id,
+    currentSnapshotFingerprint: sourceFingerprint,
+  }), { canApply: false, blockReason: 'explicit-apply-required' });
 });
