@@ -4,17 +4,21 @@ export const ENERGY_BUDGET_LEVELS = Object.freeze({
   PERFORMANCE: 'performance',
 });
 
-export function createEnergyBudget({ level = ENERGY_BUDGET_LEVELS.BALANCED, maxRenderUnits = 100 }) {
-  if (!Object.values(ENERGY_BUDGET_LEVELS).includes(level)) {
-    throw new Error('Unsupported energy budget level');
-  }
+export function validateEnergyBudget(budget) {
+  if (!budget || typeof budget !== 'object' || Array.isArray(budget)) return false;
+  if (!Object.values(ENERGY_BUDGET_LEVELS).includes(budget.level)) return false;
+  if (!Number.isFinite(budget.maxRenderUnits) || budget.maxRenderUnits < 0) return false;
+  return Object.keys(budget).sort().join(',') === 'level,maxRenderUnits';
+}
 
-  if (!Number.isFinite(maxRenderUnits) || maxRenderUnits < 0) {
+export function createEnergyBudget({ level = ENERGY_BUDGET_LEVELS.BALANCED, maxRenderUnits = 100 }) {
+  const budget = { level, maxRenderUnits };
+  if (!validateEnergyBudget(budget)) {
+    if (!Object.values(ENERGY_BUDGET_LEVELS).includes(level)) {
+      throw new Error('Unsupported energy budget level');
+    }
     throw new Error('Invalid render budget');
   }
 
-  return Object.freeze({
-    level,
-    maxRenderUnits,
-  });
+  return Object.freeze(budget);
 }
