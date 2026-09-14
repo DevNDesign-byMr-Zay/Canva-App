@@ -206,9 +206,10 @@ export async function applyScenario(
     const resultingFingerprint = await currentFingerprint(session.page, snapshot.designId!);
     verificationReceipt = await createApplyVerificationReceipt({
       scenario,
-      snapshot,
-      expectedPostFingerprint,
+      sourceFingerprint: snapshot.fingerprint,
+      expectedFingerprint: expectedPostFingerprint,
       resultingFingerprint,
+      changedElementIds: [...scenario.candidate.changedElementIds],
     });
   });
 
