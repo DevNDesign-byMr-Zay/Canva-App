@@ -2,7 +2,7 @@ import { Alert, Button, Rows, Text, Title } from "@canva/app-ui-kit";
 import { useFeatureSupport } from "@canva/app-hooks";
 import { openDesign } from "@canva/design";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   applyScenario,
@@ -10,6 +10,7 @@ import {
   readCurrentDesignSnapshot,
   type CanvaDesignSnapshot,
 } from "./canva-design";
+import { buildScenarioReview } from "./scenario-review";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
 
@@ -50,6 +51,11 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
 
     return () => { cancelled = true; };
   }, [designEditingSupported, scenario, snapshot]);
+
+  const review = useMemo(
+    () => (scenario && snapshot ? buildScenarioReview(scenario, snapshot) : []),
+    [scenario, snapshot],
+  );
 
   const readyToApply = designEditingSupported && scenarioVerified;
 
@@ -144,6 +150,32 @@ export function App({ scenario = null }: { scenario?: AppScenario }) {
               values={{ id: scenario.scenarioId }}
             />
           </Text>
+
+          {snapshot && (
+            <Rows spacing="0.5u">
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Review: {count, number} element change(s)"
+                  description="Summarizes the selected scenario changes before apply."
+                  values={{ count: review.length }}
+                />
+              </Text>
+              {review.map(({ elementId, before, after, changedFields }) => (
+                <Text key={elementId}>
+                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
+                </Text>
+              ))}
+              {review.length === 0 && (
+                <Text>
+                  <FormattedMessage
+                    defaultMessage="No reviewable Canva element mapping was found for this candidate."
+                    description="Explains an empty candidate projection without inventing a mapping."
+                  />
+                </Text>
+              )}
+            </Rows>
+          )}
+
           <Button
             variant="primary"
             onClick={apply}
