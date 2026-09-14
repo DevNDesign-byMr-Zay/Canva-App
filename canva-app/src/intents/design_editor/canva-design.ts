@@ -57,6 +57,16 @@ type HoloForgeScenario = {
   };
 };
 
+type SnapshotElementInput = {
+  type: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  rotation: number;
+  locked: boolean;
+};
+
 const HEX_64 = /^[a-f0-9]{64}$/;
 
 function canonical(value: unknown): unknown {
@@ -77,6 +87,27 @@ async function sha256(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function snapshotElements(elements: SnapshotElementInput[]): CanvaElementSnapshot[] {
+  return elements.map((element, index) => ({
+    id: `element-${index + 1}`,
+    type: element.type,
+    top: element.top,
+    left: element.left,
+    width: element.width,
+    height: element.height,
+    rotation: element.rotation,
+    locked: element.locked,
+  }));
+}
+
+async function fingerprintPage({
+  pageId,
+  pageDimensions,
+  elements,
+}: Pick<CanvaDesignSnapshot, "pageId" | "pageDimensions" | "elements">) {
+  return sha256({ pageId, pageDimensions, elements });
+}
+
 export async function readCurrentDesignSnapshot(): Promise<CanvaDesignSnapshot> {
   const [{ title }, pageMetadata] = await Promise.all([
     getDesignMetadata(),
@@ -94,19 +125,10 @@ export async function readCurrentDesignSnapshot(): Promise<CanvaDesignSnapshot> 
       throw new Error("The current Canva page changed while HoloForge was reading it.");
     }
 
-    elements = session.page.elements.toArray().map((element) => ({
-      id: element.id,
-      type: element.type,
-      top: element.top,
-      left: element.left,
-      width: element.width,
-      height: element.height,
-      rotation: element.rotation,
-      locked: element.locked,
-    }));
+    elements = snapshotElements(session.page.elements.toArray());
   });
 
-  const fingerprint = await sha256({
+  const fingerprint = await fingerprintPage({
     pageId: pageMetadata.id,
     pageDimensions: pageMetadata.dimensions,
     elements,
@@ -132,23 +154,35 @@ export function canApplyScenario(
   if (!HEX_64.test(scenario.provenance?.scenarioFingerprint ?? "")) return false;
   if (!HEX_64.test(scenario.provenance?.optimizationFingerprint ?? "")) return false;
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) return false;
-  if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true) return false;
-  if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false) return false;
+  if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true) {
+    return false;
+  }
+  if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false) {
+    return false;
+  }
   if (scenario.presentation.target !== "web-dashboard") return false;
 
   const transforms = scenario.candidate.layout.elements;
+  const changedElementIds = scenario.candidate.changedElementIds;
   if (!Array.isArray(transforms) || transforms.length === 0) return false;
-  if (!Array.isArray(scenario.candidate.changedElementIds) || scenario.candidate.changedElementIds.length === 0) return false;
+  if (!Array.isArray(changedElementIds) || changedElementIds.length === 0) return false;
 
   const knownIds = new Set(snapshot.elements.map(({ id }) => id));
-  return transforms.every(
-    ({ elementId, top, left, width, height, rotation }) =>
-      knownIds.has(elementId)
-      && scenario.candidate.changedElementIds.includes(elementId)
-      && [top, left, width, height, rotation].every(
-        (value) => value === undefined || Number.isFinite(value),
-      ),
-  );
+  const transformIds = transforms.map(({ elementId }) => elementId);
+  if (new Set(transformIds).size !== transformIds.length) return false;
+  if (new Set(changedElementIds).size !== changedElementIds.length) return false;
+  if (
+    transformIds.length !== changedElementIds.length ||
+    transformIds.some((elementId) => !changedElementIds.includes(elementId))
+  ) {
+    return false;
+  }
+
+  return transforms.every(({ elementId, top, left, width, height, rotation }) => {
+    if (!knownIds.has(elementId)) return false;
+    if (width !== undefined || height !== undefined) return false;
+    return [top, left, rotation].every((value) => value === undefined || Number.isFinite(value));
+  });
 }
 
 export async function applyScenario(
@@ -162,11 +196,28 @@ export async function applyScenario(
   const transforms = scenario.candidate.layout.elements!;
 
   await openDesign({ type: "current_page" }, async (session) => {
-    if (session.page.type !== "absolute" || session.page.locked || session.page.id !== snapshot.pageId) {
+    if (
+      session.page.type !== "absolute" ||
+      session.page.locked ||
+      session.page.id !== snapshot.pageId
+    ) {
       throw new Error("The Canva page is no longer compatible with the selected scenario.");
     }
 
-    const elements = new Map(session.page.elements.toArray().map((element) => [element.id, element]));
+    const liveElements = session.page.elements.toArray();
+    const liveSnapshots = snapshotElements(liveElements);
+    const liveFingerprint = await fingerprintPage({
+      pageId: snapshot.pageId,
+      pageDimensions: snapshot.pageDimensions,
+      elements: liveSnapshots,
+    });
+    if (liveFingerprint !== snapshot.fingerprint) {
+      throw new Error("The Canva design changed after this scenario was reviewed. Refresh before applying.");
+    }
+
+    const elements = new Map(
+      liveSnapshots.map((elementSnapshot, index) => [elementSnapshot.id, liveElements[index]]),
+    );
 
     for (const transform of transforms) {
       const element = elements.get(transform.elementId);
@@ -176,8 +227,6 @@ export async function applyScenario(
 
       if (transform.top !== undefined) element.top = transform.top;
       if (transform.left !== undefined) element.left = transform.left;
-      if (transform.width !== undefined) element.width = transform.width;
-      if (transform.height !== undefined) element.height = transform.height;
       if (transform.rotation !== undefined) element.rotation = transform.rotation;
     }
 
