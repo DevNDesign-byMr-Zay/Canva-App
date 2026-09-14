@@ -41,8 +41,8 @@ test('preserves an editable Canva interaction through scene compilation and oper
     advisoryOnly: true,
     physicalActuation: false,
   });
-  assert.equal(view.safety.authoritative, false);
-  assert.equal(view.safety.physicalActuation, false);
+  assert.equal(view.presentation.authoritative, false);
+  assert.equal(view.presentation.physicalActuation, false);
 });
 
 test('rejects an interaction target that is not a string at scene compilation', () => {
