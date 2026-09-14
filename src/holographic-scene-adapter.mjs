@@ -16,6 +16,18 @@ function canonical(value) {
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
   return value;
 }
+function cloneValue(value) {
+  if (Array.isArray(value)) return value.map(cloneValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, cloneValue(child)]));
+  }
+  return value;
+}
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
 }
@@ -31,7 +43,7 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
   const attentionItems = Array.isArray(layers.attention) ? layers.attention : [];
   const layerPayload = Object.entries(layers).map(([type, data]) => ({ id: type, type, data }));
 
-  const payload = {
+  const payload = deepFreeze(cloneValue({
     adapterVersion: ADAPTER_VERSION,
     authoritativeSource: value.rendererContract?.authoritativeSource ?? 'thergrid-decision-receipt',
     target,
@@ -49,7 +61,7 @@ export function buildHolographicCanvaPayload({ scene, target = 'web-dashboard', 
     })),
     proposal: value.proposal ?? null,
     metrics: value.metrics ?? null,
-  };
+  }));
 
   return Object.freeze({
     ...payload,

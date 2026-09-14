@@ -17,6 +17,18 @@ function canonical(value) {
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
   return value;
 }
+function snapshot(value) {
+  if (Array.isArray(value)) return value.map(snapshot);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, snapshot(child)]));
+  }
+  return value;
+}
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
 }
@@ -63,7 +75,7 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
   const solverComparisonLayers = Array.isArray(value.layers)
     ? value.layers.filter((layer) => layer.type === 'solverComparison' && Array.isArray(layer.data))
     : [];
-  const candidates = solverComparisonLayers.flatMap((layer) => layer.data);
+  const candidates = snapshot(solverComparisonLayers.flatMap((layer) => layer.data));
 
   const view = {
     viewVersion: VIEW_VERSION,
@@ -79,7 +91,7 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     comparison: {
       candidateCount: candidates.length,
       candidates,
-      metrics: value.metrics ?? null,
+      metrics: snapshot(value.metrics ?? null),
     },
     presentation: {
       mode: 'operator-advisory',
@@ -89,7 +101,7 @@ export function buildHolographicOperatorView({ payload, target = null } = {}) {
     },
   };
 
-  return Object.freeze({ ...view, viewFingerprint: digest(view) });
+  return deepFreeze({ ...view, viewFingerprint: digest(view) });
 }
 
 export function validateHolographicOperatorView(view) {
