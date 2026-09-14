@@ -38,6 +38,13 @@ export type CanvaDesignSnapshot = {
   fingerprint: string;
 };
 
+type SnapshotFingerprintInput = {
+  readonly designId?: string;
+  readonly pageId: string;
+  readonly pageDimensions: { readonly width: number; readonly height: number };
+  readonly elements: readonly CanvaElementSnapshot[];
+};
+
 type ReadableAbsoluteElement = {
   readonly type: string;
   readonly top: number;
@@ -72,7 +79,7 @@ function snapshotElements(elements: readonly ReadableAbsoluteElement[]): CanvaEl
 }
 
 export async function computeCanvaSnapshotFingerprint(
-  snapshot: Pick<CanvaDesignSnapshot, "designId" | "pageId" | "pageDimensions" | "elements">,
+  snapshot: SnapshotFingerprintInput,
 ): Promise<string> {
   return sha256({
     designId: snapshot.designId ?? null,
@@ -146,6 +153,9 @@ export async function canApplyScenario(
 }
 
 async function currentFingerprint(page: ReadableAbsolutePage, designId: string): Promise<string> {
+  if (!page.dimensions) {
+    throw new Error("The current Canva page no longer has stable dimensions.");
+  }
   return computeCanvaSnapshotFingerprint({
     designId,
     pageId: page.id,
@@ -196,15 +206,14 @@ export async function applyScenario(
     const resultingFingerprint = await currentFingerprint(session.page, snapshot.designId!);
     verificationReceipt = await createApplyVerificationReceipt({
       scenario,
-      sourceFingerprint: snapshot.fingerprint,
-      expectedFingerprint: expectedPostFingerprint,
+      snapshot,
+      expectedPostFingerprint,
       resultingFingerprint,
-      changedElementIds: scenario.candidate.changedElementIds,
     });
   });
 
   if (!verificationReceipt) {
-    throw new Error("Canva apply completed without verifiable post-apply evidence.");
+    throw new Error("Canva apply completed without a verifiable postcondition receipt.");
   }
   return verificationReceipt;
 }
