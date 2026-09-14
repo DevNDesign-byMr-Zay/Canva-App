@@ -71,6 +71,17 @@ function snapshotElements(elements: readonly ReadableAbsoluteElement[]): CanvaEl
   }));
 }
 
+export async function computeCanvaSnapshotFingerprint(
+  snapshot: Pick<CanvaDesignSnapshot, "designId" | "pageId" | "pageDimensions" | "elements">,
+): Promise<string> {
+  return sha256({
+    designId: snapshot.designId ?? null,
+    pageId: snapshot.pageId,
+    pageDimensions: snapshot.pageDimensions,
+    elements: snapshot.elements,
+  });
+}
+
 export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
   const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
   if (pageMetadata.type !== "absolute" || !pageMetadata.id || !pageMetadata.dimensions) {
@@ -86,8 +97,8 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
     elements = snapshotElements(session.page.elements.toArray());
   });
 
-  const fingerprint = await sha256({
-    designId: designId ?? null,
+  const fingerprint = await computeCanvaSnapshotFingerprint({
+    designId,
     pageId: pageMetadata.id,
     pageDimensions: pageMetadata.dimensions,
     elements,
@@ -135,12 +146,11 @@ export async function canApplyScenario(
 }
 
 async function currentFingerprint(page: ReadableAbsolutePage, designId: string): Promise<string> {
-  const elements = snapshotElements(page.elements.toArray());
-  return sha256({
+  return computeCanvaSnapshotFingerprint({
     designId,
     pageId: page.id,
     pageDimensions: page.dimensions,
-    elements,
+    elements: snapshotElements(page.elements.toArray()),
   });
 }
 
