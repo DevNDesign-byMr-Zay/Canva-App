@@ -2,7 +2,7 @@ import { Alert, Button, Rows, Text, Title } from "@canva/app-ui-kit";
 import { useFeatureSupport } from "@canva/app-hooks";
 import { openDesign } from "@canva/design";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applyScenario,
@@ -12,6 +12,10 @@ import {
   type CanvaDesignSnapshot,
 } from "./canva-design";
 import { createApplyAttestation, type ApplyAttestation } from "./apply-attestation";
+import {
+  createReviewedApplyContext,
+  isReviewedApplyContextCurrent,
+} from "./review-context-guard";
 import { buildScenarioReview } from "./scenario-review";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
@@ -32,6 +36,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
   const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
+  const latestReviewContext = useRef<{
+    scenario: AppScenario;
+    snapshot: CanvaDesignSnapshot;
+  } | null>(null);
 
   const refreshLabel = intl.formatMessage({
     defaultMessage: "Read current design",
@@ -64,6 +72,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       );
     }
   }, [intl, trustedDesignId]);
+
+  useEffect(() => {
+    latestReviewContext.current = scenario && snapshot ? { scenario, snapshot } : null;
+  }, [scenario, snapshot]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,12 +111,38 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
 
     try {
       const reviewedSnapshot = snapshot;
+      const reviewedContext = createReviewedApplyContext({
+        scenario,
+        snapshot: reviewedSnapshot,
+      });
       const result = await applyScenario(scenario, reviewedSnapshot);
       const sealedAttestation = await createApplyAttestation({
         scenario,
         snapshot: reviewedSnapshot,
         receipt: result,
       });
+      const currentReviewContext = latestReviewContext.current;
+
+      if (
+        !currentReviewContext ||
+        !isReviewedApplyContextCurrent(reviewedContext, currentReviewContext)
+      ) {
+        setStatus("error");
+        setScenarioVerified(false);
+        setReceipt(null);
+        setAttestation(null);
+        setMessage(
+          intl.formatMessage({
+            defaultMessage:
+              "The selected review changed while Apply was running. The original design change was verified, but its result is hidden until you read the current design again.",
+            description:
+              "Safety message shown when the reviewed Canva scenario changes during an in-flight apply.",
+          }),
+        );
+        setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+        return;
+      }
+
       setReceipt(result);
       setAttestation(sealedAttestation);
       setStatus("done");
