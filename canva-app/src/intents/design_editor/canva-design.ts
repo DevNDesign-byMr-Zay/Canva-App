@@ -207,6 +207,8 @@ export async function canApplyScenario(
   if (!scenario || !snapshot) return false;
   if (scenario.contractVersion !== 1) return false;
   if (!snapshot.designId || !scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) return false;
+  if (!HEX_64.test(snapshot.fingerprint)) return false;
+  if ((await computeCanvaSnapshotFingerprint(snapshot)) !== snapshot.fingerprint) return false;
   if (scenario.source.designId !== snapshot.designId) return false;
   if (!Array.isArray(scenario.source.pageIds) || !scenario.source.pageIds.includes(snapshot.pageId)) return false;
   if (!HEX_64.test(scenario.source.snapshotFingerprint)) return false;
