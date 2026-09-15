@@ -41,6 +41,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const latestReviewContext = useRef<{
     scenario: NonNullable<AppScenario>;
     snapshot: CanvaDesignSnapshot;
+    trustedDesignId?: string;
   } | null>(null);
 
   const refreshLabel = intl.formatMessage({
@@ -76,16 +77,24 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   }, [intl, trustedDesignId]);
 
   useEffect(() => {
-    latestReviewContext.current = scenario && snapshot ? { scenario, snapshot } : null;
-  }, [scenario, snapshot]);
+    latestReviewContext.current =
+      scenario && snapshot ? { scenario, snapshot, trustedDesignId } : null;
+  }, [scenario, snapshot, trustedDesignId]);
 
   useEffect(() => {
     let cancelled = false;
     setScenarioVerified(false);
-    if (!scenario || !snapshot || !designEditingSupported)
+    const normalizedTrustedDesignId = trustedDesignId?.trim();
+    if (
+      !scenario ||
+      !snapshot ||
+      !designEditingSupported ||
+      (normalizedTrustedDesignId && snapshot.designId !== normalizedTrustedDesignId)
+    ) {
       return () => {
         cancelled = true;
       };
+    }
 
     void canApplyScenario(scenario, snapshot).then((safe) => {
       if (!cancelled) setScenarioVerified(safe);
@@ -94,7 +103,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     return () => {
       cancelled = true;
     };
-  }, [designEditingSupported, scenario, snapshot]);
+  }, [designEditingSupported, scenario, snapshot, trustedDesignId]);
 
   const review = useMemo(
     () => (scenario && snapshot ? buildScenarioReview(scenario, snapshot) : []),
@@ -118,6 +127,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       const reviewedContext = createReviewedApplyContext({
         scenario,
         snapshot: reviewedSnapshot,
+        trustedDesignId,
       });
       const result = await applyScenario(scenario, reviewedSnapshot);
       const sealedAttestation = await createApplyAttestation({
