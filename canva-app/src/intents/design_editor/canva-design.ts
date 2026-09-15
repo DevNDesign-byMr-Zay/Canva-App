@@ -106,6 +106,10 @@ function snapshotElementId(index: number): string {
   return `element-${index + 1}`;
 }
 
+function freezeElementSnapshot(element: CanvaElementSnapshot): Readonly<CanvaElementSnapshot> {
+  return Object.freeze({ ...element });
+}
+
 function snapshotElements(elements: readonly ReadableAbsoluteElement[]): CanvaElementSnapshot[] {
   return elements.map((element, index) => ({
     id: snapshotElementId(index),
@@ -180,7 +184,9 @@ export function getReviewedElementBinding(
     return null;
   }
 
-  const byId = new Map(snapshot.elements.map((element) => [element.id, element] as const));
+  const byId = new Map(
+    snapshot.elements.map((element) => [element.id, freezeElementSnapshot(element)] as const),
+  );
   const binding = new Map<string, Readonly<CanvaElementSnapshot>>();
   for (const scenarioElementId of changedIds) {
     const element = byId.get(scenarioElementId);
