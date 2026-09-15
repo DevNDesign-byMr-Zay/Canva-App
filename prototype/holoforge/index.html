@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HOLOFORGE Scenario Lab</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="forge-shell" aria-label="HoloForge Scenario Lab prototype">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="forge-mark" aria-hidden="true">HF</div>
+        <div>
+          <p class="eyebrow">CANVA SPATIAL INTELLIGENCE</p>
+          <h1>HOLOFORGE</h1>
+        </div>
+      </div>
+      <div class="source-status">
+        <span class="status-dot"></span>
+        <span>Source captured</span>
+        <code>snapshot-v1</code>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="scenario-rail" aria-label="Scenario branches">
+        <div class="rail-heading">
+          <span>SCENARIOS</span>
+          <button type="button" class="ghost-button" aria-label="Create scenario" disabled title="Scenario creation is not enabled in this read-only prototype">+</button>
+        </div>
+        <div id="scenarioList" class="scenario-list" role="radiogroup" aria-label="Scenario branches. Use arrow keys, Home, or End to move between scenarios."></div>
+        <div class="rail-footer">
+          <span class="micro-label">AUREN interpretation</span>
+          <p id="interpretationSummary">Select a scenario.</p>
+        </div>
+      </aside>
+
+      <section class="stage-panel">
+        <div class="stage-toolbar">
+          <div>
+            <p class="eyebrow">HOLO STAGE / READ ONLY</p>
+            <h2 id="scenarioTitle">Hierarchy Focus</h2>
+          </div>
+          <div class="stage-actions" aria-label="Stage overlays">
+            <button type="button" class="chip active" data-overlay="relationships" aria-pressed="true">Relationships</button>
+            <button type="button" class="chip active" data-overlay="evidence" aria-pressed="true">Evidence</button>
+            <button type="button" class="chip" data-overlay="attention" aria-pressed="false">Attention</button>
+          </div>
+        </div>
+
+        <div class="stage-viewport" id="stageViewport">
+          <div class="grid-floor" aria-hidden="true"></div>
+          <div class="source-frame layer-card" id="sourceFrame" aria-label="Source design preview">
+            <span class="layer-label">SOURCE</span>
+            <div id="sourceCanvas" class="fixture-canvas" aria-hidden="true"></div>
+          </div>
+          <div class="candidate-frame layer-card" id="candidateFrame" role="button" tabindex="0" aria-pressed="false" aria-describedby="applyGateDescription" aria-label="Select candidate scenario for the prototype apply gate">
+            <span class="layer-label candidate">CANDIDATE</span>
+            <div id="candidateCanvas" class="fixture-canvas" aria-hidden="true"></div>
+          </div>
+          <div class="relationship-line line-a" aria-hidden="true"></div>
+          <div class="relationship-line line-b" aria-hidden="true"></div>
+          <p id="stageAnnouncement" role="status" aria-live="polite" aria-atomic="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></p>
+        </div>
+
+        <div class="stage-control-deck" aria-label="Holo Stage view controls">
+          <div class="compare-strip">
+            <span>Original</span>
+            <input id="compareRange" type="range" min="0" max="100" value="58" aria-label="Compare original and candidate" />
+            <span>Candidate</span>
+            <output id="compareValue" for="compareRange">58%</output>
+          </div>
+          <div class="stage-actions" style="padding:0 20px 8px" aria-label="Compare presets">
+            <button type="button" class="chip" data-compare-preset="original" aria-pressed="false">Original</button>
+            <button type="button" class="chip active" data-compare-preset="split" aria-pressed="true">Split</button>
+            <button type="button" class="chip" data-compare-preset="candidate" aria-pressed="false">Candidate</button>
+          </div>
+          <div class="depth-strip">
+            <span>Depth</span>
+            <input id="depthRange" type="range" min="0" max="100" value="50" aria-label="Adjust spatial layer depth" />
+            <output id="depthValue" for="depthRange">50%</output>
+            <button id="resetView" type="button" class="ghost-button text-button">Reset view</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="evidence-drawer" aria-label="Scenario evidence">
+        <div class="drawer-heading">
+          <div>
+            <p class="eyebrow">EVIDENCE</p>
+            <h3>Decision record</h3>
+          </div>
+          <span id="evidenceState" class="evidence-state valid" aria-live="polite">VALID</span>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric"><span>Candidate</span><strong id="candidateScore">0.92</strong></div>
+          <div class="metric"><span>Reference</span><strong id="baselineScore">0.95</strong></div>
+          <div class="metric"><span>Gap</span><strong id="objectiveGap">0.03</strong></div>
+          <div class="metric"><span>Duration</span><strong id="duration">12 ms</strong></div>
+        </div>
+
+        <dl class="evidence-list">
+          <div><dt>Objective</dt><dd id="objectiveId">hierarchy-balance-v1</dd></div>
+          <div><dt>Backend</dt><dd id="backendIdentity">vaelon / deterministic-candidate-v1</dd></div>
+          <div><dt>Reference</dt><dd id="baselineIdentity">classical-reference / exact-reference-v1</dd></div>
+          <div><dt>Seed</dt><dd id="seed">hierarchy-seed-001</dd></div>
+          <div><dt>Snapshot</dt><dd id="snapshotId">snapshot-v1</dd></div>
+          <div><dt>Problem ID</dt><dd id="optimizationFingerprint" class="mono-evidence">—</dd></div>
+          <div><dt>Result ID</dt><dd id="scenarioFingerprint" class="mono-evidence">—</dd></div>
+          <div><dt>Constraints</dt><dd id="constraintState" class="verified">Passed</dd></div>
+          <div><dt>Provenance</dt><dd class="verified">Verified</dd></div>
+        </dl>
+
+        <div class="identity-legend" aria-label="Evidence identity explanation">
+          <div>
+            <strong>Problem ID</strong>
+            <p>Same source snapshot, objective, and constraints. Candidate and classical reference must share this problem identity.</p>
+          </div>
+          <div>
+            <strong>Result ID</strong>
+            <p>This exact scenario outcome, including candidate evidence and interpretation. A changed result produces a different identity.</p>
+          </div>
+        </div>
+
+        <div class="tradeoff-card">
+          <span class="micro-label">AUREN tradeoff</span>
+          <p id="tradeoffText">Slightly increases vertical separation to improve hierarchy.</p>
+        </div>
+
+        <div class="apply-gate">
+          <div>
+            <span class="micro-label">APPLY GATE</span>
+            <p id="applyGateDescription">Source is unchanged. Explicit confirmation is required.</p>
+          </div>
+          <button id="applyButton" type="button" aria-describedby="applyGateDescription" disabled>Apply selected scenario</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script type="module" src="./prototype.js"></script>
+</body>
+</html>
