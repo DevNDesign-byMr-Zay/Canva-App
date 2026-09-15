@@ -203,16 +203,6 @@ describe("reviewed element binding", () => {
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
   });
 
-  it("fails closed when the reviewed snapshot contains duplicate element identities", async () => {
-    const snapshot = await buildSnapshot();
-    snapshot.elements = [snapshot.elements[0], { ...snapshot.elements[0], top: 99 }];
-    snapshot.fingerprint = await computeCanvaSnapshotFingerprint(snapshot);
-
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = snapshot.fingerprint;
-    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
-  });
-
   it("fails closed when the scenario fingerprint points at a different snapshot", async () => {
     const snapshot = await buildSnapshot();
     const scenario = await signedScenario();
@@ -225,5 +215,20 @@ describe("reviewed element binding", () => {
     scenario.source.snapshotFingerprint = snapshot.fingerprint;
     scenario.candidate.changedElementIds = ["toString"];
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed when the reviewed snapshot contains duplicate element identities", async () => {
+    const snapshot = await buildSnapshot();
+    const duplicateSnapshot = {
+      ...snapshot,
+      elements: [snapshot.elements[0], { ...snapshot.elements[1], id: snapshot.elements[0].id }],
+      fingerprint: "",
+    };
+    duplicateSnapshot.fingerprint = await computeCanvaSnapshotFingerprint(duplicateSnapshot);
+
+    const scenario = await signedScenario();
+    scenario.source.snapshotFingerprint = duplicateSnapshot.fingerprint;
+    scenario.candidate.changedElementIds = ["element-1"];
+    expect(getReviewedElementBinding(scenario, duplicateSnapshot)).toBeNull();
   });
 });
