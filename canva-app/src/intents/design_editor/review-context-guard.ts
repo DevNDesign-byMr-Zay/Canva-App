@@ -14,9 +14,10 @@ function resolveTrustedDesignId(
   snapshot: VerificationDesignSnapshot,
   trustedDesignId?: string,
 ): string {
-  if (!snapshot.designId?.trim()) throw new TypeError("trusted design identity is required");
-  const resolved = trustedDesignId?.trim() || snapshot.designId;
-  if (resolved !== snapshot.designId) {
+  const snapshotDesignId = snapshot.designId?.trim();
+  if (!snapshotDesignId) throw new TypeError("trusted design identity is required");
+  const resolved = trustedDesignId?.trim() || snapshotDesignId;
+  if (resolved !== snapshotDesignId) {
     throw new TypeError("reviewed snapshot does not match the trusted design target");
   }
   return resolved;
@@ -36,7 +37,7 @@ export function createReviewedApplyContext({
   return Object.freeze({
     scenarioId: scenario.scenarioId,
     scenarioFingerprint: scenario.provenance.scenarioFingerprint,
-    designId: snapshot.designId,
+    designId: resolvedTrustedDesignId,
     trustedDesignId: resolvedTrustedDesignId,
     pageId: snapshot.pageId,
     sourceFingerprint: snapshot.fingerprint,
@@ -60,7 +61,7 @@ export function isReviewedApplyContextCurrent(
     return (
       reviewed.scenarioId === scenario.scenarioId &&
       reviewed.scenarioFingerprint === scenario.provenance.scenarioFingerprint &&
-      reviewed.designId === snapshot.designId &&
+      reviewed.designId === resolvedTrustedDesignId &&
       reviewed.trustedDesignId === resolvedTrustedDesignId &&
       reviewed.pageId === snapshot.pageId &&
       reviewed.sourceFingerprint === snapshot.fingerprint
