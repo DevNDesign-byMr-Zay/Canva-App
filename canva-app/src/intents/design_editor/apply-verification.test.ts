@@ -4,6 +4,7 @@ import {
   createApplyVerificationReceipt,
   projectExpectedPostApplyFingerprint,
   validateApplyVerificationReceipt,
+  validateApplyVerificationReceiptForReviewedSnapshot,
   validateApplyVerificationReceiptForScenario,
   type VerificationDesignSnapshot,
 } from "./apply-verification";
@@ -152,6 +153,9 @@ describe("HoloForge post-apply evidence", () => {
     expect(first.receiptFingerprint).toBe(second.receiptFingerprint);
     expect(await validateApplyVerificationReceipt(first)).toBe(true);
     expect(await validateApplyVerificationReceiptForScenario(first, scenario)).toBe(true);
+    expect(
+      await validateApplyVerificationReceiptForReviewedSnapshot(first, scenario, snapshot),
+    ).toBe(true);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.changedElementIds)).toBe(true);
     expect(Object.isFrozen(first.safety)).toBe(true);
@@ -219,6 +223,48 @@ describe("HoloForge post-apply evidence", () => {
     driftedSource.provenance.optimizationFingerprint = await computeOptimizationFingerprint(driftedSource);
     driftedSource.provenance.scenarioFingerprint = await computeScenarioFingerprint(driftedSource);
     expect(await validateApplyVerificationReceiptForScenario(receipt, driftedSource)).toBe(false);
+  });
+
+  it("binds receipt evidence to the exact reviewed snapshot and projected post-state", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+    const receipt = await createApplyVerificationReceipt({
+      scenario,
+      sourceFingerprint: snapshot.fingerprint,
+      expectedFingerprint,
+      resultingFingerprint: expectedFingerprint,
+      changedElementIds: scenario.candidate.changedElementIds,
+    });
+
+    expect(
+      await validateApplyVerificationReceiptForReviewedSnapshot(receipt, scenario, snapshot),
+    ).toBe(true);
+
+    const driftedGeometry = structuredClone(snapshot);
+    driftedGeometry.elements[0].left = 999;
+    expect(
+      await validateApplyVerificationReceiptForReviewedSnapshot(receipt, scenario, driftedGeometry),
+    ).toBe(false);
+
+    const wrongPage = structuredClone(snapshot);
+    wrongPage.pageId = "page-2";
+    wrongPage.fingerprint = await sha256({
+      designId: wrongPage.designId,
+      pageId: wrongPage.pageId,
+      pageDimensions: wrongPage.pageDimensions,
+      elements: wrongPage.elements,
+    });
+    expect(
+      await validateApplyVerificationReceiptForReviewedSnapshot(receipt, scenario, wrongPage),
+    ).toBe(false);
+
+    const changedScenario = structuredClone(scenario);
+    changedScenario.candidate.layout.elements["element-1"] = { x: 60, y: 30, rotation: 10 };
+    changedScenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(changedScenario);
+    changedScenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(changedScenario);
+    expect(
+      await validateApplyVerificationReceiptForReviewedSnapshot(receipt, changedScenario, snapshot),
+    ).toBe(false);
   });
 
   it("rejects post-state mismatch and tampered authority evidence", async () => {
