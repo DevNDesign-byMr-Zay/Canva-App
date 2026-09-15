@@ -23,6 +23,7 @@ vi.mock("@canva/design", () => ({
 }));
 
 import {
+  canApplyScenario,
   computeCanvaSnapshotFingerprint,
   getReviewedElementBinding,
 } from "./canva-design";
@@ -164,11 +165,19 @@ describe("reviewed element binding", () => {
       pageId: "page-1",
       pageType: "absolute" as const,
       pageDimensions: { width: 1200, height: 800 },
-      elements,
+      elements: elements.map((element) => ({ ...element })),
       fingerprint: "",
     };
     snapshot.fingerprint = await computeCanvaSnapshotFingerprint(snapshot);
     return snapshot;
+  }
+
+  async function scenarioForSnapshot(snapshot: Awaited<ReturnType<typeof buildSnapshot>>) {
+    const scenario = buildScenario();
+    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+    scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+    return scenario;
   }
 
   it("binds canonical changed-element keys to reviewed snapshot indexes", async () => {
@@ -176,8 +185,7 @@ describe("reviewed element binding", () => {
     const binding = getReviewedElementBinding(await signedScenario(), snapshot);
     expect(binding).toBeNull();
 
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    const scenario = await scenarioForSnapshot(snapshot);
     scenario.candidate.changedElementIds = ["element-1", "element-2"];
     scenario.candidate.layout.elements["element-2"] = { x: 90 };
     const reviewed = getReviewedElementBinding(scenario, snapshot);
@@ -186,10 +194,29 @@ describe("reviewed element binding", () => {
     expect(reviewed?.size).toBe(2);
   });
 
+  it("returns a runtime read-only binding view", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+    const reviewed = getReviewedElementBinding(scenario, snapshot);
+
+    expect(reviewed).not.toBeNull();
+    expect(Object.isFrozen(reviewed)).toBe(true);
+    expect((reviewed as unknown as { set?: unknown }).set).toBeUndefined();
+    expect((reviewed as unknown as { delete?: unknown }).delete).toBeUndefined();
+  });
+
+  it("fails closed when reviewed snapshot contents drift behind the trusted fingerprint", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+
+    expect(await canApplyScenario(scenario, snapshot)).toBe(true);
+    snapshot.elements[0].left = 999;
+    expect(await canApplyScenario(scenario, snapshot)).toBe(false);
+  });
+
   it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
     const snapshot = await buildSnapshot();
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    const scenario = await scenarioForSnapshot(snapshot);
     scenario.candidate.changedElementIds = ["element-3"];
     scenario.candidate.layout.elements["element-3"] = { x: 90 };
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
@@ -197,8 +224,7 @@ describe("reviewed element binding", () => {
 
   it("fails closed when duplicate changed-element keys are supplied", async () => {
     const snapshot = await buildSnapshot();
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    const scenario = await scenarioForSnapshot(snapshot);
     scenario.candidate.changedElementIds = ["element-1", "element-1"];
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
   });
@@ -211,8 +237,7 @@ describe("reviewed element binding", () => {
 
   it("fails closed for inherited layout properties", async () => {
     const snapshot = await buildSnapshot();
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    const scenario = await scenarioForSnapshot(snapshot);
     scenario.candidate.changedElementIds = ["toString"];
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
   });
@@ -226,8 +251,7 @@ describe("reviewed element binding", () => {
     };
     duplicateSnapshot.fingerprint = await computeCanvaSnapshotFingerprint(duplicateSnapshot);
 
-    const scenario = await signedScenario();
-    scenario.source.snapshotFingerprint = duplicateSnapshot.fingerprint;
+    const scenario = await scenarioForSnapshot(duplicateSnapshot);
     scenario.candidate.changedElementIds = ["element-1"];
     expect(getReviewedElementBinding(scenario, duplicateSnapshot)).toBeNull();
   });
