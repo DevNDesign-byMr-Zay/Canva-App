@@ -1,3 +1,4 @@
+import type { ApplyAttestation } from "./apply-attestation";
 import type { VerificationDesignSnapshot } from "./apply-verification";
 import type { HoloForgeScenario } from "./scenario-contract";
 
@@ -69,4 +70,23 @@ export function isReviewedApplyContextCurrent(
   } catch {
     return false;
   }
+}
+
+export function isApplyProofCurrentForReview(
+  attestation: ApplyAttestation,
+  {
+    scenario,
+    trustedDesignId,
+  }: {
+    scenario?: HoloForgeScenario | null;
+    trustedDesignId?: string;
+  },
+): boolean {
+  if (!scenario) return false;
+  const normalizedTrustedDesignId = trustedDesignId?.trim();
+  return (
+    attestation.scenarioId === scenario.scenarioId &&
+    attestation.scenarioFingerprint === scenario.provenance.scenarioFingerprint &&
+    (!normalizedTrustedDesignId || attestation.designId === normalizedTrustedDesignId)
+  );
 }
