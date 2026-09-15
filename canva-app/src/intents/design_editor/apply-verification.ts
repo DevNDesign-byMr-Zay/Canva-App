@@ -124,11 +124,26 @@ function sameElementScope(left: readonly string[], right: readonly string[]): bo
   return left.length === right.length && left.every((id, index) => id === right[index]);
 }
 
+async function fingerprintReviewedSnapshot(snapshot: VerificationDesignSnapshot): Promise<string> {
+  return sha256({
+    designId: snapshot.designId ?? null,
+    pageId: snapshot.pageId,
+    pageDimensions: snapshot.pageDimensions,
+    elements: snapshot.elements,
+  });
+}
+
 export async function projectExpectedPostApplyFingerprint(
   snapshot: VerificationDesignSnapshot,
   scenario: HoloForgeScenario,
 ): Promise<string> {
   if (!snapshot.designId?.trim()) throw new TypeError("trusted design identity is required");
+  if (!HEX_64.test(snapshot.fingerprint)) {
+    throw new TypeError("reviewed snapshot fingerprint must be a SHA-256 fingerprint");
+  }
+  if ((await fingerprintReviewedSnapshot(snapshot)) !== snapshot.fingerprint) {
+    throw new TypeError("reviewed snapshot contents no longer match its trusted fingerprint");
+  }
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) {
     throw new TypeError("scenario source fingerprint does not match the reviewed snapshot");
   }
