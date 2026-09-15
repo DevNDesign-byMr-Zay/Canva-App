@@ -200,6 +200,9 @@ export async function createApplyVerificationReceipt({
   })) {
     if (!HEX_64.test(value)) throw new TypeError(`${name} must be a SHA-256 fingerprint`);
   }
+  if (sourceFingerprint !== scenario.source.snapshotFingerprint) {
+    throw new TypeError("verification receipt source does not match the reviewed scenario");
+  }
   if (expectedFingerprint !== resultingFingerprint) {
     throw new Error("Canva post-apply state does not match the reviewed expected state");
   }
@@ -290,6 +293,30 @@ export async function validateApplyVerificationReceipt(
       },
     };
     return receiptFingerprint === await sha256(body);
+  } catch {
+    return false;
+  }
+}
+
+export async function validateApplyVerificationReceiptForScenario(
+  receipt: ApplyVerificationReceipt | unknown,
+  scenario: HoloForgeScenario,
+): Promise<boolean> {
+  try {
+    if (!(await validateApplyVerificationReceipt(receipt))) return false;
+    if (!(await hasCanonicalProvenance(scenario))) return false;
+
+    const value = readExactDataObject(receipt, RECEIPT_KEYS);
+    if (!value) return false;
+    const changedElementIds = readExactStringArray(value.changedElementIds);
+    if (!changedElementIds) return false;
+
+    return (
+      value.scenarioId === scenario.scenarioId &&
+      value.scenarioFingerprint === scenario.provenance.scenarioFingerprint &&
+      value.sourceFingerprint === scenario.source.snapshotFingerprint &&
+      sameElementScope(changedElementIds, scenario.candidate.changedElementIds)
+    );
   } catch {
     return false;
   }
