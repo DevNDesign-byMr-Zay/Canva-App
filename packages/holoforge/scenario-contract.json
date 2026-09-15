@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/holoforge/scenario-contract-v0.json",
+  "title": "HOLOFORGE Scenario Contract v0",
+  "type": "object",
+  "required": ["contract", "version", "scenarioId", "sourceDesignRef", "intent", "constraints", "layout", "evidence", "status"],
+  "properties": {
+    "contract": { "const": "holoforge.scenario" },
+    "version": { "const": "0" },
+    "scenarioId": { "type": "string", "minLength": 1 },
+    "sourceDesignRef": { "type": "string", "minLength": 1 },
+    "intent": { "type": "string", "minLength": 1 },
+    "constraints": { "type": "array" },
+    "layout": { "type": "object" },
+    "evidence": {
+      "type": "object",
+      "required": ["backend", "algorithm", "seed", "objective", "deltaFromSource", "durationMs"],
+      "properties": {
+        "backend": { "type": "string", "minLength": 1 },
+        "algorithm": { "type": "string", "minLength": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "objective": { "type": "number" },
+        "deltaFromSource": { "type": "number" },
+        "durationMs": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "status": { "enum": ["candidate", "evaluated", "selected", "rejected"] }
+  },
+  "additionalProperties": false
+}

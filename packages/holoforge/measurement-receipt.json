@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DevNDesign-byMr-Zay/Canva-App/blob/main/packages/holoforge/measurement-receipt.json",
+  "title": "HOLOFORGE Measurement Receipt v0",
+  "type": "object",
+  "required": ["schema", "problem", "configuration", "reference", "candidate", "comparison", "durationMs"],
+  "properties": {
+    "schema": { "const": "holoforge-measurement-receipt-v0" },
+    "problem": { "type": "object", "required": ["kind", "version", "variableCount"] },
+    "configuration": { "type": "object", "required": ["seed", "iterations"] },
+    "reference": { "type": "object", "required": ["backend", "algorithm", "bits", "objective"] },
+    "candidate": { "type": "object", "required": ["backend", "algorithm", "seed", "iterations", "bits", "objective"] },
+    "comparison": { "type": "object", "required": ["objectiveGap", "candidateMatchesReference"] },
+    "durationMs": { "type": "number", "minimum": 0 }
+  },
+  "additionalProperties": false
+}
