@@ -61,6 +61,47 @@ type ReadableAbsolutePage = {
   readonly elements: { toArray(): readonly ReadableAbsoluteElement[] };
 };
 
+class ReadonlyMapView<K, V> implements ReadonlyMap<K, V> {
+  readonly #source: Map<K, V>;
+
+  constructor(source: Map<K, V>) {
+    this.#source = source;
+    Object.freeze(this);
+  }
+
+  get size(): number {
+    return this.#source.size;
+  }
+
+  get(key: K): V | undefined {
+    return this.#source.get(key);
+  }
+
+  has(key: K): boolean {
+    return this.#source.has(key);
+  }
+
+  entries(): MapIterator<[K, V]> {
+    return this.#source.entries();
+  }
+
+  keys(): MapIterator<K> {
+    return this.#source.keys();
+  }
+
+  values(): MapIterator<V> {
+    return this.#source.values();
+  }
+
+  forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: unknown): void {
+    this.#source.forEach((value, key) => callbackfn.call(thisArg, value, key, this));
+  }
+
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return this.#source[Symbol.iterator]();
+  }
+}
+
 function snapshotElementId(index: number): string {
   return `element-${index + 1}`;
 }
@@ -146,7 +187,7 @@ export function getReviewedElementBinding(
     if (!element || !layoutElements[scenarioElementId]) return null;
     binding.set(scenarioElementId, element);
   }
-  return binding;
+  return new ReadonlyMapView(binding);
 }
 
 function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
