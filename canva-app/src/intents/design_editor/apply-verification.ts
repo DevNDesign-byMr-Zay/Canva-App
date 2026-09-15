@@ -63,9 +63,55 @@ const SAFETY_KEYS = [
   "physicalActuation",
 ].sort();
 
-function sameKeys(value: object, expected: string[]): boolean {
-  const actual = Object.keys(value).sort();
-  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+function readExactDataObject(
+  value: unknown,
+  expectedKeys: readonly string[],
+): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (Object.getPrototypeOf(value) !== Object.prototype) return null;
+  if (Object.getOwnPropertySymbols(value).length > 0) return null;
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const actualKeys = Object.keys(descriptors).sort();
+  const sortedExpected = [...expectedKeys].sort();
+  if (
+    actualKeys.length !== sortedExpected.length ||
+    actualKeys.some((key, index) => key !== sortedExpected[index])
+  ) {
+    return null;
+  }
+
+  const copy: Record<string, unknown> = {};
+  for (const key of sortedExpected) {
+    const descriptor = descriptors[key];
+    if (!descriptor || !descriptor.enumerable || "get" in descriptor || "set" in descriptor) {
+      return null;
+    }
+    copy[key] = descriptor.value;
+  }
+  return copy;
+}
+
+function readExactStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (Object.getOwnPropertySymbols(value).length > 0) return null;
+
+  const allowedKeys = new Set(["length"]);
+  const copy: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const key = String(index);
+    allowedKeys.add(key);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || "get" in descriptor || "set" in descriptor) return null;
+    if (typeof descriptor.value !== "string" || !descriptor.value.trim()) return null;
+    copy.push(descriptor.value);
+  }
+
+  if (Reflect.ownKeys(value).some((key) => typeof key !== "string" || !allowedKeys.has(key))) {
+    return null;
+  }
+  if (copy.length === 0 || new Set(copy).size !== copy.length) return null;
+  return copy;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -87,11 +133,26 @@ function hasUniqueSnapshotElementIds(elements: readonly VerificationElementSnaps
   return true;
 }
 
+async function fingerprintReviewedSnapshot(snapshot: VerificationDesignSnapshot): Promise<string> {
+  return sha256({
+    designId: snapshot.designId ?? null,
+    pageId: snapshot.pageId,
+    pageDimensions: snapshot.pageDimensions,
+    elements: snapshot.elements,
+  });
+}
+
 export async function projectExpectedPostApplyFingerprint(
   snapshot: VerificationDesignSnapshot,
   scenario: HoloForgeScenario,
 ): Promise<string> {
   if (!snapshot.designId?.trim()) throw new TypeError("trusted design identity is required");
+  if (!HEX_64.test(snapshot.fingerprint)) {
+    throw new TypeError("reviewed snapshot fingerprint must be a SHA-256 fingerprint");
+  }
+  if ((await fingerprintReviewedSnapshot(snapshot)) !== snapshot.fingerprint) {
+    throw new TypeError("reviewed snapshot contents no longer match its trusted fingerprint");
+  }
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) {
     throw new TypeError("scenario source fingerprint does not match the reviewed snapshot");
   }
@@ -151,6 +212,9 @@ export async function createApplyVerificationReceipt({
   })) {
     if (!HEX_64.test(value)) throw new TypeError(`${name} must be a SHA-256 fingerprint`);
   }
+  if (sourceFingerprint !== scenario.source.snapshotFingerprint) {
+    throw new TypeError("verification receipt source does not match the reviewed scenario");
+  }
   if (expectedFingerprint !== resultingFingerprint) {
     throw new Error("Canva post-apply state does not match the reviewed expected state");
   }
@@ -189,43 +253,82 @@ export async function validateApplyVerificationReceipt(
   receipt: ApplyVerificationReceipt | unknown,
 ): Promise<boolean> {
   try {
-    if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return false;
-    const value = receipt as ApplyVerificationReceipt;
-    if (!sameKeys(value, RECEIPT_KEYS)) return false;
+    const value = readExactDataObject(receipt, RECEIPT_KEYS);
+    if (!value) return false;
     if (value.version !== 1 || value.verification !== "post-apply-match") return false;
-    if (!value.scenarioId || typeof value.scenarioId !== "string") return false;
+    if (typeof value.scenarioId !== "string" || !value.scenarioId) return false;
+
+    const scenarioFingerprint = value.scenarioFingerprint;
+    const sourceFingerprint = value.sourceFingerprint;
+    const expectedFingerprint = value.expectedFingerprint;
+    const resultingFingerprint = value.resultingFingerprint;
+    const receiptFingerprint = value.receiptFingerprint;
     for (const fingerprint of [
-      value.scenarioFingerprint,
-      value.sourceFingerprint,
-      value.expectedFingerprint,
-      value.resultingFingerprint,
-      value.receiptFingerprint,
+      scenarioFingerprint,
+      sourceFingerprint,
+      expectedFingerprint,
+      resultingFingerprint,
+      receiptFingerprint,
     ]) {
-      if (!HEX_64.test(fingerprint)) return false;
+      if (typeof fingerprint !== "string" || !HEX_64.test(fingerprint)) return false;
     }
-    if (value.expectedFingerprint !== value.resultingFingerprint) return false;
+    if (expectedFingerprint !== resultingFingerprint) return false;
+
+    const changedElementIds = readExactStringArray(value.changedElementIds);
+    if (!changedElementIds) return false;
+
+    const safety = readExactDataObject(value.safety, SAFETY_KEYS);
+    if (!safety) return false;
     if (
-      !Array.isArray(value.changedElementIds) ||
-      value.changedElementIds.length === 0 ||
-      new Set(value.changedElementIds).size !== value.changedElementIds.length ||
-      value.changedElementIds.some((id) => typeof id !== "string" || !id.trim())
-    ) {
-      return false;
-    }
-    if (!value.safety || typeof value.safety !== "object" || !sameKeys(value.safety, SAFETY_KEYS)) {
-      return false;
-    }
-    if (
-      value.safety.explicitUserApply !== true ||
-      value.safety.autoApply !== false ||
-      value.safety.authoritative !== false ||
-      value.safety.physicalActuation !== false
+      safety.explicitUserApply !== true ||
+      safety.autoApply !== false ||
+      safety.authoritative !== false ||
+      safety.physicalActuation !== false
     ) {
       return false;
     }
 
-    const { receiptFingerprint, ...body } = value;
+    const body = {
+      version: 1 as const,
+      scenarioId: value.scenarioId,
+      scenarioFingerprint,
+      sourceFingerprint,
+      expectedFingerprint,
+      resultingFingerprint,
+      changedElementIds,
+      verification: "post-apply-match" as const,
+      safety: {
+        explicitUserApply: true as const,
+        autoApply: false as const,
+        authoritative: false as const,
+        physicalActuation: false as const,
+      },
+    };
     return receiptFingerprint === await sha256(body);
+  } catch {
+    return false;
+  }
+}
+
+export async function validateApplyVerificationReceiptForScenario(
+  receipt: ApplyVerificationReceipt | unknown,
+  scenario: HoloForgeScenario,
+): Promise<boolean> {
+  try {
+    if (!(await validateApplyVerificationReceipt(receipt))) return false;
+    if (!(await hasCanonicalProvenance(scenario))) return false;
+
+    const value = readExactDataObject(receipt, RECEIPT_KEYS);
+    if (!value) return false;
+    const changedElementIds = readExactStringArray(value.changedElementIds);
+    if (!changedElementIds) return false;
+
+    return (
+      value.scenarioId === scenario.scenarioId &&
+      value.scenarioFingerprint === scenario.provenance.scenarioFingerprint &&
+      value.sourceFingerprint === scenario.source.snapshotFingerprint &&
+      sameElementScope(changedElementIds, scenario.candidate.changedElementIds)
+    );
   } catch {
     return false;
   }
