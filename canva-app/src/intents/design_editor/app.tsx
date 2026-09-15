@@ -15,6 +15,7 @@ import { createApplyAttestation, type ApplyAttestation } from "./apply-attestati
 import { createApplyRunGate } from "./apply-run-gate";
 import {
   createReviewedApplyContext,
+  isApplyProofCurrentForReview,
   isReviewedApplyContextCurrent,
 } from "./review-context-guard";
 import { buildScenarioReview } from "./scenario-review";
@@ -83,6 +84,18 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     latestReviewContext.current =
       scenario && snapshot ? { scenario, snapshot, trustedDesignId } : null;
   }, [scenario, snapshot, trustedDesignId]);
+
+  useEffect(() => {
+    if (!receipt || !attestation) return;
+    if (isApplyProofCurrentForReview(attestation, { scenario, trustedDesignId })) return;
+
+    setReceipt(null);
+    setAttestation(null);
+    if (status === "done" || status === "warning") {
+      setStatus("idle");
+      setMessage(null);
+    }
+  }, [attestation, receipt, scenario, status, trustedDesignId]);
 
   useEffect(() => {
     let cancelled = false;
