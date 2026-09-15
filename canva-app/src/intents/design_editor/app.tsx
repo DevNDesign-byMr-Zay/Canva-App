@@ -37,7 +37,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
   const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
   const latestReviewContext = useRef<{
-    scenario: AppScenario;
+    scenario: NonNullable<AppScenario>;
     snapshot: CanvaDesignSnapshot;
   } | null>(null);
 
