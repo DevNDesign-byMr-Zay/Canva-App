@@ -149,9 +149,13 @@ describe("reviewed element binding", () => {
     fingerprint,
   };
 
-  it("binds canonical changed-element keys only to the reviewed snapshot", async () => {
+  it("binds canonical changed-element keys only to an isolated reviewed snapshot", async () => {
     const binding = getReviewedElementBinding(await signedScenario(), snapshot);
-    expect(binding?.get("element-1")).toBe(snapshot.elements[0]);
+    const boundElement = binding?.get("element-1");
+
+    expect(boundElement).toEqual(snapshot.elements[0]);
+    expect(boundElement).not.toBe(snapshot.elements[0]);
+    expect(Object.isFrozen(boundElement)).toBe(true);
     expect(binding?.size).toBe(1);
   });
 
@@ -163,6 +167,22 @@ describe("reviewed element binding", () => {
     expect((binding as unknown as { delete?: unknown }).delete).toBeUndefined();
     expect((binding as unknown as { clear?: unknown }).clear).toBeUndefined();
     expect([...binding!]).toEqual([["element-1", snapshot.elements[0]]]);
+  });
+
+  it("does not drift when the caller mutates the source snapshot after binding", async () => {
+    const mutableSnapshot = {
+      ...snapshot,
+      elements: snapshot.elements.map((element) => ({ ...element })),
+    };
+    const binding = getReviewedElementBinding(await signedScenario(), mutableSnapshot);
+    const before = binding?.get("element-1");
+
+    mutableSnapshot.elements[0].left = 999;
+    mutableSnapshot.elements[0].locked = true;
+
+    expect(before?.left).toBe(40);
+    expect(before?.locked).toBe(false);
+    expect(binding?.get("element-1")).toBe(before);
   });
 
   it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
