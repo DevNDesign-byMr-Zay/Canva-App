@@ -12,6 +12,7 @@ import {
   type CanvaDesignSnapshot,
 } from "./canva-design";
 import { createApplyAttestation, type ApplyAttestation } from "./apply-attestation";
+import { createApplyRunGate } from "./apply-run-gate";
 import {
   createReviewedApplyContext,
   isReviewedApplyContextCurrent,
@@ -36,6 +37,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
   const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
+  const applyRunGate = useRef(createApplyRunGate());
   const latestReviewContext = useRef<{
     scenario: NonNullable<AppScenario>;
     snapshot: CanvaDesignSnapshot;
@@ -103,6 +105,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
 
   const apply = useCallback(async () => {
     if (!scenario || !snapshot || !readyToApply) return;
+    const runToken = applyRunGate.current.tryAcquire();
+    if (runToken === null) return;
 
     setStatus("applying");
     setMessage(null);
@@ -172,6 +176,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               description: "Error shown when a selected HoloForge scenario fails to apply.",
             }),
       );
+    } finally {
+      applyRunGate.current.release(runToken);
     }
   }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
 
