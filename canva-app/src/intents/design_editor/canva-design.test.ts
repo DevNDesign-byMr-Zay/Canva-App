@@ -171,7 +171,7 @@ describe("reviewed element binding", () => {
     return snapshot;
   }
 
-  it("binds canonical changed-element keys only to the reviewed snapshot", async () => {
+  it("binds canonical changed-element keys to reviewed snapshot indexes", async () => {
     const snapshot = await buildSnapshot();
     const binding = getReviewedElementBinding(await signedScenario(), snapshot);
     expect(binding).toBeNull();
@@ -179,7 +179,7 @@ describe("reviewed element binding", () => {
     const scenario = await signedScenario();
     scenario.source.snapshotFingerprint = snapshot.fingerprint;
     const reviewed = getReviewedElementBinding(scenario, snapshot);
-    expect(reviewed?.get("element-1")).toBe(snapshot.elements[0]);
+    expect(reviewed?.get("element-1")).toBe(0);
     expect(reviewed?.size).toBe(1);
   });
 
