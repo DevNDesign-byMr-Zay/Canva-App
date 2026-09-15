@@ -11,6 +11,7 @@ import {
   type ApplyVerificationReceipt,
   type CanvaDesignSnapshot,
 } from "./canva-design";
+import { createApplyAttestation, type ApplyAttestation } from "./apply-attestation";
 import { buildScenarioReview } from "./scenario-review";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
@@ -30,6 +31,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
+  const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
 
   const refreshLabel = intl.formatMessage({
     defaultMessage: "Read current design",
@@ -45,29 +47,39 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     setMessage(null);
     setScenarioVerified(false);
     setReceipt(null);
+    setAttestation(null);
 
     try {
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setStatus("idle");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "We couldn't read the current Canva design.",
-        description: "Error shown when HoloForge cannot read the current Canva design.",
-      }));
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "We couldn't read the current Canva design.",
+              description: "Error shown when HoloForge cannot read the current Canva design.",
+            }),
+      );
     }
   }, [intl, trustedDesignId]);
 
   useEffect(() => {
     let cancelled = false;
     setScenarioVerified(false);
-    if (!scenario || !snapshot || !designEditingSupported) return () => { cancelled = true; };
+    if (!scenario || !snapshot || !designEditingSupported)
+      return () => {
+        cancelled = true;
+      };
 
     void canApplyScenario(scenario, snapshot).then((safe) => {
       if (!cancelled) setScenarioVerified(safe);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [designEditingSupported, scenario, snapshot]);
 
   const review = useMemo(
@@ -83,25 +95,45 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     setStatus("applying");
     setMessage(null);
     setReceipt(null);
+    setAttestation(null);
 
     try {
-      const result = await applyScenario(scenario, snapshot);
+      const reviewedSnapshot = snapshot;
+      const result = await applyScenario(scenario, reviewedSnapshot);
+      const sealedAttestation = await createApplyAttestation({
+        scenario,
+        snapshot: reviewedSnapshot,
+        receipt: result,
+      });
       setReceipt(result);
+      setAttestation(sealedAttestation);
       setStatus("done");
-      setMessage(intl.formatMessage({
-        defaultMessage: "Applied {count, number} selected change(s) and verified the resulting Canva state.",
-        description: "Confirmation after applying and verifying one selected HoloForge scenario in Canva.",
-      }, { count: result.changedElementIds.length }));
+      setMessage(
+        intl.formatMessage(
+          {
+            defaultMessage:
+              "Applied {count, number} selected change(s), verified the Canva post-state, and sealed the reviewed apply attestation.",
+            description:
+              "Confirmation after applying, verifying, and attesting one selected HoloForge scenario in Canva.",
+          },
+          { count: result.changedElementIds.length },
+        ),
+      );
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setScenarioVerified(false);
     } catch (error) {
       setStatus("error");
       setScenarioVerified(false);
       setReceipt(null);
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "The selected scenario could not be applied.",
-        description: "Error shown when a selected HoloForge scenario fails to apply.",
-      }));
+      setAttestation(null);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "The selected scenario could not be applied.",
+              description: "Error shown when a selected HoloForge scenario fails to apply.",
+            }),
+      );
     }
   }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
 
@@ -130,7 +162,13 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       {message && <Alert tone={status === "error" ? "critical" : "positive"}>{message}</Alert>}
 
       <Rows spacing="1u">
-        <Button variant="secondary" onClick={refresh} loading={status === "reading"} disabled={status === "applying"} stretch>
+        <Button
+          variant="secondary"
+          onClick={refresh}
+          loading={status === "reading"}
+          disabled={status === "applying"}
+          stretch
+        >
           {refreshLabel}
         </Button>
 
@@ -139,7 +177,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             <FormattedMessage
               defaultMessage="Snapshot ready · {count, number} element(s) · fingerprint {fingerprint}"
               description="Shows the current Canva snapshot state used for stale-scenario protection."
-              values={{ count: snapshot.elements.length, fingerprint: `${snapshot.fingerprint.slice(0, 12)}…` }}
+              values={{
+                count: snapshot.elements.length,
+                fingerprint: `${snapshot.fingerprint.slice(0, 12)}…`,
+              }}
             />
           ) : (
             <FormattedMessage
@@ -171,7 +212,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               </Text>
               {review.map(({ elementId, before, after, changedFields }) => (
                 <Text key={elementId}>
-                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
+                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×
+                  {after.top} {after.width}×{after.height} · {changedFields.join(", ")}
                 </Text>
               ))}
               {review.length === 0 && (
@@ -185,7 +227,13 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             </Rows>
           )}
 
-          <Button variant="primary" onClick={apply} loading={status === "applying"} disabled={!readyToApply || status === "reading"} stretch>
+          <Button
+            variant="primary"
+            onClick={apply}
+            loading={status === "applying"}
+            disabled={!readyToApply || status === "reading"}
+            stretch
+          >
             {applyLabel}
           </Button>
           {!readyToApply && (
@@ -206,12 +254,12 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         </Alert>
       )}
 
-      {receipt && (
+      {receipt && attestation && (
         <Rows spacing="0.5u">
           <Title>
             <FormattedMessage
               defaultMessage="Verified result"
-              description="Heading for the post-apply verification receipt shown after a successful apply."
+              description="Heading for the post-apply verification evidence shown after a successful apply."
             />
           </Title>
           <Text>
@@ -225,14 +273,20 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             <FormattedMessage
               defaultMessage="Expected {expected} · Result {result}"
               description="Shows the expected and resulting state fingerprints from the verification receipt."
-              values={{ expected: `${receipt.expectedFingerprint.slice(0, 12)}…`, result: `${receipt.resultingFingerprint.slice(0, 12)}…` }}
+              values={{
+                expected: `${receipt.expectedFingerprint.slice(0, 12)}…`,
+                result: `${receipt.resultingFingerprint.slice(0, 12)}…`,
+              }}
             />
           </Text>
           <Text>
             <FormattedMessage
-              defaultMessage="Receipt {fingerprint} · explicit apply · no auto-apply"
-              description="Shows the receipt fingerprint and its safety posture."
-              values={{ fingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…` }}
+              defaultMessage="Receipt {receiptFingerprint} · Attestation {attestationFingerprint} · explicit apply · no auto-apply"
+              description="Shows the receipt and reviewed apply attestation fingerprints and their safety posture."
+              values={{
+                receiptFingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…`,
+                attestationFingerprint: `${attestation.attestationFingerprint.slice(0, 12)}…`,
+              }}
             />
           </Text>
         </Rows>
