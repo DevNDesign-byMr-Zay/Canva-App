@@ -208,4 +208,12 @@ describe("reviewed element binding", () => {
     const scenario = await signedScenario();
     expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
   });
+
+  it("fails closed for inherited layout properties", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await signedScenario();
+    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.candidate.changedElementIds = ["toString"];
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
 });
