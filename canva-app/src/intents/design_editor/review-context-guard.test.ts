@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type { ApplyAttestation } from "./apply-attestation";
 import type { VerificationDesignSnapshot } from "./apply-verification";
 import {
   createReviewedApplyContext,
+  isApplyProofCurrentForReview,
   isReviewedApplyContextCurrent,
 } from "./review-context-guard";
 import type { HoloForgeScenario } from "./scenario-contract";
@@ -21,6 +23,29 @@ function snapshot(overrides: Partial<VerificationDesignSnapshot> = {}): Verifica
     fingerprint: "b".repeat(64),
     pageDimensions: { width: 1200, height: 900 },
     elements: [],
+    ...overrides,
+  };
+}
+
+function attestation(overrides: Partial<ApplyAttestation> = {}): ApplyAttestation {
+  return {
+    version: 1,
+    scenarioId: "scenario-1",
+    scenarioFingerprint: "a".repeat(64),
+    receiptFingerprint: "c".repeat(64),
+    designId: "design-1",
+    pageId: "page-1",
+    sourceFingerprint: "b".repeat(64),
+    resultingFingerprint: "d".repeat(64),
+    changedElementIds: ["element-1"],
+    verification: "reviewed-apply-attested",
+    safety: {
+      explicitUserApply: true,
+      autoApply: false,
+      authoritative: false,
+      physicalActuation: false,
+    },
+    attestationFingerprint: "e".repeat(64),
     ...overrides,
   };
 }
@@ -140,5 +165,29 @@ describe("reviewed apply context guard", () => {
         snapshot: snapshot({ designId: undefined }),
       }),
     ).toThrow(/trusted design identity/);
+  });
+
+  it("keeps verified proof visible only for the same live scenario and trusted design target", () => {
+    const proof = attestation();
+
+    expect(
+      isApplyProofCurrentForReview(proof, {
+        scenario: scenario(),
+        trustedDesignId: "design-1",
+      }),
+    ).toBe(true);
+    expect(
+      isApplyProofCurrentForReview(proof, {
+        scenario: scenario("scenario-2", "f".repeat(64)),
+        trustedDesignId: "design-1",
+      }),
+    ).toBe(false);
+    expect(
+      isApplyProofCurrentForReview(proof, {
+        scenario: scenario(),
+        trustedDesignId: "design-2",
+      }),
+    ).toBe(false);
+    expect(isApplyProofCurrentForReview(proof, { scenario: null })).toBe(false);
   });
 });
