@@ -155,6 +155,16 @@ describe("reviewed element binding", () => {
     expect(binding?.size).toBe(1);
   });
 
+  it("returns a runtime read-only binding view", async () => {
+    const binding = getReviewedElementBinding(await signedScenario(), snapshot);
+    expect(binding).not.toBeNull();
+    expect(Object.isFrozen(binding)).toBe(true);
+    expect((binding as unknown as { set?: unknown }).set).toBeUndefined();
+    expect((binding as unknown as { delete?: unknown }).delete).toBeUndefined();
+    expect((binding as unknown as { clear?: unknown }).clear).toBeUndefined();
+    expect([...binding!]).toEqual([["element-1", snapshot.elements[0]]]);
+  });
+
   it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
     const scenario = await signedScenario();
     scenario.candidate.changedElementIds = ["element-3"];
