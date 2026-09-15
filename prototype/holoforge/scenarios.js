@@ -34,8 +34,8 @@ export const prototypeScenarios = Object.freeze([
     }),
     sourceSnapshotId: 'snapshot-v1',
     sourceSnapshotFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    optimizationFingerprint: '93eeaeed3f0a33c07a96284a6938d81043f879bc0ad2718f7ac2737ad6f1ed0b',
-    scenarioFingerprint: 'c918c2796610e5125863bad2c885943dae744ceb1cbf0ea9055e194c448a4f35',
+    optimizationFingerprint: 'c941c22a9e56720bccbacb4c0a55d208611c4583a35e5fa2640ba508fb413af8',
+    scenarioFingerprint: 'f151ce8e7bc2a414c8ad8c4aa496bb6223525b7f5301cc01eaa914e75f4aaaa6',
     target: 'web-dashboard',
   }),
   Object.freeze({
@@ -102,8 +102,8 @@ export const prototypeScenarios = Object.freeze([
     }),
     sourceSnapshotId: 'snapshot-v1',
     sourceSnapshotFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    optimizationFingerprint: '2d0ad8a2c8b02fc21ec3b04e9614db5f8bf8f53a8f0d7d027d7ea01df827bf55',
-    scenarioFingerprint: '5f3e25a6ffb7bca08a06bdaa2e5281824af17ef428a790fc90b5d64aaa2c45f8',
+    optimizationFingerprint: '3eb81cf6b956c8464a68fdf31051c92d5486375ff860f7ffcb88a630f947d3a6',
+    scenarioFingerprint: 'cd19aaed34e54657a1dda109d948422bc1837ba1b429cee1698b4066a4cbd2fe',
     target: 'web-dashboard',
   }),
 ]);

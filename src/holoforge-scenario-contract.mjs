@@ -22,6 +22,13 @@ function canonical(value) {
   return value;
 }
 
+function canonicalConstraintSet(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((constraint) => canonical(constraint))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
 function digest(value) {
   return createHash('sha256').update(JSON.stringify(canonical(value)), 'utf8').digest('hex');
 }
@@ -44,8 +51,8 @@ function optimizationProblemDefinition(scenario) {
       direction: scenario.intent?.objectiveDirection ?? null,
     },
     constraints: {
-      hard: scenario.constraints?.hard ?? [],
-      soft: scenario.constraints?.soft ?? [],
+      hard: canonicalConstraintSet(scenario.constraints?.hard),
+      soft: canonicalConstraintSet(scenario.constraints?.soft),
     },
   };
 }
