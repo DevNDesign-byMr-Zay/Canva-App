@@ -26,20 +26,23 @@ function snapshot(overrides: Partial<VerificationDesignSnapshot> = {}): Verifica
 }
 
 describe("reviewed apply context guard", () => {
-  it("accepts the exact scenario and reviewed snapshot context", () => {
+  it("accepts the exact scenario, reviewed snapshot, and trusted design target", () => {
     const reviewedScenario = scenario();
     const reviewedSnapshot = snapshot();
     const context = createReviewedApplyContext({
       scenario: reviewedScenario,
       snapshot: reviewedSnapshot,
+      trustedDesignId: "design-1",
     });
 
     expect(
       isReviewedApplyContextCurrent(context, {
         scenario: reviewedScenario,
         snapshot: reviewedSnapshot,
+        trustedDesignId: "design-1",
       }),
     ).toBe(true);
+    expect(context.trustedDesignId).toBe("design-1");
     expect(Object.isFrozen(context)).toBe(true);
   });
 
@@ -49,12 +52,14 @@ describe("reviewed apply context guard", () => {
     const context = createReviewedApplyContext({
       scenario: reviewedScenario,
       snapshot: reviewedSnapshot,
+      trustedDesignId: "design-1",
     });
 
     expect(
       isReviewedApplyContextCurrent(context, {
         scenario: scenario("scenario-2", "c".repeat(64)),
         snapshot: reviewedSnapshot,
+        trustedDesignId: "design-1",
       }),
     ).toBe(false);
   });
@@ -65,6 +70,7 @@ describe("reviewed apply context guard", () => {
     const context = createReviewedApplyContext({
       scenario: reviewedScenario,
       snapshot: reviewedSnapshot,
+      trustedDesignId: "design-1",
     });
 
     for (const changedSnapshot of [
@@ -76,9 +82,55 @@ describe("reviewed apply context guard", () => {
         isReviewedApplyContextCurrent(context, {
           scenario: reviewedScenario,
           snapshot: changedSnapshot,
+          trustedDesignId: changedSnapshot.designId,
         }),
       ).toBe(false);
     }
+  });
+
+  it("rejects trusted design target drift even before a new snapshot is installed", () => {
+    const reviewedScenario = scenario();
+    const reviewedSnapshot = snapshot();
+    const context = createReviewedApplyContext({
+      scenario: reviewedScenario,
+      snapshot: reviewedSnapshot,
+      trustedDesignId: "design-1",
+    });
+
+    expect(
+      isReviewedApplyContextCurrent(context, {
+        scenario: reviewedScenario,
+        snapshot: reviewedSnapshot,
+        trustedDesignId: "design-2",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a reviewed snapshot that does not match the trusted design target", () => {
+    expect(() =>
+      createReviewedApplyContext({
+        scenario: scenario(),
+        snapshot: snapshot({ designId: "design-1" }),
+        trustedDesignId: "design-2",
+      }),
+    ).toThrow(/does not match the trusted design target/);
+  });
+
+  it("falls back to the reviewed snapshot identity when no explicit target is provided", () => {
+    const reviewedScenario = scenario();
+    const reviewedSnapshot = snapshot();
+    const context = createReviewedApplyContext({
+      scenario: reviewedScenario,
+      snapshot: reviewedSnapshot,
+    });
+
+    expect(context.trustedDesignId).toBe("design-1");
+    expect(
+      isReviewedApplyContextCurrent(context, {
+        scenario: reviewedScenario,
+        snapshot: reviewedSnapshot,
+      }),
+    ).toBe(true);
   });
 
   it("requires trusted design identity before an apply context can be captured", () => {
