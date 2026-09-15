@@ -4,6 +4,7 @@ import {
   createApplyVerificationReceipt,
   projectExpectedPostApplyFingerprint,
   validateApplyVerificationReceipt,
+  validateApplyVerificationReceiptForScenario,
   type VerificationDesignSnapshot,
 } from "./apply-verification";
 import {
@@ -150,6 +151,7 @@ describe("HoloForge post-apply evidence", () => {
 
     expect(first.receiptFingerprint).toBe(second.receiptFingerprint);
     expect(await validateApplyVerificationReceipt(first)).toBe(true);
+    expect(await validateApplyVerificationReceiptForScenario(first, scenario)).toBe(true);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.changedElementIds)).toBe(true);
     expect(Object.isFrozen(first.safety)).toBe(true);
@@ -174,6 +176,49 @@ describe("HoloForge post-apply evidence", () => {
         changedElementIds: ["element-2"],
       }),
     ).rejects.toThrow(/element scope does not match/);
+  });
+
+  it("rejects receipt creation from a source snapshot other than the reviewed scenario source", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+
+    await expect(
+      createApplyVerificationReceipt({
+        scenario,
+        sourceFingerprint: "a".repeat(64),
+        expectedFingerprint,
+        resultingFingerprint: expectedFingerprint,
+        changedElementIds: scenario.candidate.changedElementIds,
+      }),
+    ).rejects.toThrow(/source does not match/);
+  });
+
+  it("binds a valid receipt to its exact canonical scenario and rejects substitution", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+    const receipt = await createApplyVerificationReceipt({
+      scenario,
+      sourceFingerprint: snapshot.fingerprint,
+      expectedFingerprint,
+      resultingFingerprint: expectedFingerprint,
+      changedElementIds: scenario.candidate.changedElementIds,
+    });
+
+    expect(await validateApplyVerificationReceiptForScenario(receipt, scenario)).toBe(true);
+
+    const substituted = structuredClone(scenario);
+    substituted.scenarioId = "scenario-apply-2";
+    substituted.provenance.optimizationFingerprint = await computeOptimizationFingerprint(substituted);
+    substituted.provenance.scenarioFingerprint = await computeScenarioFingerprint(substituted);
+
+    expect(await validateApplyVerificationReceipt(receipt)).toBe(true);
+    expect(await validateApplyVerificationReceiptForScenario(receipt, substituted)).toBe(false);
+
+    const driftedSource = structuredClone(scenario);
+    driftedSource.source.snapshotFingerprint = "b".repeat(64);
+    driftedSource.provenance.optimizationFingerprint = await computeOptimizationFingerprint(driftedSource);
+    driftedSource.provenance.scenarioFingerprint = await computeScenarioFingerprint(driftedSource);
+    expect(await validateApplyVerificationReceiptForScenario(receipt, driftedSource)).toBe(false);
   });
 
   it("rejects post-state mismatch and tampered authority evidence", async () => {
