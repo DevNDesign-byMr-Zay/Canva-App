@@ -121,6 +121,13 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
   };
 }
 
+function hasOwnLayoutElement(
+  elements: HoloForgeScenario["candidate"]["layout"]["elements"],
+  elementId: string,
+): boolean {
+  return Object.prototype.hasOwnProperty.call(elements, elementId);
+}
+
 /**
  * Resolve canonical scenario element keys to their reviewed snapshot indexes.
  *
@@ -141,14 +148,14 @@ export function getReviewedElementBinding(
   const binding = new Map<string, number>();
   for (const scenarioElementId of scenario.candidate.changedElementIds) {
     const snapshotIndex = snapshot.elements.findIndex((element) => element.id === scenarioElementId);
-    if (snapshotIndex < 0 || !scenario.candidate.layout.elements[scenarioElementId]) return null;
+    if (snapshotIndex < 0 || !hasOwnLayoutElement(scenario.candidate.layout.elements, scenarioElementId)) return null;
     binding.set(scenarioElementId, snapshotIndex);
   }
   return binding;
 }
 
 function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
-  return scenario.candidate.changedElementIds.filter((id) => Boolean(scenario.candidate.layout.elements[id]));
+  return scenario.candidate.changedElementIds.filter((id) => hasOwnLayoutElement(scenario.candidate.layout.elements, id));
 }
 
 export async function canApplyScenario(
