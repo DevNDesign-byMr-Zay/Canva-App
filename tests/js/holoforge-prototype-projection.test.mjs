@@ -6,27 +6,43 @@ import { prototypeScenarios } from '../../prototype/holoforge/scenarios.js';
 
 const projectionById = new Map(prototypeScenarios.map((scenario) => [scenario.id, scenario]));
 
-test('Scenario Lab projection mirrors canonical fixture evidence', () => {
+function comparableProjection(fixture) {
+  return {
+    id: fixture.scenarioId,
+    title: fixture.interpretation.label,
+    interpretation: fixture.interpretation.summary,
+    score: fixture.evidence.objectiveScore,
+    baseline: fixture.evidence.baseline.objectiveScore,
+    gap: fixture.evidence.objectiveGap,
+    durationMs: fixture.evidence.durationMs,
+    objective: fixture.intent.objectiveId,
+    seed: fixture.evidence.seed,
+    backend: fixture.evidence.backend,
+    algorithm: fixture.evidence.algorithm,
+    baselineBackend: fixture.evidence.baseline.backend,
+    baselineAlgorithm: fixture.evidence.baseline.algorithm,
+    status: fixture.evidence.status,
+    hardConstraintsPassed: fixture.evidence.hardConstraintsPassed,
+    tradeoff: fixture.interpretation.tradeoffs[0] ?? '',
+    changed: fixture.candidate.changedElementIds.length,
+    changedElementIds: fixture.candidate.changedElementIds,
+    layout: fixture.candidate.layout.elements,
+    delta: fixture.candidate.delta,
+    sourceSnapshotId: fixture.source.snapshotId,
+    sourceSnapshotFingerprint: fixture.source.snapshotFingerprint,
+    optimizationFingerprint: fixture.provenance.optimizationFingerprint,
+    scenarioFingerprint: fixture.provenance.scenarioFingerprint,
+    target: fixture.presentation.target,
+  };
+}
+
+test('Scenario Lab projection mirrors the complete canonical fixture envelope', () => {
   assert.equal(prototypeScenarios.length, holoforgeScenarioFixtures.length);
 
   for (const fixture of holoforgeScenarioFixtures) {
     const projection = projectionById.get(fixture.scenarioId);
     assert.ok(projection, `missing projection for ${fixture.scenarioId}`);
-    assert.equal(projection.objective, fixture.intent.objectiveId);
-    assert.equal(projection.score, fixture.evidence.objectiveScore);
-    assert.equal(projection.baseline, fixture.evidence.baseline.objectiveScore);
-    assert.equal(projection.gap, fixture.evidence.objectiveGap);
-    assert.equal(projection.durationMs, fixture.evidence.durationMs);
-    assert.equal(projection.seed, fixture.evidence.seed);
-    assert.equal(projection.backend, fixture.evidence.backend);
-    assert.equal(projection.algorithm, fixture.evidence.algorithm);
-    assert.equal(projection.baselineBackend, fixture.evidence.baseline.backend);
-    assert.equal(projection.baselineAlgorithm, fixture.evidence.baseline.algorithm);
-    assert.equal(projection.status, fixture.evidence.status);
-    assert.equal(projection.hardConstraintsPassed, fixture.evidence.hardConstraintsPassed);
-    assert.equal(projection.sourceSnapshotId, fixture.source.snapshotId);
-    assert.equal(projection.sourceSnapshotFingerprint, fixture.source.snapshotFingerprint);
-    assert.equal(projection.target, fixture.presentation.target);
+    assert.deepEqual(projection, comparableProjection(fixture));
   }
 });
 
@@ -38,5 +54,39 @@ test('Scenario Lab does not invent candidate evidence', () => {
     assert.equal(typeof projection.baselineAlgorithm, 'string');
     assert.equal(projection.status, 'complete');
     assert.equal(projection.hardConstraintsPassed, true);
+    assert.match(projection.sourceSnapshotFingerprint, /^[a-f0-9]{64}$/);
+    assert.match(projection.optimizationFingerprint, /^[a-f0-9]{64}$/);
+    assert.match(projection.scenarioFingerprint, /^[a-f0-9]{64}$/);
+  }
+});
+
+test('Scenario Lab rejects projection drift in semantic, geometry, or provenance fields', () => {
+  for (const fixture of holoforgeScenarioFixtures) {
+    const expected = comparableProjection(fixture);
+    const projection = projectionById.get(fixture.scenarioId);
+
+    for (const field of [
+      'title',
+      'interpretation',
+      'objective',
+      'seed',
+      'backend',
+      'algorithm',
+      'baselineBackend',
+      'baselineAlgorithm',
+      'status',
+      'tradeoff',
+      'sourceSnapshotId',
+      'sourceSnapshotFingerprint',
+      'optimizationFingerprint',
+      'scenarioFingerprint',
+      'target',
+    ]) {
+      assert.equal(projection[field], expected[field], `${fixture.scenarioId} drifted in ${field}`);
+    }
+
+    assert.deepEqual(projection.changedElementIds, expected.changedElementIds);
+    assert.deepEqual(projection.layout, expected.layout);
+    assert.deepEqual(projection.delta, expected.delta);
   }
 });
