@@ -321,3 +321,31 @@ export async function validateApplyVerificationReceiptForScenario(
     return false;
   }
 }
+
+export async function validateApplyVerificationReceiptForReviewedSnapshot(
+  receipt: ApplyVerificationReceipt | unknown,
+  scenario: HoloForgeScenario,
+  snapshot: VerificationDesignSnapshot,
+): Promise<boolean> {
+  try {
+    if (!(await validateApplyVerificationReceiptForScenario(receipt, scenario))) return false;
+    if (!snapshot.designId?.trim()) return false;
+    if (!HEX_64.test(snapshot.fingerprint)) return false;
+    if ((await fingerprintReviewedSnapshot(snapshot)) !== snapshot.fingerprint) return false;
+    if (snapshot.fingerprint !== scenario.source.snapshotFingerprint) return false;
+    if (snapshot.designId !== scenario.source.designId) return false;
+    if (!scenario.source.pageIds.includes(snapshot.pageId)) return false;
+
+    const value = readExactDataObject(receipt, RECEIPT_KEYS);
+    if (!value) return false;
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+
+    return (
+      value.sourceFingerprint === snapshot.fingerprint &&
+      value.expectedFingerprint === expectedFingerprint &&
+      value.resultingFingerprint === expectedFingerprint
+    );
+  } catch {
+    return false;
+  }
+}
