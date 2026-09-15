@@ -208,12 +208,18 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         setSnapshot(null);
         setStatus("warning");
         setMessage(
-          intl.formatMessage({
-            defaultMessage:
-              "The selected changes were applied, verified, and attested, but HoloForge could not refresh the current design afterward. Your verified proof remains available below. Read the current design before applying another scenario.",
-            description:
-              "Warning shown after a successful verified Apply when the follow-up Canva design refresh fails.",
-          }),
+          intl.formatMessage(
+            {
+              defaultMessage:
+                "The selected changes were applied, verified, and attested for design {designId}, page {pageId}, but HoloForge could not refresh the current design afterward. The proof below remains bound to that reviewed target and does not describe unseen current state. Read the current design before applying another scenario.",
+              description:
+                "Warning shown after a successful verified Apply when the follow-up Canva design refresh fails, identifying the exact reviewed proof target.",
+            },
+            {
+              designId: sealedAttestation.designId,
+              pageId: sealedAttestation.pageId,
+            },
+          ),
         );
       }
     } catch (error) {
@@ -366,6 +372,17 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               defaultMessage="Scenario {id} · {count, number} changed element(s) · post-apply state matched the reviewed expectation."
               description="Summarizes the immutable verification receipt after apply."
               values={{ id: receipt.scenarioId, count: receipt.changedElementIds.length }}
+            />
+          </Text>
+          <Text>
+            <FormattedMessage
+              defaultMessage="Reviewed target · design {designId} · page {pageId} · source {sourceFingerprint}"
+              description="Identifies the exact Canva design, page, and reviewed source fingerprint bound into the apply attestation."
+              values={{
+                designId: attestation.designId,
+                pageId: attestation.pageId,
+                sourceFingerprint: `${attestation.sourceFingerprint.slice(0, 12)}…`,
+              }}
             />
           </Text>
           <Text>
