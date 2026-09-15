@@ -111,6 +111,15 @@ describe("HoloForge post-apply evidence", () => {
     expect(snapshot).toEqual(before);
   });
 
+  it("rejects reviewed snapshot drift even when the caller keeps the old trusted fingerprint", async () => {
+    const { snapshot, scenario } = await fixture();
+    snapshot.elements[0].left = 999;
+
+    await expect(projectExpectedPostApplyFingerprint(snapshot, scenario)).rejects.toThrow(
+      /contents no longer match its trusted fingerprint/,
+    );
+  });
+
   it("fails closed when a candidate requests a transform Canva cannot stably write", async () => {
     const { snapshot, scenario } = await fixture();
     scenario.candidate.layout.elements["element-1"] = { width: 200 };
