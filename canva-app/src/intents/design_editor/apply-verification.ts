@@ -78,6 +78,15 @@ function sameElementScope(left: readonly string[], right: readonly string[]): bo
   return left.length === right.length && left.every((id, index) => id === right[index]);
 }
 
+function hasUniqueSnapshotElementIds(elements: readonly VerificationElementSnapshot[]): boolean {
+  const ids = new Set<string>();
+  for (const element of elements) {
+    if (!element.id || ids.has(element.id)) return false;
+    ids.add(element.id);
+  }
+  return true;
+}
+
 export async function projectExpectedPostApplyFingerprint(
   snapshot: VerificationDesignSnapshot,
   scenario: HoloForgeScenario,
@@ -85,6 +94,9 @@ export async function projectExpectedPostApplyFingerprint(
   if (!snapshot.designId?.trim()) throw new TypeError("trusted design identity is required");
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) {
     throw new TypeError("scenario source fingerprint does not match the reviewed snapshot");
+  }
+  if (!hasUniqueSnapshotElementIds(snapshot.elements)) {
+    throw new TypeError("reviewed snapshot element identities must be unique");
   }
   if (new Set(scenario.candidate.changedElementIds).size !== scenario.candidate.changedElementIds.length) {
     throw new TypeError("changed element identities must be unique");

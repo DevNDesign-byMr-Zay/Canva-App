@@ -120,6 +120,26 @@ describe("HoloForge post-apply evidence", () => {
     );
   });
 
+  it("fails closed when the reviewed snapshot contains duplicate element identities", async () => {
+    const { snapshot, scenario } = await fixture();
+    const duplicateSnapshot: VerificationDesignSnapshot = {
+      ...snapshot,
+      elements: [snapshot.elements[0], { ...snapshot.elements[1], id: snapshot.elements[0].id }],
+      fingerprint: "",
+    };
+    duplicateSnapshot.fingerprint = await sha256({
+      designId: duplicateSnapshot.designId,
+      pageId: duplicateSnapshot.pageId,
+      pageDimensions: duplicateSnapshot.pageDimensions,
+      elements: duplicateSnapshot.elements,
+    });
+    scenario.source.snapshotFingerprint = duplicateSnapshot.fingerprint;
+
+    await expect(projectExpectedPostApplyFingerprint(duplicateSnapshot, scenario)).rejects.toThrow(
+      /identities must be unique/,
+    );
+  });
+
   it("creates deterministic immutable evidence only when live and expected post-state match", async () => {
     const { snapshot, scenario } = await fixture();
     const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
