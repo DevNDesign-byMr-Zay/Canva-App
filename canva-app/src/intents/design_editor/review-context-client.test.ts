@@ -181,7 +181,7 @@ describe("trusted review context client", () => {
         advisoryOnly: true,
         autoApply: true,
         target: "web-dashboard",
-      } as HoloForgeScenario["presentation"],
+      } as unknown as HoloForgeScenario["presentation"],
     });
 
     await expect(
