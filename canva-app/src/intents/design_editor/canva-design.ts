@@ -121,22 +121,28 @@ export async function readCurrentDesignSnapshot(options: { trustedDesignId?: str
   };
 }
 
+/**
+ * Resolve canonical scenario element keys to their reviewed snapshot indexes.
+ *
+ * The index is intentionally the only bridge to Canva's live element array: the
+ * snapshot fingerprint commits to element order, so a live reorder is caught by
+ * the exact fingerprint check before this binding is used for a write.
+ */
 export function getReviewedElementBinding(
   scenario: HoloForgeScenario,
   snapshot: CanvaDesignSnapshot,
-): ReadonlyMap<string, CanvaElementSnapshot> | null {
+): ReadonlyMap<string, number> | null {
   if (!scenario.source?.designId || scenario.source.designId !== snapshot.designId) return null;
   if (!scenario.source.pageIds?.includes(snapshot.pageId)) return null;
   if (!HEX_64.test(scenario.source.snapshotFingerprint) || scenario.source.snapshotFingerprint !== snapshot.fingerprint) return null;
   if (!Array.isArray(scenario.candidate.changedElementIds) || !hasUniqueChangedElementIds(scenario)) return null;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return null;
 
-  const byId = new Map(snapshot.elements.map((element) => [element.id, element] as const));
-  const binding = new Map<string, CanvaElementSnapshot>();
+  const binding = new Map<string, number>();
   for (const scenarioElementId of scenario.candidate.changedElementIds) {
-    const element = byId.get(scenarioElementId);
-    if (!element || !scenario.candidate.layout.elements[scenarioElementId]) return null;
-    binding.set(scenarioElementId, element);
+    const snapshotIndex = snapshot.elements.findIndex((element) => element.id === scenarioElementId);
+    if (snapshotIndex < 0 || !scenario.candidate.layout.elements[scenarioElementId]) return null;
+    binding.set(scenarioElementId, snapshotIndex);
   }
   return binding;
 }
@@ -193,6 +199,11 @@ export async function applyScenario(
     throw new Error("Scenario is not safe to apply: it is stale, incomplete, unsupported, or unverified.");
   }
 
+  const reviewedBinding = getReviewedElementBinding(scenario, snapshot);
+  if (!reviewedBinding) {
+    throw new Error("Scenario lost its reviewed element binding before apply.");
+  }
+
   const expectedPostFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
   let verificationReceipt: ApplyVerificationReceipt | null = null;
 
@@ -209,12 +220,11 @@ export async function applyScenario(
       throw new Error("The selected scenario provenance no longer matches its canonical fingerprints.");
     }
 
-    const elements = new Map(
-      session.page.elements.toArray().map((element, index) => [snapshotElementId(index), element] as const),
-    );
+    const liveElements = session.page.elements.toArray();
     for (const elementId of scenario.candidate.changedElementIds) {
       const transform = scenario.candidate.layout.elements[elementId];
-      const element = elements.get(elementId);
+      const elementIndex = reviewedBinding.get(elementId);
+      const element = elementIndex === undefined ? undefined : liveElements[elementIndex];
       if (!transform || !isCanvaWritableTransform(transform) || !element || element.locked || element.type === "unsupported") {
         throw new Error(`Scenario references an unavailable or unsupported element: ${elementId}`);
       }
