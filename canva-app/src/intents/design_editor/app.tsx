@@ -2,7 +2,7 @@ import { Alert, Button, Rows, Text, Title } from "@canva/app-ui-kit";
 import { useFeatureSupport } from "@canva/app-hooks";
 import { openDesign } from "@canva/design";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applyScenario,
@@ -11,6 +11,13 @@ import {
   type ApplyVerificationReceipt,
   type CanvaDesignSnapshot,
 } from "./canva-design";
+import { createApplyAttestation, type ApplyAttestation } from "./apply-attestation";
+import { createApplyRunGate } from "./apply-run-gate";
+import {
+  createReviewedApplyContext,
+  isApplyProofCurrentForReview,
+  isReviewedApplyContextCurrent,
+} from "./review-context-guard";
 import { buildScenarioReview } from "./scenario-review";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
@@ -21,15 +28,24 @@ type AppProps = {
   trustedDesignId?: string;
 };
 
+type AppStatus = "idle" | "reading" | "applying" | "done" | "warning" | "error";
+
 export function App({ scenario = null, trustedDesignId }: AppProps) {
   const intl = useIntl();
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
-  const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">("idle");
+  const [status, setStatus] = useState<AppStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
+  const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
+  const applyRunGate = useRef(createApplyRunGate());
+  const latestReviewContext = useRef<{
+    scenario: NonNullable<AppScenario>;
+    snapshot: CanvaDesignSnapshot;
+    trustedDesignId?: string;
+  } | null>(null);
 
   const refreshLabel = intl.formatMessage({
     defaultMessage: "Read current design",
@@ -45,30 +61,65 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     setMessage(null);
     setScenarioVerified(false);
     setReceipt(null);
+    setAttestation(null);
 
     try {
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setStatus("idle");
     } catch (error) {
+      setSnapshot(null);
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "We couldn't read the current Canva design.",
-        description: "Error shown when HoloForge cannot read the current Canva design.",
-      }));
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "We couldn't read the current Canva design.",
+              description: "Error shown when HoloForge cannot read the current Canva design.",
+            }),
+      );
     }
   }, [intl, trustedDesignId]);
 
   useEffect(() => {
+    latestReviewContext.current =
+      scenario && snapshot ? { scenario, snapshot, trustedDesignId } : null;
+  }, [scenario, snapshot, trustedDesignId]);
+
+  useEffect(() => {
+    if (!receipt || !attestation) return;
+    if (isApplyProofCurrentForReview(attestation, { scenario, trustedDesignId })) return;
+
+    setReceipt(null);
+    setAttestation(null);
+    if (status === "done" || status === "warning") {
+      setStatus("idle");
+      setMessage(null);
+    }
+  }, [attestation, receipt, scenario, status, trustedDesignId]);
+
+  useEffect(() => {
     let cancelled = false;
     setScenarioVerified(false);
-    if (!scenario || !snapshot || !designEditingSupported) return () => { cancelled = true; };
+    const normalizedTrustedDesignId = trustedDesignId?.trim();
+    if (
+      !scenario ||
+      !snapshot ||
+      !designEditingSupported ||
+      (normalizedTrustedDesignId && snapshot.designId !== normalizedTrustedDesignId)
+    ) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void canApplyScenario(scenario, snapshot).then((safe) => {
       if (!cancelled) setScenarioVerified(safe);
     });
 
-    return () => { cancelled = true; };
-  }, [designEditingSupported, scenario, snapshot]);
+    return () => {
+      cancelled = true;
+    };
+  }, [designEditingSupported, scenario, snapshot, trustedDesignId]);
 
   const review = useMemo(
     () => (scenario && snapshot ? buildScenarioReview(scenario, snapshot) : []),
@@ -79,31 +130,117 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
 
   const apply = useCallback(async () => {
     if (!scenario || !snapshot || !readyToApply) return;
+    const runToken = applyRunGate.current.tryAcquire();
+    if (runToken === null) return;
 
     setStatus("applying");
     setMessage(null);
     setReceipt(null);
+    setAttestation(null);
 
     try {
-      const result = await applyScenario(scenario, snapshot);
+      const reviewedSnapshot = snapshot;
+      const reviewedContext = createReviewedApplyContext({
+        scenario,
+        snapshot: reviewedSnapshot,
+        trustedDesignId,
+      });
+      const result = await applyScenario(scenario, reviewedSnapshot);
+      const sealedAttestation = await createApplyAttestation({
+        scenario,
+        snapshot: reviewedSnapshot,
+        receipt: result,
+      });
+      const currentReviewContext = latestReviewContext.current;
+
+      if (
+        !currentReviewContext ||
+        !isReviewedApplyContextCurrent(reviewedContext, currentReviewContext)
+      ) {
+        setStatus("error");
+        setScenarioVerified(false);
+        setReceipt(null);
+        setAttestation(null);
+        setMessage(
+          intl.formatMessage({
+            defaultMessage:
+              "The selected review changed while Apply was running. The original design change was verified, but its result is hidden until you read the current design again.",
+            description:
+              "Safety message shown when the reviewed Canva scenario changes during an in-flight apply.",
+          }),
+        );
+
+        try {
+          setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+        } catch {
+          setSnapshot(null);
+          setMessage(
+            intl.formatMessage({
+              defaultMessage:
+                "The selected review changed while Apply was running. The original design change was verified but its result remains hidden, and the current design could not be refreshed. Read the current design before reviewing another Apply.",
+              description:
+                "Safety message shown when review context changes during Apply and the follow-up design refresh also fails.",
+            }),
+          );
+        }
+        return;
+      }
+
       setReceipt(result);
-      setStatus("done");
-      setMessage(intl.formatMessage({
-        defaultMessage: "Applied {count, number} selected change(s) and verified the resulting Canva state.",
-        description: "Confirmation after applying and verifying one selected HoloForge scenario in Canva.",
-      }, { count: result.changedElementIds.length }));
-      setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+      setAttestation(sealedAttestation);
       setScenarioVerified(false);
+      setStatus("done");
+      setMessage(
+        intl.formatMessage(
+          {
+            defaultMessage:
+              "Applied {count, number} selected change(s), verified the Canva post-state, and sealed the reviewed apply attestation.",
+            description:
+              "Confirmation after applying, verifying, and attesting one selected HoloForge scenario in Canva.",
+          },
+          { count: result.changedElementIds.length },
+        ),
+      );
+
+      try {
+        setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+      } catch {
+        setSnapshot(null);
+        setStatus("warning");
+        setMessage(
+          intl.formatMessage(
+            {
+              defaultMessage:
+                "The selected changes were applied, verified, and attested for design {designId}, page {pageId}, but HoloForge could not refresh the current design afterward. The proof below remains bound to that reviewed target and does not describe unseen current state. Read the current design before applying another scenario.",
+              description:
+                "Warning shown after a successful verified Apply when the follow-up Canva design refresh fails, identifying the exact reviewed proof target.",
+            },
+            {
+              designId: sealedAttestation.designId,
+              pageId: sealedAttestation.pageId,
+            },
+          ),
+        );
+      }
     } catch (error) {
       setStatus("error");
       setScenarioVerified(false);
       setReceipt(null);
-      setMessage(error instanceof Error ? error.message : intl.formatMessage({
-        defaultMessage: "The selected scenario could not be applied.",
-        description: "Error shown when a selected HoloForge scenario fails to apply.",
-      }));
+      setAttestation(null);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              defaultMessage: "The selected scenario could not be applied.",
+              description: "Error shown when a selected HoloForge scenario fails to apply.",
+            }),
+      );
+    } finally {
+      applyRunGate.current.release(runToken);
     }
   }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
+
+  const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
     <Rows spacing="2u">
@@ -127,10 +264,16 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         </Alert>
       )}
 
-      {message && <Alert tone={status === "error" ? "critical" : "positive"}>{message}</Alert>}
+      {message && <Alert tone={messageTone}>{message}</Alert>}
 
       <Rows spacing="1u">
-        <Button variant="secondary" onClick={refresh} loading={status === "reading"} disabled={status === "applying"} stretch>
+        <Button
+          variant="secondary"
+          onClick={refresh}
+          loading={status === "reading"}
+          disabled={status === "applying"}
+          stretch
+        >
           {refreshLabel}
         </Button>
 
@@ -139,7 +282,10 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             <FormattedMessage
               defaultMessage="Snapshot ready · {count, number} element(s) · fingerprint {fingerprint}"
               description="Shows the current Canva snapshot state used for stale-scenario protection."
-              values={{ count: snapshot.elements.length, fingerprint: `${snapshot.fingerprint.slice(0, 12)}…` }}
+              values={{
+                count: snapshot.elements.length,
+                fingerprint: `${snapshot.fingerprint.slice(0, 12)}…`,
+              }}
             />
           ) : (
             <FormattedMessage
@@ -171,7 +317,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               </Text>
               {review.map(({ elementId, before, after, changedFields }) => (
                 <Text key={elementId}>
-                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
+                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×
+                  {after.top} {after.width}×{after.height} · {changedFields.join(", ")}
                 </Text>
               ))}
               {review.length === 0 && (
@@ -185,7 +332,13 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
             </Rows>
           )}
 
-          <Button variant="primary" onClick={apply} loading={status === "applying"} disabled={!readyToApply || status === "reading"} stretch>
+          <Button
+            variant="primary"
+            onClick={apply}
+            loading={status === "applying"}
+            disabled={!readyToApply || status === "reading"}
+            stretch
+          >
             {applyLabel}
           </Button>
           {!readyToApply && (
@@ -206,12 +359,12 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         </Alert>
       )}
 
-      {receipt && (
+      {receipt && attestation && (
         <Rows spacing="0.5u">
           <Title>
             <FormattedMessage
               defaultMessage="Verified result"
-              description="Heading for the post-apply verification receipt shown after a successful apply."
+              description="Heading for the post-apply verification evidence shown after a successful apply."
             />
           </Title>
           <Text>
@@ -223,16 +376,33 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
           </Text>
           <Text>
             <FormattedMessage
-              defaultMessage="Expected {expected} · Result {result}"
-              description="Shows the expected and resulting state fingerprints from the verification receipt."
-              values={{ expected: `${receipt.expectedFingerprint.slice(0, 12)}…`, result: `${receipt.resultingFingerprint.slice(0, 12)}…` }}
+              defaultMessage="Reviewed target · design {designId} · page {pageId} · source {sourceFingerprint}"
+              description="Identifies the exact Canva design, page, and reviewed source fingerprint bound into the apply attestation."
+              values={{
+                designId: attestation.designId,
+                pageId: attestation.pageId,
+                sourceFingerprint: `${attestation.sourceFingerprint.slice(0, 12)}…`,
+              }}
             />
           </Text>
           <Text>
             <FormattedMessage
-              defaultMessage="Receipt {fingerprint} · explicit apply · no auto-apply"
-              description="Shows the receipt fingerprint and its safety posture."
-              values={{ fingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…` }}
+              defaultMessage="Expected {expected} · Result {result}"
+              description="Shows the expected and resulting state fingerprints from the verification receipt."
+              values={{
+                expected: `${receipt.expectedFingerprint.slice(0, 12)}…`,
+                result: `${receipt.resultingFingerprint.slice(0, 12)}…`,
+              }}
+            />
+          </Text>
+          <Text>
+            <FormattedMessage
+              defaultMessage="Receipt {receiptFingerprint} · Attestation {attestationFingerprint} · explicit apply · no auto-apply"
+              description="Shows the receipt and reviewed apply attestation fingerprints and their safety posture."
+              values={{
+                receiptFingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…`,
+                attestationFingerprint: `${attestation.attestationFingerprint.slice(0, 12)}…`,
+              }}
             />
           </Text>
         </Rows>
