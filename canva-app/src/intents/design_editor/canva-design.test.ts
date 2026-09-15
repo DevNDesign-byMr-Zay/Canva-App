@@ -7,6 +7,7 @@ vi.mock("@canva/design", () => ({
 }));
 
 import {
+  canApplyScenario,
   computeCanvaSnapshotFingerprint,
   getReviewedElementBinding,
 } from "./canva-design";
@@ -183,6 +184,24 @@ describe("reviewed element binding", () => {
     expect(before?.left).toBe(40);
     expect(before?.locked).toBe(false);
     expect(binding?.get("element-1")).toBe(before);
+  });
+
+  it("fails closed when reviewed snapshot contents drift after fingerprinting", async () => {
+    const reviewedSnapshot = {
+      ...snapshot,
+      elements: snapshot.elements.map((element) => ({ ...element })),
+      fingerprint: "",
+    };
+    reviewedSnapshot.fingerprint = await computeCanvaSnapshotFingerprint(reviewedSnapshot);
+
+    const scenario = buildScenario();
+    scenario.source.snapshotFingerprint = reviewedSnapshot.fingerprint;
+    scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+    scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+
+    expect(await canApplyScenario(scenario, reviewedSnapshot)).toBe(true);
+    reviewedSnapshot.elements[0].left = 999;
+    expect(await canApplyScenario(scenario, reviewedSnapshot)).toBe(false);
   });
 
   it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
