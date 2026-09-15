@@ -27,12 +27,14 @@ type AppProps = {
   trustedDesignId?: string;
 };
 
+type AppStatus = "idle" | "reading" | "applying" | "done" | "warning" | "error";
+
 export function App({ scenario = null, trustedDesignId }: AppProps) {
   const intl = useIntl();
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
-  const [status, setStatus] = useState<"idle" | "reading" | "applying" | "done" | "error">("idle");
+  const [status, setStatus] = useState<AppStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
@@ -64,6 +66,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
       setStatus("idle");
     } catch (error) {
+      setSnapshot(null);
       setStatus("error");
       setMessage(
         error instanceof Error
@@ -153,12 +156,26 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
               "Safety message shown when the reviewed Canva scenario changes during an in-flight apply.",
           }),
         );
-        setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+
+        try {
+          setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+        } catch {
+          setSnapshot(null);
+          setMessage(
+            intl.formatMessage({
+              defaultMessage:
+                "The selected review changed while Apply was running. The original design change was verified but its result remains hidden, and the current design could not be refreshed. Read the current design before reviewing another Apply.",
+              description:
+                "Safety message shown when review context changes during Apply and the follow-up design refresh also fails.",
+            }),
+          );
+        }
         return;
       }
 
       setReceipt(result);
       setAttestation(sealedAttestation);
+      setScenarioVerified(false);
       setStatus("done");
       setMessage(
         intl.formatMessage(
@@ -171,8 +188,21 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
           { count: result.changedElementIds.length },
         ),
       );
-      setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
-      setScenarioVerified(false);
+
+      try {
+        setSnapshot(await readCurrentDesignSnapshot({ trustedDesignId }));
+      } catch {
+        setSnapshot(null);
+        setStatus("warning");
+        setMessage(
+          intl.formatMessage({
+            defaultMessage:
+              "The selected changes were applied, verified, and attested, but HoloForge could not refresh the current design afterward. Your verified proof remains available below. Read the current design before applying another scenario.",
+            description:
+              "Warning shown after a successful verified Apply when the follow-up Canva design refresh fails.",
+          }),
+        );
+      }
     } catch (error) {
       setStatus("error");
       setScenarioVerified(false);
@@ -190,6 +220,8 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       applyRunGate.current.release(runToken);
     }
   }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
+
+  const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
     <Rows spacing="2u">
@@ -213,7 +245,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         </Alert>
       )}
 
-      {message && <Alert tone={status === "error" ? "critical" : "positive"}>{message}</Alert>}
+      {message && <Alert tone={messageTone}>{message}</Alert>}
 
       <Rows spacing="1u">
         <Button
