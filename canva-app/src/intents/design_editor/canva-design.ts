@@ -128,6 +128,15 @@ function hasOwnLayoutElement(
   return Object.prototype.hasOwnProperty.call(elements, elementId);
 }
 
+function hasUniqueSnapshotElementIds(snapshot: CanvaDesignSnapshot): boolean {
+  const ids = new Set<string>();
+  for (const element of snapshot.elements) {
+    if (!element.id || ids.has(element.id)) return false;
+    ids.add(element.id);
+  }
+  return true;
+}
+
 /**
  * Resolve canonical scenario element keys to their reviewed snapshot indexes.
  *
@@ -142,6 +151,7 @@ export function getReviewedElementBinding(
   if (!scenario.source?.designId || scenario.source.designId !== snapshot.designId) return null;
   if (!scenario.source.pageIds?.includes(snapshot.pageId)) return null;
   if (!HEX_64.test(scenario.source.snapshotFingerprint) || scenario.source.snapshotFingerprint !== snapshot.fingerprint) return null;
+  if (!hasUniqueSnapshotElementIds(snapshot)) return null;
   if (!Array.isArray(scenario.candidate.changedElementIds) || !hasUniqueChangedElementIds(scenario)) return null;
   if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return null;
 
