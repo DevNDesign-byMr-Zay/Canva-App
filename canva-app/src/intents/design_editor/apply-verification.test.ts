@@ -196,4 +196,47 @@ describe("HoloForge post-apply evidence", () => {
       }),
     ).toBe(false);
   });
+
+  it("rejects deceptive receipt descriptors without evaluating getters", async () => {
+    const { snapshot, scenario } = await fixture();
+    const expectedFingerprint = await projectExpectedPostApplyFingerprint(snapshot, scenario);
+    const receipt = await createApplyVerificationReceipt({
+      scenario,
+      sourceFingerprint: snapshot.fingerprint,
+      expectedFingerprint,
+      resultingFingerprint: expectedFingerprint,
+      changedElementIds: scenario.candidate.changedElementIds,
+    });
+
+    let getterReads = 0;
+    const accessorReceipt = { ...receipt };
+    Object.defineProperty(accessorReceipt, "receiptFingerprint", {
+      enumerable: true,
+      get() {
+        getterReads += 1;
+        return receipt.receiptFingerprint;
+      },
+    });
+    expect(await validateApplyVerificationReceipt(accessorReceipt)).toBe(false);
+    expect(getterReads).toBe(0);
+
+    const hiddenReceipt = { ...receipt } as Record<string, unknown>;
+    Object.defineProperty(hiddenReceipt, "hidden", { value: true, enumerable: false });
+    expect(await validateApplyVerificationReceipt(hiddenReceipt)).toBe(false);
+
+    const symbolicReceipt = { ...receipt } as Record<PropertyKey, unknown>;
+    symbolicReceipt[Symbol("hidden")] = true;
+    expect(await validateApplyVerificationReceipt(symbolicReceipt)).toBe(false);
+
+    const safety = { ...receipt.safety } as Record<string, unknown>;
+    Object.defineProperty(safety, "authoritative", {
+      enumerable: true,
+      get() {
+        getterReads += 1;
+        return false;
+      },
+    });
+    expect(await validateApplyVerificationReceipt({ ...receipt, safety })).toBe(false);
+    expect(getterReads).toBe(0);
+  });
 });
