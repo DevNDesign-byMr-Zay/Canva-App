@@ -26,11 +26,13 @@ type AppProps = {
   scenario?: AppScenario;
   /** Design ID returned by the trusted backend/token verification seam. */
   trustedDesignId?: string;
+  /** Optional current page ID returned by the same trusted review-target seam. */
+  trustedPageId?: string;
 };
 
 type AppStatus = "idle" | "reading" | "applying" | "done" | "warning" | "error";
 
-export function App({ scenario = null, trustedDesignId }: AppProps) {
+export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProps) {
   const intl = useIntl();
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
@@ -45,6 +47,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     scenario: NonNullable<AppScenario>;
     snapshot: CanvaDesignSnapshot;
     trustedDesignId?: string;
+    trustedPageId?: string;
   } | null>(null);
 
   const refreshLabel = intl.formatMessage({
@@ -82,12 +85,20 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
 
   useEffect(() => {
     latestReviewContext.current =
-      scenario && snapshot ? { scenario, snapshot, trustedDesignId } : null;
-  }, [scenario, snapshot, trustedDesignId]);
+      scenario && snapshot ? { scenario, snapshot, trustedDesignId, trustedPageId } : null;
+  }, [scenario, snapshot, trustedDesignId, trustedPageId]);
 
   useEffect(() => {
     if (!receipt || !attestation) return;
-    if (isApplyProofCurrentForReview(attestation, { scenario, trustedDesignId })) return;
+    if (
+      isApplyProofCurrentForReview(attestation, {
+        scenario,
+        trustedDesignId,
+        trustedPageId,
+      })
+    ) {
+      return;
+    }
 
     setReceipt(null);
     setAttestation(null);
@@ -95,17 +106,19 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
       setStatus("idle");
       setMessage(null);
     }
-  }, [attestation, receipt, scenario, status, trustedDesignId]);
+  }, [attestation, receipt, scenario, status, trustedDesignId, trustedPageId]);
 
   useEffect(() => {
     let cancelled = false;
     setScenarioVerified(false);
     const normalizedTrustedDesignId = trustedDesignId?.trim();
+    const normalizedTrustedPageId = trustedPageId?.trim();
     if (
       !scenario ||
       !snapshot ||
       !designEditingSupported ||
-      (normalizedTrustedDesignId && snapshot.designId !== normalizedTrustedDesignId)
+      (normalizedTrustedDesignId && snapshot.designId !== normalizedTrustedDesignId) ||
+      (normalizedTrustedPageId && snapshot.pageId !== normalizedTrustedPageId)
     ) {
       return () => {
         cancelled = true;
@@ -119,7 +132,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     return () => {
       cancelled = true;
     };
-  }, [designEditingSupported, scenario, snapshot, trustedDesignId]);
+  }, [designEditingSupported, scenario, snapshot, trustedDesignId, trustedPageId]);
 
   const review = useMemo(
     () => (scenario && snapshot ? buildScenarioReview(scenario, snapshot) : []),
@@ -144,6 +157,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
         scenario,
         snapshot: reviewedSnapshot,
         trustedDesignId,
+        trustedPageId,
       });
       const result = await applyScenario(scenario, reviewedSnapshot);
       const sealedAttestation = await createApplyAttestation({
@@ -238,7 +252,7 @@ export function App({ scenario = null, trustedDesignId }: AppProps) {
     } finally {
       applyRunGate.current.release(runToken);
     }
-  }, [intl, readyToApply, scenario, snapshot, trustedDesignId]);
+  }, [intl, readyToApply, scenario, snapshot, trustedDesignId, trustedPageId]);
 
   const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
