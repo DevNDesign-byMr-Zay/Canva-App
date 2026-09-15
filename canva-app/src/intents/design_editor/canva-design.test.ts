@@ -178,9 +178,12 @@ describe("reviewed element binding", () => {
 
     const scenario = await signedScenario();
     scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.candidate.changedElementIds = ["element-1", "element-2"];
+    scenario.candidate.layout.elements["element-2"] = { x: 90 };
     const reviewed = getReviewedElementBinding(scenario, snapshot);
     expect(reviewed?.get("element-1")).toBe(0);
-    expect(reviewed?.size).toBe(1);
+    expect(reviewed?.get("element-2")).toBe(1);
+    expect(reviewed?.size).toBe(2);
   });
 
   it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
