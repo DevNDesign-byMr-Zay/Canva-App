@@ -147,6 +147,29 @@ describe("trusted review context client", () => {
     expect(context.trustedDesignId).toBe("design-1");
   });
 
+  it("does not let prototype-named backend fields disappear during capture", async () => {
+    const responseValue = {
+      scenario: scenario(),
+      trustedDesignId: "design-1",
+      trustedPageId: "page-1",
+    } as Record<string, unknown>;
+    Object.defineProperty(responseValue, "__proto__", {
+      value: { hiddenAuthority: true },
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(
+      loadTrustedReviewContext({
+        endpoint: "https://backend.example/review-context",
+        getDesignToken: async () => ({ token: "design-token" }),
+        getUserToken: async () => "user-token",
+        fetchImpl: successfulFetch(responseValue),
+      }),
+    ).rejects.toThrow(/unsupported field: __proto__/);
+  });
+
   it("rejects design and page identity substitution from the backend response", async () => {
     await expect(
       loadTrustedReviewContext({
