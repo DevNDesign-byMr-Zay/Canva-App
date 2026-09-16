@@ -71,7 +71,12 @@ function snapshotJson(value: unknown, path = "review context", seen = new WeakSe
       if ("get" in descriptor || "set" in descriptor) {
         throw new TypeError(`${path}.${key} must not use accessors`);
       }
-      output[key] = snapshotJson(descriptor.value, `${path}.${key}`, seen);
+      Object.defineProperty(output, key, {
+        value: snapshotJson(descriptor.value, `${path}.${key}`, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     copy = output;
   }
