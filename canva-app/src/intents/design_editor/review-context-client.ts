@@ -28,6 +28,26 @@ function nonEmptyText(value: unknown, name: string): string {
   return value.trim();
 }
 
+function trustedEndpoint(value: unknown): string {
+  const endpoint = nonEmptyText(value, "endpoint");
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new TypeError("endpoint must be a valid absolute URL");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new TypeError("endpoint must use HTTPS");
+  }
+  if (parsed.username || parsed.password) {
+    throw new TypeError("endpoint must not contain URL credentials");
+  }
+  if (parsed.hash) {
+    throw new TypeError("endpoint must not contain a URL fragment");
+  }
+  return parsed.href;
+}
+
 function snapshotJson(value: unknown, path = "review context", seen = new WeakSet<object>()): unknown {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
@@ -138,7 +158,7 @@ export async function loadTrustedReviewContext({
   getUserToken,
   fetchImpl = globalThis.fetch,
 }: LoadTrustedReviewContextOptions): Promise<TrustedReviewContext> {
-  const normalizedEndpoint = nonEmptyText(endpoint, "endpoint");
+  const normalizedEndpoint = trustedEndpoint(endpoint);
   if (typeof getDesignToken !== "function" || typeof getUserToken !== "function") {
     throw new TypeError("fresh Canva token sources are required");
   }
