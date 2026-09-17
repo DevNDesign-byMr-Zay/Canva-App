@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Developer tooling for authenticating a recovered Canva-oriented application archive and exercising maintained v115 runtime adapters.",
+  "description": "Canva-oriented application tooling for authenticated archive verification, maintained runtime adapters, and trusted Design Editor integration.",
+  "keywords": [
+    "canva-app",
+    "design-editor",
+    "developer-tooling",
+    "runtime-adapters",
+    "application-verification"
+  ],
   "scripts": {
     "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
