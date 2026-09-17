@@ -25,6 +25,7 @@
     "./holographic-scene": "./src/holographic-scene-adapter.mjs",
     "./holographic-scene-fingerprint": "./src/holographic-scene-fingerprint.mjs",
     "./holographic-scene-binding": "./src/holographic-scene-binding.mjs",
+    "./holographic-presentation-record": "./src/holographic-presentation-record.mjs",
     "./holographic-operator-view": "./src/holographic-operator-view.mjs",
     "./ai-holographic-scene": "./src/ai-holographic-scene.mjs",
     "./holographic-roundtrip": "./src/holographic-scene-roundtrip.mjs",
