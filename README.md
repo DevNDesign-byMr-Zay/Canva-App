@@ -1,8 +1,8 @@
-# Canva Depth Archive & Runtime Verification Tooling
+# Canva Depth Application & Runtime Verification Tooling
 
 This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, and a **physically materialized authenticated application build** recovered from that archive.
 
-This is application/developer tooling, **not infrastructure-as-code**. The repository does not contain or claim Terraform, Kubernetes, Helm, Pulumi, cloud-state management, or infrastructure provisioning modules. Its maintained engineering surfaces are the Python archive verifier/materializer and the Node.js runtime adapters/tests described below.
+The maintained project is application/developer tooling. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
@@ -192,6 +192,6 @@ The scanner enforces banned identity literals and credential signatures while th
 
 ## Development policy
 
-New behavior should land in focused commits with tests that prove it. Do not bulk-rewrite authenticated historical files, manufacture missing source, or fabricate old commits, contributors, dates, tags, releases, or infrastructure artifacts to influence repository-history or classification scoring.
+New behavior should land in focused commits with tests that prove it. Do not bulk-rewrite authenticated historical files, manufacture missing source, or fabricate old commits, contributors, dates, tags, releases, or unrelated artifacts.
 
 See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `app/authenticated-v115/PROVENANCE.md`, and `provenance/` for the engineering and recovery audit trail.
