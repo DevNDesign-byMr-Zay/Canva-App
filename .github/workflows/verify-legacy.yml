@@ -89,6 +89,8 @@ jobs:
         run: npm run typecheck
       - name: Run Design Editor app tests
         run: npm test
+      - name: Build Design Editor app
+        run: npm run build
 
   static-analysis:
     name: Ruff and mypy
