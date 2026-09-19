@@ -34,8 +34,18 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Audit runtime dependencies
         run: npm audit --omit=dev --audit-level=moderate
-      - name: Reject high-severity tooling advisories
-        run: npm audit --audit-level=high
+      - name: Verify reviewed development-tool advisory boundary
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=moderate --json > npm-audit.json
+          audit_status=$?
+          set -e
+          if [ "$audit_status" -eq 0 ]; then
+            echo "Full dependency graph has no moderate-or-higher advisories."
+          else
+            node scripts/verify-dev-audit.mjs npm-audit.json
+          fi
       - name: Type-check Canva app
         run: npm run typecheck
       - name: Test Canva app

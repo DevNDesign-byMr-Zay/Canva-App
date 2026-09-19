@@ -10,6 +10,8 @@ Do not open a public issue containing credentials, private keys, personal identi
 
 ## Automated controls
 
-The repository uses credential-pattern and identity scans during authenticated archive verification, pip-audit for dependency advisories, Ruff security-oriented rules, strict mypy checks, Dependabot, and CodeQL Python analysis.
+The repository uses credential-pattern and identity scans during authenticated archive verification, pip-audit for Python dependency advisories, npm audit for both Node package surfaces, Ruff security-oriented rules, strict mypy checks, Dependabot, and CodeQL analysis.
 
-Any change to deidentification or credential-detection behavior should include a regression test covering the relevant failure path.
+The real `canva-app/` package has two npm audit boundaries. Production dependencies are always enforced with `npm audit --omit=dev --audit-level=moderate`. The full development graph is also inspected. Its current upstream Canva build-tool chain contains the reviewed transitive `uuid` advisory `GHSA-w5hq-g745-h8pq`; npm reports no fix through the pinned Canva build tooling. CI accepts only that exact four-package moderate-severity development chain and fails if the package set, severity, advisory source, directness, or fixability changes. A newly available fix must be adopted instead of extending the exception.
+
+Any change to deidentification, credential detection, dependency-audit policy, or trusted runtime boundaries should include a regression test covering the relevant failure path.

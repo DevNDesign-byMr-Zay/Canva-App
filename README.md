@@ -154,7 +154,7 @@ The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit.
 make check
 ```
 
-The Node package has no third-party dependencies today; `npm audit` remains part of CI so future dependency additions are automatically included in the audit boundary.
+The Node package has no third-party dependencies today; `npm audit` remains part of CI so future dependency additions are automatically included in the audit boundary. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
@@ -162,12 +162,13 @@ The Node package has no third-party dependencies today; `npm audit` remains part
 
 1. Python tests + branch coverage
 2. reproducible `npm ci` + `npm audit` + `npm test` for the maintained v115 runtime adapters
-3. Ruff + strict mypy
-4. Python dependency graph + vulnerability audit
-5. authenticated 84-occurrence archive verification and deterministic v115 reconstruction
-6. Docker fresh-clone image build + execution
+3. locked install + dependency audit + TypeScript typecheck + Vitest + production build for the real `canva-app/` Design Editor package
+4. Ruff + strict mypy
+5. Python dependency graph + vulnerability audit
+6. authenticated 84-occurrence archive verification and deterministic v115 reconstruction
+7. Docker fresh-clone image build + execution
 
-`.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application and commits the deterministic physical application surface when required. A separate CodeQL workflow performs static security analysis. Dependabot tracks Python and GitHub Actions dependencies.
+`.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application and commits the deterministic physical application surface when required. A separate CodeQL workflow performs static security analysis. Dependabot tracks Python and GitHub Actions dependencies. Automated Python lock refreshes are generated on a dedicated branch, verified before publication, and submitted as pull requests so normal CI and CodeQL validate the exact generated lock before merge.
 
 ## Docker
 
@@ -176,7 +177,7 @@ docker build -t canva-archive-verifier .
 docker run --rm canva-archive-verifier
 ```
 
-The container verifies the authenticated archive, runs pytest, enforces coverage, and exits non-zero on failure. CI builds and runs this exact verifier path. The Node runtime has its own independent fresh-clone install/test gate in CI rather than being hidden inside the verifier image.
+The container verifies the authenticated archive, runs pytest, enforces coverage, and exits non-zero on failure. CI builds and runs this exact verifier path. The root Node runtime and the real `canva-app/` Design Editor package each have independent locked install/audit/test gates; the Design Editor lane also runs strict TypeScript typechecking so app-specific SDK drift cannot hide behind the archive-verifier image.
 
 ## Environment and secrets
 

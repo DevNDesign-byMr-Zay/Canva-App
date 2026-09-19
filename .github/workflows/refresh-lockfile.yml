@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: canva-python-lock-main
@@ -19,12 +20,13 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Check out repository
+      - name: Check out current main
         uses: actions/checkout@v7
         with:
           ref: main
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -33,15 +35,50 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
           python -m pip freeze > requirements.lock.txt
-      - name: Commit refreshed lockfile
+      - name: Detect lockfile change
+        id: changes
+        shell: bash
         run: |
           if git diff --quiet -- requirements.lock.txt; then
-            echo "Lockfile already current."
-            exit 0
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Verify generated lockfile
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.lock.txt
+          python -m pip check
+          pip-audit -r requirements.lock.txt
+          python -m ruff check archive_verifier scripts tests
+          python -m mypy archive_verifier scripts
+          python -m coverage run -m pytest -q
+          python -m coverage report --fail-under=90
+          python -m archive_verifier
+      - name: Publish verified lockfile branch
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="automation/python-lock-refresh"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
           git add requirements.lock.txt
           git commit -m "build: refresh Python lockfile"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git push --force-with-lease origin HEAD:"$branch"
+
+          pr_number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
+          body="Automated Python lock refresh generated from current main. The workflow verified the resolved lock with pip check, pip-audit, Ruff, strict mypy, coverage, and the authenticated archive verifier before publishing this branch. Normal pull-request CI and CodeQL must still pass before merge."
+
+          if [ -n "$pr_number" ]; then
+            gh pr edit "$pr_number" --title "Refresh verified Python lockfile" --body "$body"
+          else
+            gh pr create --base main --head "$branch" --title "Refresh verified Python lockfile" --body "$body"
+          fi
+      - name: Report current lockfile
+        if: steps.changes.outputs.changed != 'true'
+        run: echo "Lockfile already current."
