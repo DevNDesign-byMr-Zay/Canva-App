@@ -162,7 +162,7 @@ The Node package has no third-party dependencies today; `npm audit` remains part
 
 1. Python tests + branch coverage
 2. reproducible `npm ci` + `npm audit` + `npm test` for the maintained v115 runtime adapters
-3. locked install + dependency audit + TypeScript typecheck + Vitest for the real `canva-app/` Design Editor package
+3. locked install + dependency audit + TypeScript typecheck + Vitest + production build for the real `canva-app/` Design Editor package
 4. Ruff + strict mypy
 5. Python dependency graph + vulnerability audit
 6. authenticated 84-occurrence archive verification and deterministic v115 reconstruction
