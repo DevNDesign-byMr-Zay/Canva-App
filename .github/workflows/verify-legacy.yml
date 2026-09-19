@@ -53,6 +53,31 @@ jobs:
       - name: Run diagnostic energy runtime demo
         run: npm run demo:energy-runtime
 
+  design-editor-app:
+    name: Canva Design Editor app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible app install
+        run: npm ci --ignore-scripts
+      - name: Audit app dependency graph
+        run: npm audit --audit-level=moderate
+      - name: Type-check Design Editor app
+        run: npm run typecheck
+      - name: Run Design Editor app tests
+        run: npm test
+
   static-analysis:
     name: Ruff and mypy
     runs-on: ubuntu-latest
