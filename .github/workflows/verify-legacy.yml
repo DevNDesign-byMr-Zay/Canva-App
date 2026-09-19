@@ -71,8 +71,20 @@ jobs:
           cache-dependency-path: canva-app/package-lock.json
       - name: Reproducible app install
         run: npm ci --ignore-scripts
-      - name: Audit app dependency graph
-        run: npm audit --audit-level=moderate
+      - name: Audit production dependency graph
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: Verify reviewed development-tool advisory boundary
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=moderate --json > npm-audit.json
+          audit_status=$?
+          set -e
+          if [ "$audit_status" -eq 0 ]; then
+            echo "Full dependency graph has no moderate-or-higher advisories."
+          else
+            node scripts/verify-dev-audit.mjs npm-audit.json
+          fi
       - name: Type-check Design Editor app
         run: npm run typecheck
       - name: Run Design Editor app tests
