@@ -154,7 +154,7 @@ The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit.
 make check
 ```
 
-The Node package has no third-party dependencies today; `npm audit` remains part of CI so future dependency additions are automatically included in the audit boundary.
+The Node package has no third-party dependencies today; `npm audit` remains part of CI so future dependency additions are automatically included in the audit boundary. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
