@@ -27,3 +27,14 @@ export async function loadProductionReviewContext({
     getUserToken: () => auth.getCanvaUserToken(),
   });
 }
+
+
+export async function resolveReviewContextForMount(
+  options: Parameters<typeof loadProductionReviewContext>[0] = {},
+): Promise<TrustedReviewContext | null> {
+  try {
+    return await loadProductionReviewContext(options);
+  } catch {
+    return null;
+  }
+}
