@@ -174,7 +174,7 @@ The Node package has no third-party dependencies today; `npm audit` remains part
 6. authenticated 84-occurrence archive verification and deterministic v115 reconstruction
 7. Docker fresh-clone image build + execution
 
-`.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application and commits the deterministic physical application surface when required. A separate CodeQL workflow performs static security analysis. Dependabot tracks Python and GitHub Actions dependencies. Automated Python lock refreshes are generated on a dedicated branch, verified before publication, and submitted as pull requests so normal CI and CodeQL validate the exact generated lock before merge.
+`.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application from current `main`; when deterministic bytes change, automation publishes them on a dedicated branch and opens or updates a pull request so normal CI and CodeQL review the exact materialized output before merge. A separate CodeQL workflow performs static security analysis. Dependabot tracks Python and GitHub Actions dependencies. Automated Python lock refreshes are generated on a dedicated branch, verified before publication, and submitted as pull requests so normal CI and CodeQL validate the exact generated lock before merge.
 
 ## Docker
 
