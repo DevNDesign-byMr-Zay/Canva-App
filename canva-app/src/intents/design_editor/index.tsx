@@ -6,7 +6,7 @@ import type { DesignEditorIntent } from "@canva/intents/design";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app";
-import { loadProductionReviewContext } from "./review-context-mount";
+import { resolveReviewContextForMount } from "./review-context-mount";
 
 async function render() {
   const rootElement = document.getElementById("root");
@@ -17,12 +17,7 @@ async function render() {
 
   const root = createRoot(rootElement);
 
-  let trustedContext: Awaited<ReturnType<typeof loadProductionReviewContext>> | null = null;
-  try {
-    trustedContext = await loadProductionReviewContext();
-  } catch {
-    trustedContext = null;
-  }
+  const trustedContext = await resolveReviewContextForMount();
 
   root.render(
     <AppI18nProvider>
