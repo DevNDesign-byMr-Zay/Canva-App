@@ -46,7 +46,7 @@ d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1
 
 The committed application file is approximately 571 KB. `app/authenticated-v115/PROVENANCE.md` records its source identity, and `python scripts/materialize_v115.py` deterministically reconstructs it from the committed authenticated archive.
 
-See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy.
+See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy. `docs/PROJECT_SCOPE.md` gives reviewers a concise project-type and maintained-surface map.
 
 ## Archive scope and provenance
 
@@ -86,10 +86,16 @@ python -m pip install -r requirements.lock.txt
 npm ci
 ```
 
-Or install the Python verifier toolchain with:
+Or install all maintained toolchains with:
 
 ```bash
 make setup
+```
+
+To verify the complete maintained repository from one fresh-clone command—including the Python verifier, root Node runtime, Design Editor dependency policy, TypeScript checks, Vitest suite, and production app build—run:
+
+```bash
+make verify-fresh
 ```
 
 The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters currently have zero third-party runtime or development dependencies; the committed npm lockfile still makes the fresh-clone contract explicit and machine-verifiable.

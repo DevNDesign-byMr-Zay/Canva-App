@@ -1,4 +1,4 @@
-.PHONY: setup verify test test-js test-app lint typecheck typecheck-app audit check verify-fresh
+.PHONY: setup verify test test-js test-app lint typecheck typecheck-app audit audit-app build-app app-check check verify-fresh
 
 setup:
 	python -m pip install --disable-pip-version-check -r requirements.lock.txt
@@ -31,6 +31,25 @@ audit:
 	python -m pip check
 	pip-audit -r requirements.lock.txt
 
+audit-app:
+	npm --prefix canva-app audit --omit=dev --audit-level=moderate
+	@cd canva-app && \
+		trap 'rm -f npm-audit.json' EXIT; \
+		set +e; \
+		npm audit --audit-level=moderate --json > npm-audit.json; \
+		status=$$?; \
+		set -e; \
+		if [ "$$status" -eq 0 ]; then \
+			echo "Design Editor dependency graph has no moderate-or-higher advisories."; \
+		else \
+			node scripts/verify-dev-audit.mjs npm-audit.json; \
+		fi
+
+build-app:
+	npm --prefix canva-app run build
+
 check: lint typecheck test test-js audit verify
 
-verify-fresh: setup check typecheck-app test-app
+app-check: audit-app typecheck-app test-app build-app
+
+verify-fresh: setup check app-check
