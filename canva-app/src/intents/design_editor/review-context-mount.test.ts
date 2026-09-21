@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@canva/design", () => ({
+  getDesignToken: vi.fn(),
+}));
+
+vi.mock("@canva/user", () => ({
+  auth: {
+    getCanvaUserToken: vi.fn(),
+  },
+}));
+
 import type { TrustedReviewContext } from "./review-context-client";
 import {
   loadProductionReviewContext,
