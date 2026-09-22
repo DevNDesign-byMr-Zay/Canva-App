@@ -90,7 +90,9 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
 
   useEffect(() => {
     latestReviewContext.current =
-      reviewScenario && snapshot ? { scenario: reviewScenario, snapshot, trustedDesignId, trustedPageId } : null;
+      reviewScenario && snapshot
+        ? { scenario: reviewScenario, snapshot, trustedDesignId, trustedPageId }
+        : null;
   }, [reviewScenario, snapshot, trustedDesignId, trustedPageId]);
 
   useEffect(() => {
@@ -111,7 +113,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
       setStatus("idle");
       setMessage(null);
     }
-  }, [attestation, receipt, scenario, status, trustedDesignId, trustedPageId]);
+  }, [attestation, receipt, reviewScenario, status, trustedDesignId, trustedPageId]);
 
   useEffect(() => {
     let cancelled = false;
