@@ -121,6 +121,18 @@ export function canonical(
   return output;
 }
 
+function deepFreeze<T>(value: T): T {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+export function snapshotScenarioForPresentation(
+  scenario: HoloForgeScenario,
+): Readonly<HoloForgeScenario> {
+  return deepFreeze(canonical(scenario, "scenario") as HoloForgeScenario);
+}
+
 export async function sha256(value: unknown): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
