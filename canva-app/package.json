@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": "^22 || ^24" },
+  "engines": {
+    "node": "^22 || ^24"
+  },
   "scripts": {
     "start": "npx @canva/cli apps start",
     "start:preview": "npx @canva/cli apps start --preview",
@@ -19,7 +21,8 @@
     "@canva/intents": "^2.7.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-intl": "^7.1.11"
+    "react-intl": "^7.1.11",
+    "@canva/user": "^2.2.0"
   },
   "devDependencies": {
     "@canva/app-scripts": "^1.1.1",

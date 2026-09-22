@@ -6,6 +6,7 @@ import type { DesignEditorIntent } from "@canva/intents/design";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app";
+import { resolveReviewContextForMount } from "./review-context-mount";
 
 async function render() {
   const rootElement = document.getElementById("root");
@@ -16,10 +17,16 @@ async function render() {
 
   const root = createRoot(rootElement);
 
+  const trustedContext = await resolveReviewContextForMount();
+
   root.render(
     <AppI18nProvider>
       <AppUiProvider>
-        <App />
+        <App
+          scenario={trustedContext?.scenario ?? null}
+          trustedDesignId={trustedContext?.trustedDesignId}
+          trustedPageId={trustedContext?.trustedPageId}
+        />
       </AppUiProvider>
     </AppI18nProvider>,
   );

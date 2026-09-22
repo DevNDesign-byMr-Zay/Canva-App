@@ -81,3 +81,10 @@ npm run build
 ```
 
 The current Canva starter kit and documentation are the source of truth for CLI/build behavior and supported SDK versions.
+
+## Trusted review-context mount
+
+The production Design Editor mount obtains a fresh Canva design token with `getDesignToken()` and a fresh Canva user token with `auth.getCanvaUserToken()`, then sends both through the existing trusted review-context client to `${BACKEND_HOST}/review-context`. Token contents are never decoded or trusted in browser code.
+
+Only backend-verified scenario/design/page context is passed into `App`. If the backend is missing, rejects the request, returns invalid context, or returns mismatched identity, the mount resolves to no trusted scenario and the Apply path remains locked. Every refresh uses fresh token calls; tokens are not cached as identity proof.
+
