@@ -59,16 +59,66 @@ export type HoloForgeScenario = {
 
 export const HEX_64 = /^[a-f0-9]{64}$/;
 
-export function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>)
-        .sort()
-        .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
-    );
+export function canonical(
+  value: unknown,
+  path = "scenario evidence",
+  seen = new WeakSet<object>(),
+): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new TypeError(`${path} numbers must be finite`);
+    return value;
   }
-  return value;
+  if (!value || typeof value !== "object") {
+    throw new TypeError(`${path} must contain JSON-compatible evidence`);
+  }
+  if (seen.has(value)) throw new TypeError(`${path} must not contain circular references`);
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new TypeError(`${path} must not contain symbol properties`);
+  }
+  seen.add(value);
+
+  let output: unknown;
+  if (Array.isArray(value)) {
+    const allowedKeys = new Set(["length"]);
+    const items: unknown[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const key = String(index);
+      allowedKeys.add(key);
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor) throw new TypeError(`${path} must not contain sparse arrays`);
+      if (!descriptor.enumerable || "get" in descriptor || "set" in descriptor) {
+        throw new TypeError(`${path}[${index}] must be enumerable data`);
+      }
+      items.push(canonical(descriptor.value, `${path}[${index}]`, seen));
+    }
+    if (Reflect.ownKeys(value).some((key) => typeof key !== "string" || !allowedKeys.has(key))) {
+      throw new TypeError(`${path} arrays must not contain extra properties`);
+    }
+    output = items;
+  } else {
+    if (Object.getPrototypeOf(value) !== Object.prototype) {
+      throw new TypeError(`${path} must use plain objects`);
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const copy: Record<string, unknown> = {};
+    for (const key of Object.keys(descriptors).sort()) {
+      const descriptor = descriptors[key];
+      if (!descriptor.enumerable || "get" in descriptor || "set" in descriptor) {
+        throw new TypeError(`${path}.${key} must be enumerable data`);
+      }
+      Object.defineProperty(copy, key, {
+        value: canonical(descriptor.value, `${path}.${key}`, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
+    output = copy;
+  }
+
+  seen.delete(value);
+  return output;
 }
 
 export async function sha256(value: unknown): Promise<string> {
@@ -78,43 +128,50 @@ export async function sha256(value: unknown): Promise<string> {
 }
 
 export function canonicalConstraintSet(value: unknown): unknown[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((constraint) => canonical(constraint))
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  if (!Array.isArray(value)) throw new TypeError("constraint set must be an array");
+  const captured = canonical(value, "constraint set") as unknown[];
+  return captured.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
 export async function computeOptimizationFingerprint(scenario: HoloForgeScenario): Promise<string> {
+  const captured = canonical(scenario, "scenario") as HoloForgeScenario;
   return sha256({
-    sourceSnapshotFingerprint: scenario.source.snapshotFingerprint,
+    sourceSnapshotFingerprint: captured.source.snapshotFingerprint,
     objective: {
-      id: scenario.intent.objectiveId,
-      direction: scenario.intent.objectiveDirection,
+      id: captured.intent.objectiveId,
+      direction: captured.intent.objectiveDirection,
     },
     constraints: {
-      hard: canonicalConstraintSet(scenario.constraints.hard),
-      soft: canonicalConstraintSet(scenario.constraints.soft),
+      hard: canonicalConstraintSet(captured.constraints.hard),
+      soft: canonicalConstraintSet(captured.constraints.soft),
     },
   });
 }
 
 export async function computeScenarioFingerprint(scenario: HoloForgeScenario): Promise<string> {
-  const unsigned = structuredClone(scenario);
+  const captured = canonical(scenario, "scenario") as HoloForgeScenario;
   const provenance = Object.fromEntries(
-    Object.entries(unsigned.provenance).filter(([key]) => key !== "scenarioFingerprint"),
+    Object.entries(captured.provenance).filter(([key]) => key !== "scenarioFingerprint"),
   );
-  return sha256({ ...unsigned, provenance });
+  return sha256({ ...captured, provenance });
 }
 
 export async function hasCanonicalProvenance(scenario: HoloForgeScenario): Promise<boolean> {
-  if (!HEX_64.test(scenario.provenance.scenarioFingerprint)) return false;
-  if (!HEX_64.test(scenario.provenance.optimizationFingerprint)) return false;
-  const [optimizationFingerprint, scenarioFingerprint] = await Promise.all([
-    computeOptimizationFingerprint(scenario),
-    computeScenarioFingerprint(scenario),
-  ]);
-  return optimizationFingerprint === scenario.provenance.optimizationFingerprint
-    && scenarioFingerprint === scenario.provenance.scenarioFingerprint;
+  try {
+    const captured = canonical(scenario, "scenario") as HoloForgeScenario;
+    if (!HEX_64.test(captured.provenance.scenarioFingerprint)) return false;
+    if (!HEX_64.test(captured.provenance.optimizationFingerprint)) return false;
+    const [optimizationFingerprint, scenarioFingerprint] = await Promise.all([
+      computeOptimizationFingerprint(captured),
+      computeScenarioFingerprint(captured),
+    ]);
+    return (
+      optimizationFingerprint === captured.provenance.optimizationFingerprint &&
+      scenarioFingerprint === captured.provenance.scenarioFingerprint
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function hasUniqueChangedElementIds(scenario: HoloForgeScenario): boolean {
