@@ -147,6 +147,103 @@ describe("trusted review context client", () => {
     expect(context.trustedDesignId).toBe("design-1");
   });
 
+  it("snapshots and recursively freezes nested scenario decision state", async () => {
+    const backendScenario = scenario();
+    backendScenario.constraints.hard = [
+      { type: "bounds", limits: { minX: 0, maxX: 100 } },
+    ];
+    backendScenario.candidate.layout.elements["element-1"] = {
+      x: 10,
+      y: 20,
+      rotation: 0,
+    };
+    backendScenario.candidate.changedElementIds = ["element-1"];
+    backendScenario.candidate.delta = {
+      moved: { elementId: "element-1", from: { x: 0 }, to: { x: 10 } },
+    };
+
+    const context = await loadTrustedReviewContext({
+      endpoint: "https://backend.example/review-context",
+      getDesignToken: async () => ({ token: "design-token" }),
+      getUserToken: async () => "user-token",
+      fetchImpl: successfulFetch({
+        scenario: backendScenario,
+        trustedDesignId: "design-1",
+        trustedPageId: "page-1",
+      }),
+    });
+
+    (backendScenario.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX = 999;
+    backendScenario.candidate.layout.elements["element-1"].x = 999;
+    (backendScenario.candidate.delta.moved as { to: { x: number } }).to.x = 999;
+
+    expect(
+      (context.scenario.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX,
+    ).toBe(100);
+    expect(context.scenario.candidate.layout.elements["element-1"].x).toBe(10);
+    expect(
+      (context.scenario.candidate.delta.moved as { to: { x: number } }).to.x,
+    ).toBe(10);
+    expect(Object.isFrozen(context.scenario.constraints)).toBe(true);
+    expect(Object.isFrozen(context.scenario.constraints.hard)).toBe(true);
+    expect(Object.isFrozen(context.scenario.constraints.hard[0])).toBe(true);
+    expect(Object.isFrozen(context.scenario.candidate)).toBe(true);
+    expect(Object.isFrozen(context.scenario.candidate.layout)).toBe(true);
+    expect(Object.isFrozen(context.scenario.candidate.layout.elements["element-1"])).toBe(true);
+    expect(Object.isFrozen(context.scenario.candidate.delta)).toBe(true);
+  });
+
+  it("fails closed on non-finite nested candidate geometry", async () => {
+    const unsafeScenario = scenario();
+    unsafeScenario.candidate.layout.elements["element-1"] = {
+      x: Number.NaN,
+      y: 20,
+    };
+    unsafeScenario.candidate.changedElementIds = ["element-1"];
+
+    await expect(
+      loadTrustedReviewContext({
+        endpoint: "https://backend.example/review-context",
+        getDesignToken: async () => ({ token: "design-token" }),
+        getUserToken: async () => "user-token",
+        fetchImpl: successfulFetch({
+          scenario: unsafeScenario,
+          trustedDesignId: "design-1",
+          trustedPageId: "page-1",
+        }),
+      }),
+    ).rejects.toThrow(/numbers must be finite/);
+  });
+
+  it("rejects nested geometry accessors without executing them", async () => {
+    const unsafeScenario = scenario();
+    let reads = 0;
+    const transform: Record<string, unknown> = { y: 20 };
+    Object.defineProperty(transform, "x", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 10;
+      },
+    });
+    unsafeScenario.candidate.layout.elements["element-1"] = transform;
+    unsafeScenario.candidate.changedElementIds = ["element-1"];
+
+    await expect(
+      loadTrustedReviewContext({
+        endpoint: "https://backend.example/review-context",
+        getDesignToken: async () => ({ token: "design-token" }),
+        getUserToken: async () => "user-token",
+        fetchImpl: successfulFetch({
+          scenario: unsafeScenario,
+          trustedDesignId: "design-1",
+          trustedPageId: "page-1",
+        }),
+      }),
+    ).rejects.toThrow(/must not use accessors/);
+    expect(reads).toBe(0);
+  });
+
   it("does not let prototype-named backend fields disappear during capture", async () => {
     const responseValue = {
       scenario: scenario(),
