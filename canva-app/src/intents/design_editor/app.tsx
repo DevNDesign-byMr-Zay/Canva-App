@@ -19,6 +19,7 @@ import {
   isReviewedApplyContextCurrent,
 } from "./review-context-guard";
 import { buildScenarioReview } from "./scenario-review";
+import { snapshotScenarioForPresentation } from "./scenario-contract";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
 
@@ -43,6 +44,10 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
   const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
   const applyRunGate = useRef(createApplyRunGate());
+  const reviewScenario = useMemo(
+    () => (scenario ? snapshotScenarioForPresentation(scenario) : null),
+    [scenario],
+  );
   const latestReviewContext = useRef<{
     scenario: NonNullable<AppScenario>;
     snapshot: CanvaDesignSnapshot;
@@ -85,14 +90,14 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
 
   useEffect(() => {
     latestReviewContext.current =
-      scenario && snapshot ? { scenario, snapshot, trustedDesignId, trustedPageId } : null;
-  }, [scenario, snapshot, trustedDesignId, trustedPageId]);
+      reviewScenario && snapshot ? { scenario: reviewScenario, snapshot, trustedDesignId, trustedPageId } : null;
+  }, [reviewScenario, snapshot, trustedDesignId, trustedPageId]);
 
   useEffect(() => {
     if (!receipt || !attestation) return;
     if (
       isApplyProofCurrentForReview(attestation, {
-        scenario,
+        scenario: reviewScenario,
         trustedDesignId,
         trustedPageId,
       })
@@ -114,7 +119,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
     const normalizedTrustedDesignId = trustedDesignId?.trim();
     const normalizedTrustedPageId = trustedPageId?.trim();
     if (
-      !scenario ||
+      !reviewScenario ||
       !snapshot ||
       !designEditingSupported ||
       (normalizedTrustedDesignId && snapshot.designId !== normalizedTrustedDesignId) ||
@@ -125,24 +130,24 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
       };
     }
 
-    void canApplyScenario(scenario, snapshot).then((safe) => {
+    void canApplyScenario(reviewScenario, snapshot).then((safe) => {
       if (!cancelled) setScenarioVerified(safe);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [designEditingSupported, scenario, snapshot, trustedDesignId, trustedPageId]);
+  }, [designEditingSupported, reviewScenario, snapshot, trustedDesignId, trustedPageId]);
 
   const review = useMemo(
-    () => (scenario && snapshot ? buildScenarioReview(scenario, snapshot) : []),
-    [scenario, snapshot],
+    () => (reviewScenario && snapshot ? buildScenarioReview(reviewScenario, snapshot) : []),
+    [reviewScenario, snapshot],
   );
 
   const readyToApply = designEditingSupported && scenarioVerified;
 
   const apply = useCallback(async () => {
-    if (!scenario || !snapshot || !readyToApply) return;
+    if (!reviewScenario || !snapshot || !readyToApply) return;
     const runToken = applyRunGate.current.tryAcquire();
     if (runToken === null) return;
 
@@ -154,14 +159,14 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
     try {
       const reviewedSnapshot = snapshot;
       const reviewedContext = createReviewedApplyContext({
-        scenario,
+        scenario: reviewScenario,
         snapshot: reviewedSnapshot,
         trustedDesignId,
         trustedPageId,
       });
-      const result = await applyScenario(scenario, reviewedSnapshot);
+      const result = await applyScenario(reviewScenario, reviewedSnapshot);
       const sealedAttestation = await createApplyAttestation({
-        scenario,
+        scenario: reviewScenario,
         snapshot: reviewedSnapshot,
         receipt: result,
       });
@@ -252,7 +257,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
     } finally {
       applyRunGate.current.release(runToken);
     }
-  }, [intl, readyToApply, scenario, snapshot, trustedDesignId, trustedPageId]);
+  }, [intl, readyToApply, reviewScenario, snapshot, trustedDesignId, trustedPageId]);
 
   const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
@@ -310,13 +315,13 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
         </Text>
       </Rows>
 
-      {scenario ? (
+      {reviewScenario ? (
         <Rows spacing="1u">
           <Text>
             <FormattedMessage
               defaultMessage="Selected scenario: {id}"
               description="Identifies the scenario currently selected for review."
-              values={{ id: scenario.scenarioId }}
+              values={{ id: reviewScenario.scenarioId }}
             />
           </Text>
 
