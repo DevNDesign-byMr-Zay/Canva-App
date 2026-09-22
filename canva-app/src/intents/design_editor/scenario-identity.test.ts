@@ -5,6 +5,7 @@ import {
   computeScenarioFingerprint,
   hasCanonicalProvenance,
   hasUniqueChangedElementIds,
+  snapshotScenarioForPresentation,
   type HoloForgeScenario,
 } from "./scenario-contract";
 
@@ -187,3 +188,45 @@ describe("canonical scenario fingerprints", () => {
     expect(reads).toBe(0);
   });
 });
+
+describe("presentation scenario snapshot", () => {
+  it("isolates rendered decision state from later caller mutation", () => {
+    const source = identityScenario();
+    source.constraints.hard = [
+      { type: "bounds", limits: { maxX: 100 } },
+    ];
+    source.candidate.layout.elements["element-1"] = { x: 10, y: 20 };
+    source.candidate.delta = { moved: { to: { x: 10 } } };
+
+    const captured = snapshotScenarioForPresentation(source);
+
+    (source.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX = 999;
+    source.candidate.layout.elements["element-1"].x = 999;
+    (source.candidate.delta.moved as { to: { x: number } }).to.x = 999;
+
+    expect(
+      (captured.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX,
+    ).toBe(100);
+    expect(captured.candidate.layout.elements["element-1"].x).toBe(10);
+    expect((captured.candidate.delta.moved as { to: { x: number } }).to.x).toBe(10);
+    expect(Object.isFrozen(captured)).toBe(true);
+    expect(Object.isFrozen(captured.constraints.hard[0])).toBe(true);
+    expect(Object.isFrozen(captured.candidate.layout.elements["element-1"])).toBe(true);
+  });
+
+  it("rejects deceptive caller-owned scenario state before presentation", () => {
+    const source = identityScenario();
+    let reads = 0;
+    Object.defineProperty(source.candidate.delta, "hidden", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return "authority";
+      },
+    });
+
+    expect(() => snapshotScenarioForPresentation(source)).toThrow(/must be enumerable data/);
+    expect(reads).toBe(0);
+  });
+});
+
