@@ -75,9 +75,12 @@ jobs:
           body="Automated Python lock refresh generated from current main. The workflow verified the resolved lock with pip check, pip-audit, Ruff, strict mypy, coverage, and the authenticated archive verifier before publishing this branch. Normal pull-request CI and CodeQL must still pass before merge."
 
           if [ -n "$pr_number" ]; then
-            gh pr edit "$pr_number" --title "Refresh verified Python lockfile" --body "$body"
-          else
-            gh pr create --base main --head "$branch" --title "Refresh verified Python lockfile" --body "$body"
+            if ! gh pr edit "$pr_number" --title "Refresh verified Python lockfile" --body "$body"; then
+              echo "::notice title=Lockfile PR not updated::The verified branch was published, but repository policy prevented GitHub Actions from updating the PR."
+            fi
+          elif ! gh pr create --base main --head "$branch" --title "Refresh verified Python lockfile" --body "$body"; then
+            echo "::notice title=Lockfile branch published::GitHub Actions cannot open pull requests in this repository. Open a PR from $branch to main."
+            echo "Verified Python lockfile branch $branch was published; repository policy requires a human or connected app to open the PR." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Report current lockfile
         if: steps.changes.outputs.changed != 'true'
