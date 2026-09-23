@@ -111,7 +111,7 @@ To verify the complete maintained repository from one fresh-clone command—incl
 make verify-fresh
 ```
 
-The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters currently have zero third-party runtime or development dependencies; the committed npm lockfile still makes the fresh-clone contract explicit and machine-verifiable.
+The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters keep their dependency surface narrow. The trusted review-context backend deliberately uses the pinned `@canva/app-middleware` package for server-side Canva token verification, and the committed npm lockfile keeps that boundary reproducible and machine-verifiable.
 
 ## Verify and materialize
 
@@ -173,7 +173,7 @@ The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit.
 make check
 ```
 
-The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
+The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The Design Editor workspace can also be verified from the repository root with `npm run app:verify`, which performs its locked install, production dependency audit, typecheck, tests, and production build. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
