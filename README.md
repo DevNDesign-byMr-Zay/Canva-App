@@ -23,14 +23,14 @@ The maintained JavaScript surface lives under `runtime/` and `tests/js/*.test.mj
 
 The holographic presentation contract is intentionally downstream of decision evidence: scene identity and provenance are required, supported display targets are explicit, payload fingerprints are integrity-checked, and the adapter safety envelope remains non-authoritative/non-actuating. Browser interaction, CSS3D rendering, display-profile execution, and related viewport behavior remain separate presentation concerns rather than being folded into authenticated replay or historical source.
 
-The Node.js surface is an ordinary zero-runtime-dependency package:
+The root Node.js surface contains the maintained runtime adapters plus a small trusted review-context backend. The backend uses Canva's official server-side token verifier package; archive verification itself remains credential-free:
 
 ```bash
 npm ci
 npm test
 ```
 
-`package.json` defines the Node 22+ test surface and `package-lock.json` locks it reproducibly. CI installs from that lockfile, runs `npm audit`, and executes the maintained runtime suite through the standard `npm test` entrypoint.
+`package.json` defines the Node 22+ test surface and `package-lock.json` locks it reproducibly. CI installs from that lockfile, runs `npm audit`, and executes the maintained runtime and backend boundary suite through the standard `npm test` entrypoint.
 
 The authenticated application is physically present at:
 
@@ -47,6 +47,19 @@ d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1
 The committed application file is approximately 571 KB. `app/authenticated-v115/PROVENANCE.md` records its source identity, and `python scripts/materialize_v115.py` deterministically reconstructs it from the committed authenticated archive.
 
 See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy. `docs/PROJECT_SCOPE.md` gives reviewers a concise project-type and maintained-surface map.
+
+
+## Trusted review-context backend
+
+The maintained Design Editor integration now has a real server-side trust boundary at `backend/review-context-service.mjs`. The service exposes `POST /review-context` and `GET /health`. It verifies fresh Canva user and design tokens on the server, derives the trusted design identity from the verified design token, and requests the canonical scenario from the configured upstream scenario source. Raw Canva JWTs are not forwarded to that upstream source.
+
+The upstream source is configured through `REVIEW_CONTEXT_SOURCE_URL`; it returns `{ scenario, trustedPageId? }`. The backend—not the upstream response—sets `trustedDesignId` from verified Canva identity. Any optional page target must already be inside the canonical scenario page scope. The response remains advisory and explicit-Apply-only.
+
+For local backend startup after setting deployment values:
+
+```bash
+npm run backend:start
+```
 
 ## Archive scope and provenance
 
@@ -160,7 +173,7 @@ The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit.
 make check
 ```
 
-The Node package has no third-party dependencies today; `npm audit` remains part of CI so future dependency additions are automatically included in the audit boundary. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
+The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
@@ -187,7 +200,7 @@ The container verifies the authenticated archive, runs pytest, enforces coverage
 
 ## Environment and secrets
 
-No runtime credentials, API keys, cloud authentication, or environment variables are required to verify or materialize this repository. `.env.example` documents that intentionally empty verifier environment. Credentials must never be committed.
+No runtime credentials, API keys, cloud authentication, or environment variables are required to verify or materialize the archive. The optional trusted review-context backend is deployment-configured with `CANVA_APP_ID`, `CANVA_APP_ORIGIN`, `REVIEW_CONTEXT_SOURCE_URL`, and `PORT`; `.env.example` contains blank placeholders only. Credentials and issued Canva tokens must never be committed.
 
 Runtime adapters that model authenticated historical request boundaries accept credentials/network implementations through explicit injected interfaces; tests do not require or embed production credentials.
 

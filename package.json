@@ -15,7 +15,8 @@
     "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
-    "check": "npm test"
+    "check": "npm test",
+    "backend:start": "node backend/review-context-service.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -31,5 +32,8 @@
     "./holographic-roundtrip": "./src/holographic-scene-roundtrip.mjs",
     "./holographic-roundtrip-view": "./src/holographic-roundtrip-view.mjs",
     "./holographic-interaction-map": "./src/holographic-interaction-map.mjs"
+  },
+  "dependencies": {
+    "@canva/app-middleware": "0.0.0-beta.8"
   }
 }
