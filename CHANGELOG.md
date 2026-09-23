@@ -2,6 +2,26 @@
 
 All notable maintained-surface changes to this repository are documented here.
 
+## Unreleased
+
+### Added
+
+- A real Canva Design Editor workspace with locked SDK dependencies, TypeScript verification, Vitest coverage, and production build gates.
+- A trusted server-side review-context boundary using Canva's official middleware to verify fresh user and design tokens before canonical scenario context reaches the browser.
+- Explicit source-design, page, snapshot, provenance, and post-apply verification boundaries so stale or substituted context fails closed before mutation.
+- Root-level `npm run app:verify` orchestration for a reproducible Design Editor install, production dependency audit, typecheck, tests, and build.
+
+### Changed
+
+- The Design Editor path remains explicit-user-Apply only; scenario/evidence generation and identity authority stay outside the browser mutation layer.
+- Fresh-clone documentation now uses locked installs consistently and describes the root backend dependency boundary accurately.
+- Automated Python lock refreshes now report repository PR-creation restrictions without turning a successfully verified lock refresh into a failed maintenance run.
+
+### Verification
+
+- Root runtime/backend, Python verifier, Design Editor workspace, Docker verifier, and CodeQL remain separate blocking quality/security lanes.
+- No hosted release is claimed by this entry; it records the current coherent application state before a real semantic release is cut.
+
 ## 1.0.0 — 2026-09-02
 
 ### Added
