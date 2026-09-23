@@ -1,10 +1,7 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 
-import {
-  initDesignTokenVerifier,
-  initUserTokenVerifier,
-} from '@canva/app-middleware';
+import { design as canvaDesign, user as canvaUser } from '@canva/app-middleware/express';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -68,6 +65,46 @@ function snapshotJson(value, path = 'payload', seen = new WeakSet()) {
 
   seen.delete(value);
   return copy;
+}
+
+function middlewareVerifier(middleware, kind) {
+  if (typeof middleware !== 'function') throw new TypeError('Canva token middleware is required');
+
+  return Object.freeze({
+    async verify(_token, { request, body } = {}) {
+      if (!request || typeof request !== 'object') {
+        throw new TypeError('request is required for Canva token verification');
+      }
+      request.body = body;
+
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const next = (error) => {
+          if (settled) return;
+          settled = true;
+          if (error) reject(error);
+          else resolve();
+        };
+
+        try {
+          Promise.resolve(middleware(request, {}, next)).catch(reject);
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      const payload = request.canva?.[kind];
+      if (!payload || typeof payload !== 'object') {
+        throw new TypeError(`verified Canva ${kind} identity is unavailable`);
+      }
+      return payload;
+    },
+  });
+}
+
+function designTokenFromBody(request) {
+  const token = request?.body?.designToken;
+  return typeof token === 'string' && token.trim() ? token.trim() : undefined;
 }
 
 function responseHeaders(allowedOrigin, requestOrigin) {
@@ -205,8 +242,15 @@ export function createReviewContextServer({
 } = {}) {
   const resolvedAppId = requireText(appId, 'appId');
   const resolvedOrigin = new URL(requireText(allowedOrigin, 'allowedOrigin')).origin;
-  const user = userVerifier ?? initUserTokenVerifier({ appId: resolvedAppId });
-  const design = designVerifier ?? initDesignTokenVerifier({ appId: resolvedAppId });
+  const user =
+    userVerifier ??
+    middlewareVerifier(canvaUser.verifyToken({ appId: resolvedAppId }), 'user');
+  const design =
+    designVerifier ??
+    middlewareVerifier(
+      canvaDesign.verifyToken({ appId: resolvedAppId, tokenExtractor: designTokenFromBody }),
+      'design',
+    );
   const scenarioLoader =
     loadScenario ??
     createRemoteScenarioSource({
@@ -275,10 +319,8 @@ export function createReviewContextServer({
     let userPayload;
     let designPayload;
     try {
-      [userPayload, designPayload] = await Promise.all([
-        user.verify(userToken),
-        design.verify(designToken),
-      ]);
+      userPayload = await user.verify(userToken, { request: req, body });
+      designPayload = await design.verify(designToken, { request: req, body });
     } catch {
       sendJson(res, 401, { error: 'unauthorized' }, resolvedOrigin, requestOrigin);
       return;
