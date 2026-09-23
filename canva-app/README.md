@@ -68,7 +68,7 @@ The receipt is evidence of the observed state transition, not a replacement for 
 
 ```bash
 cd canva-app
-npm install
+npm ci --ignore-scripts
 npm start
 ```
 

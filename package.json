@@ -16,7 +16,8 @@
     "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
     "check": "npm test",
-    "backend:start": "node backend/review-context-service.mjs"
+    "backend:start": "node backend/review-context-service.mjs",
+    "app:verify": "npm --prefix canva-app ci --ignore-scripts && npm --prefix canva-app audit --omit=dev --audit-level=moderate && npm --prefix canva-app run typecheck && npm --prefix canva-app test && npm --prefix canva-app run build"
   },
   "engines": {
     "node": ">=22"
