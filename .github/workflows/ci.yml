@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  root-node-tests:
+    name: Root Node tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Reproducible root install
+        run: npm ci --ignore-scripts
+      - name: Audit root dependencies
+        run: npm audit --audit-level=moderate
+      - name: Verify release-readiness contract
+        run: npm run verify:release
+      - name: Run root JavaScript tests
+        run: npm test
+
+  python-quality:
+    name: Python tests lint and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked Python toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Verify Python dependency graph
+        run: python -m pip check
+      - name: Run Python tests
+        run: python -m pytest -q
+      - name: Lint Python
+        run: python -m ruff check archive_verifier scripts tests
+      - name: Type-check Python
+        run: python -m mypy archive_verifier scripts
+
+  design-editor:
+    name: Design Editor typecheck test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible Design Editor install
+        run: npm ci --ignore-scripts
+      - name: Check Design Editor formatting
+        run: npm run format:check
+      - name: Type-check Design Editor app
+        run: npm run typecheck
+      - name: Test Design Editor app
+        run: npm test
+      - name: Build Design Editor app
+        run: npm run build
