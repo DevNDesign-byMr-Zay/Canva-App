@@ -19,6 +19,10 @@ const REQUIRED_FILES = Object.freeze([
   ".github/workflows/holoforge-canva.yml",
   ".github/workflows/codeql.yml",
   ".github/workflows/release.yml",
+  "SECURITY.md",
+  "CONTRIBUTING.md",
+  ".github/CODEOWNERS",
+  ".github/pull_request_template.md",
 ]);
 
 function assert(condition, message) {
