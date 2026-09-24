@@ -12,6 +12,7 @@ const REQUIRED_FILES = Object.freeze([
   "README.md",
   "docs/RELEASE_READINESS.md",
   "backend/review-context-service.mjs",
+  "backend/logging.mjs",
   "canva-app/package.json",
   "canva-app/package-lock.json",
   "canva-app/src/intents/design_editor/app.tsx",
@@ -99,6 +100,10 @@ async function main() {
   assert(/docker compose -f docker-compose\.yml config --quiet/u.test(ci), "engineering CI must validate canonical docker-compose.yml");
   assert(/docker compose up --build/u.test(ci), "engineering CI must execute the maintained Compose path");
   assert(/\/health/u.test(ci), "engineering CI must probe the trusted backend health endpoint");
+  const backendSource = await text("backend/review-context-service.mjs");
+  const loggingSource = await text("backend/logging.mjs");
+  assert(/uptimeSeconds/u.test(backendSource) && /version/u.test(backendSource), "backend health payload must expose uptime and version");
+  assert(/createJsonLogger/u.test(backendSource) && /timestamp/u.test(loggingSource) && /level/u.test(loggingSource), "backend must use a structured JSON logger");
   assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");
   assert(/npm run build/u.test(ci), "Design Editor CI must build");
   assert(/npm test/u.test(appCi), "HoloForge app workflow must run tests");

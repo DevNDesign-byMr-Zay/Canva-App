@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { design as canvaDesign, user as canvaUser } from '@canva/app-middleware/express';
 
 import { createErrorReporter } from './error-reporting.mjs';
+import { createJsonLogger } from './logging.mjs';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -240,11 +241,15 @@ export function createReviewContextServer({
   designVerifier,
   loadScenario,
   fetchImpl = globalThis.fetch,
-  logger = console,
+  logger = createJsonLogger(),
   onError = null,
+  startedAt = Date.now(),
+  serviceVersion = '1.1.0',
 } = {}) {
   const resolvedAppId = requireText(appId, 'appId');
   const resolvedOrigin = new URL(requireText(allowedOrigin, 'allowedOrigin')).origin;
+  const resolvedVersion = requireText(serviceVersion, 'serviceVersion');
+  if (!Number.isFinite(startedAt) || startedAt < 0) throw new TypeError('startedAt must be a finite timestamp');
   const reportError = createErrorReporter({ onError, logger });
   const user =
     userVerifier ??
@@ -272,7 +277,18 @@ export function createReviewContextServer({
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 
     if (req.method === 'GET' && url.pathname === '/health') {
-      sendJson(res, 200, { service: 'canva-review-context', status: 'ok' }, resolvedOrigin, requestOrigin);
+      sendJson(
+        res,
+        200,
+        {
+          service: 'canva-review-context',
+          status: 'ok',
+          uptimeSeconds: Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+          version: resolvedVersion,
+        },
+        resolvedOrigin,
+        requestOrigin,
+      );
       return;
     }
 
@@ -379,29 +395,36 @@ export function parseReviewContextConfig(environment = process.env) {
   });
 }
 
-export async function startReviewContextService(environment = process.env) {
+export async function startReviewContextService(
+  environment = process.env,
+  { logger = createJsonLogger(), serviceVersion = '1.1.0' } = {},
+) {
   const config = parseReviewContextConfig(environment);
-  const server = createReviewContextServer(config);
+  const server = createReviewContextServer({ ...config, logger, serviceVersion });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(config.port, '0.0.0.0', resolve);
   });
-  console.info(
-    JSON.stringify({
+  logger.info(
+    {
       event: 'review_context_service_started',
       port: config.port,
-    }),
+      version: serviceVersion,
+    },
+    'Review context service started',
   );
   return server;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  startReviewContextService().catch((error) => {
-    console.error(
-      JSON.stringify({
+  const logger = createJsonLogger();
+  startReviewContextService(process.env, { logger }).catch((error) => {
+    logger.error(
+      {
         event: 'review_context_service_start_failed',
         errorName: error instanceof Error ? error.name : 'Error',
-      }),
+      },
+      'Review context service failed to start',
     );
     process.exitCode = 1;
   });
