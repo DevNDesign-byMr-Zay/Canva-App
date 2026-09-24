@@ -39,6 +39,26 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.lock.txt
 
+      - name: Normalize and validate requested tag
+        id: release_tag
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          normalized="$(printf '%s' "$REQUESTED_TAG" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          version="$(node -p "require('./package.json').version")"
+          expected="v${version}"
+          if [ "$normalized" != "$expected" ]; then
+            echo "Requested tag must equal $expected" >&2
+            exit 1
+          fi
+          if git rev-parse "$normalized" >/dev/null 2>&1; then
+            echo "Tag already exists: $normalized" >&2
+            exit 1
+          fi
+          printf 'tag=%s\n' "$normalized" >> "$GITHUB_OUTPUT"
+
       - name: Verify complete application release candidate
         run: make verify-fresh
 
@@ -48,10 +68,10 @@ jobs:
       - name: Build release evidence bundle
         shell: bash
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
           set -euo pipefail
-          node scripts/create-release-manifest.mjs "${{ inputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
           npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
           (
             cd canva-app
@@ -67,7 +87,7 @@ jobs:
       - name: Retain release evidence before publication
         uses: actions/upload-artifact@v7
         with:
-          name: release-evidence-${{ inputs.tag }}
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
           if-no-files-found: error
           retention-days: 30
           path: |
@@ -78,27 +98,13 @@ jobs:
             release-manifest.json
             release-artifacts.sha256
 
-      - name: Validate requested tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(node -p "require('./package.json').version")"
-          expected="v${version}"
-          if [ "${{ inputs.tag }}" != "$expected" ]; then
-            echo "Requested tag must equal $expected" >&2
-            exit 1
-          fi
-          if git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
-            echo "Tag already exists: ${{ inputs.tag }}" >&2
-            exit 1
-          fi
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.tag }}" \
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
             root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
             --target "$GITHUB_SHA" \
-            --title "${{ inputs.tag }}" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
             --generate-notes
