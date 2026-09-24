@@ -22,6 +22,7 @@ const REQUIRED_FILES = Object.freeze([
   "canva-app/src/intents/design_editor/placement-experiment.ts",
   "canva-app/src/intents/design_editor/placement-scenario.ts",
   ".github/workflows/verify-legacy.yml",
+  ".github/workflows/ci.yml",
   ".github/workflows/holoforge-canva.yml",
   ".github/workflows/codeql.yml",
   ".github/workflows/release.yml",
@@ -48,11 +49,12 @@ async function main() {
   const root = new URL("../", import.meta.url);
   await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
 
-  const [pkg, appPkg, changelog, ci, appCi, codeql, release, readme, envExample, classification] = await Promise.all([
+  const [pkg, appPkg, changelog, ci, conventionalCi, appCi, codeql, release, readme, envExample, classification] = await Promise.all([
     json("package.json"),
     json("canva-app/package.json"),
     text("CHANGELOG.md"),
     text(".github/workflows/verify-legacy.yml"),
+    text(".github/workflows/ci.yml"),
     text(".github/workflows/holoforge-canva.yml"),
     text(".github/workflows/codeql.yml"),
     text(".github/workflows/release.yml"),
@@ -113,6 +115,11 @@ async function main() {
       /actions\/upload-artifact@v7/u.test(ci),
     "engineering CI must retain Python and maintained-runtime coverage evidence",
   );
+  assert(/npm test/u.test(conventionalCi), "conventional CI must expose root tests");
+  assert(/python -m pytest/u.test(conventionalCi), "conventional CI must expose Python tests");
+  assert(/python -m ruff check/u.test(conventionalCi), "conventional CI must expose Python lint");
+  assert(/python -m mypy/u.test(conventionalCi), "conventional CI must expose Python typecheck");
+  assert(/npm run typecheck/u.test(conventionalCi) && /npm run build/u.test(conventionalCi), "conventional CI must expose Design Editor typecheck/build");
   assert(/pull_request:/u.test(codeql), "CodeQL must run on pull requests");
   assert(
     /javascript-typescript/u.test(codeql) && /python/u.test(codeql),
