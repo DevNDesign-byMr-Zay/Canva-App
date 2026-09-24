@@ -4,7 +4,7 @@ This directory is the Canva Apps SDK surface for HoloForge. It is intentionally 
 
 ## Product contract
 
-`Canva design → current snapshot → upstream scenario → evidence review → explicit apply → verified result`
+`Canva design → current snapshot → upstream scenario → spatial/evidence comparison → explicit apply → verified result`
 
 The Canva app owns:
 
@@ -42,6 +42,12 @@ The Canva app does **not** own:
 A write-capable scenario must arrive with a design identity that has been trusted by the upstream integration. The browser snapshot accepts that identity through `readCurrentDesignSnapshot({ trustedDesignId })`; without it, the snapshot remains useful for read/preview work but `canApplyScenario()` fails closed.
 
 The Canva Design Token is the intended bridge for backend identity verification. The browser must not decode or verify the token itself. The integration should send the signed token to its backend, let the backend verify it and obtain the design ID, then provide that trusted identity alongside the canonical upstream scenario. This keeps authentication/authorization and scenario provenance out of the Canva UI layer.
+
+## Spatial scenario comparison
+
+The Design Editor package now includes a pure read-only spatial scenario view model. It projects the reviewed Canva snapshot into two deterministic depth layers: source at depth 0 and candidate at depth 1. The model carries the exact baseline score, candidate score, objective gap, interpretation, and canonical scenario provenance into a SHA-256 view fingerprint.
+
+The comparison layer refuses source-design/page/snapshot drift, incomplete or failed hard-constraint evidence, non-advisory scenarios, incomplete Canva element mappings, and tampered canonical provenance. Locked elements that are not part of the candidate remain unchanged between branches. The view model never writes to Canva; the existing explicit Apply boundary remains the only mutation path.
 
 ## Scenario boundary
 
