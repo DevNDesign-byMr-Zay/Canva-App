@@ -12,6 +12,7 @@ All notable maintained-surface changes to this repository are documented here.
 - A trusted server-side review-context boundary using Canva's official middleware to verify fresh user and design tokens before canonical scenario context reaches the browser.
 - Explicit source-design, page, snapshot, provenance, and post-apply verification boundaries so stale or substituted context fails closed before mutation.
 - Root-level `npm run app:verify` orchestration for a reproducible Design Editor install, production dependency audit, typecheck, tests, and build.
+- Release-readiness export integrity checks that prove every maintained root subpath resolves to a real repository module before a release can be considered ready.
 
 ### Changed
 
