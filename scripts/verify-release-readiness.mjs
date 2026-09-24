@@ -18,6 +18,7 @@ const REQUIRED_FILES = Object.freeze([
   ".github/workflows/verify-legacy.yml",
   ".github/workflows/holoforge-canva.yml",
   ".github/workflows/codeql.yml",
+  ".github/workflows/release.yml",
 ]);
 
 function assert(condition, message) {
@@ -36,13 +37,14 @@ async function main() {
   const root = new URL("../", import.meta.url);
   await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
 
-  const [pkg, appPkg, changelog, ci, appCi, codeql, readme] = await Promise.all([
+  const [pkg, appPkg, changelog, ci, appCi, codeql, release, readme] = await Promise.all([
     json("package.json"),
     json("canva-app/package.json"),
     text("CHANGELOG.md"),
     text(".github/workflows/verify-legacy.yml"),
     text(".github/workflows/holoforge-canva.yml"),
     text(".github/workflows/codeql.yml"),
+    text(".github/workflows/release.yml"),
     text("README.md"),
   ]);
 
@@ -81,6 +83,11 @@ async function main() {
     /javascript-typescript/u.test(codeql) && /python/u.test(codeql),
     "CodeQL must analyze JavaScript/TypeScript and Python",
   );
+  assert(/workflow_dispatch:/u.test(release), "GitHub release workflow must remain manual-only");
+  assert(/github\.ref == 'refs\/heads\/main'/u.test(release), "release workflow must require main");
+  assert(/make verify-fresh/u.test(release), "release workflow must verify the full fresh application path");
+  assert(/Requested tag must equal/u.test(release), "release workflow must bind the tag to package version");
+  assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(/No hosted release is claimed/iu.test(changelog), "changelog must not fabricate a hosted release");
   assert(/explicit-user-Apply/iu.test(changelog), "release notes must preserve explicit Apply authority");
