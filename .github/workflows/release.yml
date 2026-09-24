@@ -47,8 +47,11 @@ jobs:
 
       - name: Build release evidence bundle
         shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          node --input-type=module -e 'import { readFileSync, writeFileSync } from "node:fs"; const pkg = JSON.parse(readFileSync("package.json", "utf8")); writeFileSync("release-manifest.json", JSON.stringify({ schemaVersion: 1, tag: process.env.RELEASE_TAG, version: pkg.version, commit: process.env.GITHUB_SHA }, null, 2) + "\n");'
           npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
           (
             cd canva-app
@@ -56,7 +59,7 @@ jobs:
           ) > canva-app-sbom.cdx.json
           python -m pip list --format=json > python-dependencies.json
           printf '%s\n' "$GITHUB_SHA" > release-commit.txt
-          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt > release-artifacts.sha256
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json > release-artifacts.sha256
 
       - name: Validate requested tag
         shell: bash
@@ -78,7 +81,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ inputs.tag }}" \
-            root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 \
+            root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
             --target "$GITHUB_SHA" \
             --title "${{ inputs.tag }}" \
             --generate-notes
