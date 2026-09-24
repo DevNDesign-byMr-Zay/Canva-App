@@ -1,0 +1,38 @@
+services:
+  verifier:
+    build:
+      context: .
+    command:
+      - sh
+      - -c
+      - >-
+        python -m archive_verifier &&
+        python -m coverage run -m pytest -q &&
+        python -m coverage report --fail-under=90 &&
+        npm test
+
+  review-context:
+    profiles: ["backend"]
+    build:
+      context: .
+    command: ["npm", "run", "backend:start"]
+    environment:
+      CANVA_APP_ID: ${CANVA_APP_ID:-local-development-app}
+      CANVA_APP_ORIGIN: ${CANVA_APP_ORIGIN:-http://127.0.0.1:3000}
+      REVIEW_CONTEXT_SOURCE_URL: ${REVIEW_CONTEXT_SOURCE_URL:-http://127.0.0.1:8090/scenario}
+      PORT: "8080"
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:8080/health')
+          .then((response) => { if (!response.ok) process.exit(1); })
+          .catch(() => process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s

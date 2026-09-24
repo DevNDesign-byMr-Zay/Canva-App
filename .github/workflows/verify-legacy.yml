@@ -165,13 +165,33 @@ jobs:
         run: python -m archive_verifier.runtime_contract
 
   container-verification:
-    name: Docker fresh-clone verification
+    name: Docker Compose fresh-clone verification
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
-      - name: Build verifier image
-        run: docker build --pull -t canva-archive-verifier .
-      - name: Run verifier image
-        run: docker run --rm canva-archive-verifier
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Run maintained verifier through Compose
+        run: docker compose up --build --abort-on-container-exit --exit-code-from verifier verifier
+      - name: Start trusted review-context backend
+        env:
+          CANVA_APP_ID: ci-local-app
+          CANVA_APP_ORIGIN: http://127.0.0.1:3000
+          REVIEW_CONTEXT_SOURCE_URL: http://127.0.0.1:8090/scenario
+        run: |
+          set -euo pipefail
+          docker compose --profile backend up --build --detach review-context
+          trap 'docker compose --profile backend down --volumes --remove-orphans' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null; then
+              docker compose --profile backend ps
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker compose --profile backend logs --no-color
+          exit 1

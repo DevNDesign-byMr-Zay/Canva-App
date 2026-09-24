@@ -189,14 +189,25 @@ The root Node package pins `@canva/app-middleware` for server-side Canva user/de
 
 `.github/workflows/materialize-v115.yml` independently reconstructs the authenticated v115 application from current `main`; when deterministic bytes change, automation publishes them on a dedicated branch and opens or updates a pull request so normal CI and CodeQL review the exact materialized output before merge. A separate CodeQL workflow performs static security analysis. Dependabot tracks Python and GitHub Actions dependencies. Automated Python lock refreshes are generated on a dedicated branch, verified before publication, and submitted as pull requests so normal CI and CodeQL validate the exact generated lock before merge.
 
-## Docker
+## Docker and Compose
+
+The Dockerfile remains the reproducible image definition. Compose adds a one-command fresh-clone verification path:
 
 ```bash
-docker build -t canva-archive-verifier .
-docker run --rm canva-archive-verifier
+docker compose up --build --abort-on-container-exit --exit-code-from verifier verifier
 ```
 
-The container verifies the authenticated archive, runs pytest, enforces coverage, and exits non-zero on failure. CI builds and runs this exact verifier path. The root Node runtime and the real `canva-app/` Design Editor package each have independent locked install/audit/test gates; the Design Editor lane also runs strict TypeScript typechecking so app-specific SDK drift cannot hide behind the archive-verifier image.
+The `verifier` service reconstructs and verifies the authenticated archive, runs pytest with the enforced coverage floor, and executes the maintained root Node tests.
+
+The trusted review-context backend is available as an explicit Compose profile. With deployment values supplied through the environment, start it with:
+
+```bash
+docker compose --profile backend up --build review-context
+```
+
+The profile publishes `HOST_PORT` (default `8080`) and exposes the real `GET /health` endpoint. CI starts this same profile with non-secret local configuration and requires the health probe to succeed. No Canva tokens or cloud credentials are stored in Compose.
+
+The root Node runtime and the real `canva-app/` Design Editor package each retain independent locked install/audit/test gates; the Design Editor lane also runs strict TypeScript typechecking so app-specific SDK drift cannot hide behind container verification.
 
 ## Environment and secrets
 
