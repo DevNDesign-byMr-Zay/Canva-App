@@ -3,6 +3,9 @@ import { access, readFile } from "node:fs/promises";
 const REQUIRED_FILES = Object.freeze([
   "Dockerfile",
   "compose.yaml",
+  "docker-compose.yml",
+  ".env.example",
+  ".repo-class.json",
   "package-lock.json",
   "requirements.lock.txt",
   "CHANGELOG.md",
@@ -44,7 +47,7 @@ async function main() {
   const root = new URL("../", import.meta.url);
   await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
 
-  const [pkg, appPkg, changelog, ci, appCi, codeql, release, readme] = await Promise.all([
+  const [pkg, appPkg, changelog, ci, appCi, codeql, release, readme, envExample, classification] = await Promise.all([
     json("package.json"),
     json("canva-app/package.json"),
     text("CHANGELOG.md"),
@@ -53,6 +56,8 @@ async function main() {
     text(".github/workflows/codeql.yml"),
     text(".github/workflows/release.yml"),
     text("README.md"),
+    text(".env.example"),
+    json(".repo-class.json"),
   ]);
 
   assert(/^\d+\.\d+\.\d+$/u.test(pkg.version), "root package version must be semantic");
@@ -64,6 +69,11 @@ async function main() {
   );
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
+  assert(classification.primaryClass === "application-tooling", "repository classification must remain application tooling");
+  assert(classification.excludedClasses?.includes("infrastructure-as-code"), "repository classification must explicitly exclude infrastructure-as-code");
+  for (const key of ["CANVA_APP_ID", "CANVA_APP_ORIGIN", "REVIEW_CONTEXT_SOURCE_URL", "PORT", "GITHUB_SHA", "RELEASE_TAG"]) {
+    assert(new RegExp(`^${key}=`, "mu").test(envExample), `.env.example must document ${key}`);
+  }
   assert(pkg.exports && typeof pkg.exports === "object", "root maintained exports are required");
   for (const [name, target] of Object.entries(pkg.exports)) {
     assert(typeof target === "string" && target.startsWith("./"), `invalid export target: ${name}`);
@@ -86,7 +96,7 @@ async function main() {
   assert(/npm ci --ignore-scripts/u.test(ci), "engineering CI must use locked Node installs");
   assert(/npm audit --audit-level=moderate/u.test(ci), "engineering CI must audit root dependencies");
   assert(/npm run verify:release/u.test(ci), "engineering CI must enforce release-readiness verifier");
-  assert(/docker compose config --quiet/u.test(ci), "engineering CI must validate Compose configuration");
+  assert(/docker compose -f docker-compose\.yml config --quiet/u.test(ci), "engineering CI must validate canonical docker-compose.yml");
   assert(/docker compose up --build/u.test(ci), "engineering CI must execute the maintained Compose path");
   assert(/\/health/u.test(ci), "engineering CI must probe the trusted backend health endpoint");
   assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");

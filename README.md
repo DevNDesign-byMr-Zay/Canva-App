@@ -200,7 +200,7 @@ The root Node package pins `@canva/app-middleware` for server-side Canva user/de
 The Dockerfile remains the reproducible image definition. Compose adds a one-command fresh-clone verification path:
 
 ```bash
-docker compose up --build --abort-on-container-exit --exit-code-from verifier verifier
+docker compose -f docker-compose.yml up --build --abort-on-container-exit --exit-code-from verifier verifier
 ```
 
 The `verifier` service reconstructs and verifies the authenticated archive, runs pytest with the enforced coverage floor, and executes the maintained root Node tests.
@@ -208,7 +208,7 @@ The `verifier` service reconstructs and verifies the authenticated archive, runs
 The trusted review-context backend is available as an explicit Compose profile. With deployment values supplied through the environment, start it with:
 
 ```bash
-docker compose --profile backend up --build review-context
+docker compose -f docker-compose.yml --profile backend up --build review-context
 ```
 
 The profile publishes `HOST_PORT` (default `8080`) and exposes the real `GET /health` endpoint. CI starts this same profile with non-secret local configuration and requires the health probe to succeed. No Canva tokens or cloud credentials are stored in Compose.
