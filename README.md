@@ -61,6 +61,12 @@ For local backend startup after setting deployment values:
 npm run backend:start
 ```
 
+## Production error reporting
+
+The trusted review-context backend accepts an optional `onError(error, context)` callback for deployment-specific telemetry or alerting. The application does not bundle a monitoring vendor: deployments can connect their own sink while the backend keeps HTTP behavior and secrets handling independent from telemetry availability.
+
+Reporting context is intentionally bounded to a failure scope and verified design ID. Raw Canva user/design tokens, request bodies, and upstream response payloads are never passed to the callback. Synchronous or asynchronous reporter failures are isolated and reduced to bounded local warning metadata, so a telemetry outage cannot change the existing sanitized `502 review_context_unavailable` response.
+
 ## Archive scope and provenance
 
 The authenticated legacy lineage contains **84 physical HTML source occurrences** spanning the recovered Depthpop development history. Provenance metadata records source-name hashes, repository filenames, sanitized content hashes, duplicate-state relationships, and recovery status.
