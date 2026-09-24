@@ -27,6 +27,8 @@ jobs:
           cache-dependency-path: requirements.lock.txt
       - name: Install locked toolchain
         run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Verify declared Python toolchain matches lock
+        run: python scripts/verify_python_lock.py
       - name: Run tests with branch coverage
         run: |
           python -m coverage run -m pytest -q
@@ -136,6 +138,8 @@ jobs:
           cache-dependency-path: requirements.lock.txt
       - name: Install locked toolchain
         run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Verify declared Python toolchain matches lock
+        run: python scripts/verify_python_lock.py
       - name: Lint
         run: python -m ruff check archive_verifier scripts tests
       - name: Type-check
