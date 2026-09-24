@@ -6,6 +6,7 @@ const REQUIRED_FILES = Object.freeze([
   "requirements.lock.txt",
   "CHANGELOG.md",
   "README.md",
+  "docs/RELEASE_READINESS.md",
   "backend/review-context-service.mjs",
   "canva-app/package.json",
   "canva-app/package-lock.json",
