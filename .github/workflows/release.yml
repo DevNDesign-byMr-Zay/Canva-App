@@ -81,7 +81,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ inputs.tag }}" \
-            root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 \ release-manifest.json
+            root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
             --target "$GITHUB_SHA" \
             --title "${{ inputs.tag }}" \
             --generate-notes
