@@ -1,0 +1,18 @@
+# Default review routing
+* @DevNDesign-byMr-Zay @DevNDesign-Team
+
+# Trusted backend and maintained root runtime
+/backend/** @DevNDesign-byMr-Zay @DevNDesign-Team
+/src/** @DevNDesign-byMr-Zay @HoloSpacxIntel @VAELONcomp
+/tests/** @DevNDesign-byMr-Zay @DevNDesign-Team
+
+# Design Editor / HoloForge identity and explicit-Apply boundary
+/canva-app/src/intents/design_editor/** @DevNDesign-byMr-Zay @HoloSpacxIntel @VAELONcomp
+/canva-app/package*.json @DevNDesign-byMr-Zay @DevNDesign-Team
+
+# Archive verification and provenance tooling
+/archive_verifier/** @DevNDesign-byMr-Zay @DevNDesign-Team
+/provenance/** @DevNDesign-byMr-Zay @DevNDesign-Team
+
+# Repository governance and automation
+/.github/** @DevNDesign-byMr-Zay @DevNDesign-Team
