@@ -236,3 +236,8 @@ The scanner enforces banned identity literals and credential signatures while th
 New behavior should land in focused commits with tests that prove it. Do not bulk-rewrite authenticated historical files, manufacture missing source, or fabricate old commits, contributors, dates, tags, releases, or unrelated artifacts.
 
 See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `app/authenticated-v115/PROVENANCE.md`, and `provenance/` for the engineering and recovery audit trail.
+
+
+## Coverage evidence artifacts
+
+The engineering workflow keeps the existing blocking coverage/test gates and now retains their evidence for review. Python emits a standard `coverage.xml` artifact, while the maintained Node runtime writes raw V8 coverage data from the same `npm test` execution. Both artifacts are retained for 30 days and are tied to the exact workflow commit.
