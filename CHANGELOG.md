@@ -4,7 +4,18 @@ All notable maintained-surface changes to this repository are documented here.
 
 ## Unreleased
 
-- Current root application candidate: `1.1.0`. No hosted tag or release is claimed until the gated manual release workflow publishes it.
+- Current root application candidate: `1.1.1`. The `v1.1.0` release remains the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
+
+### Added
+
+- Canonical root `docker-compose.yml` discovery and a complete backend/CI environment example.
+- Reusable structured backend JSON logging plus versioned/uptime-aware `GET /health` metadata.
+- Retained Python coverage XML and maintained-runtime V8 coverage as 30-day workflow artifacts.
+- Release-readiness enforcement for the application-tooling classification and fresh-clone detection signals.
+
+## 1.1.0 — 2026-09-24
+
+- Published as `v1.1.0` on 2026-09-24 through the gated manual release workflow.
 
 ### Added
 
@@ -30,7 +41,7 @@ All notable maintained-surface changes to this repository are documented here.
 - Manual release evidence is checksum-verified and retained as a workflow artifact before GitHub publication so failed publication does not discard the verified bundle.
 - Root-level `npm run verify:release` now checks the coherent maintained release surface before any real semantic tag is cut, without claiming a hosted release.
 - Root runtime/backend, Python verifier, Design Editor workspace, Docker verifier, and CodeQL remain separate blocking quality/security lanes.
-- No hosted release is claimed by this entry; it records the current coherent application state before a real semantic release is cut.
+- Published as a verified hosted release with the gated release workflow and attached evidence bundle.
 
 ## 1.0.0 — 2026-09-02
 
