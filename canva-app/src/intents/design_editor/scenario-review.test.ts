@@ -9,15 +9,35 @@ const snapshot: CanvaDesignSnapshot = {
   pageId: "page-1",
   pageType: "absolute",
   pageDimensions: { width: 1000, height: 800 },
-  elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 80, rotation: 5, locked: false }],
+  elements: [
+    {
+      id: "element-1",
+      type: "shape",
+      top: 10,
+      left: 20,
+      width: 100,
+      height: 80,
+      rotation: 5,
+      locked: false,
+    },
+  ],
   fingerprint: "a".repeat(64),
 };
 
 const scenario: HoloForgeScenario = {
   contractVersion: 1,
   scenarioId: "scenario-1",
-  source: { designId: "design-1", snapshotId: "snapshot-1", pageIds: ["page-1"], snapshotFingerprint: snapshot.fingerprint },
-  intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" },
+  source: {
+    designId: "design-1",
+    snapshotId: "snapshot-1",
+    pageIds: ["page-1"],
+    snapshotFingerprint: snapshot.fingerprint,
+  },
+  intent: {
+    summary: "Improve hierarchy",
+    objectiveId: "hierarchy-v1",
+    objectiveDirection: "maximize",
+  },
   constraints: { hard: [], soft: [] },
   candidate: {
     changedElementIds: ["element-1"],
@@ -36,19 +56,26 @@ const scenario: HoloForgeScenario = {
     hardConstraintsPassed: true,
     warnings: [],
   },
-  interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
+  interpretation: {
+    producer: "auren",
+    label: "Hierarchy",
+    summary: "Improve hierarchy",
+    tradeoffs: [],
+  },
   presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
   provenance: { scenarioFingerprint: "a".repeat(64), optimizationFingerprint: "b".repeat(64) },
 };
 
 describe("buildScenarioReview", () => {
   it("projects the same stable geometry semantics used by apply", () => {
-    expect(buildScenarioReview(scenario, snapshot)).toEqual([{
-      elementId: "element-1",
-      before: { top: 10, left: 20, width: 100, height: 80, rotation: 5 },
-      after: { top: 30, left: 40, width: 100, height: 80, rotation: 15 },
-      changedFields: ["x", "y", "rotation"],
-    }]);
+    expect(buildScenarioReview(scenario, snapshot)).toEqual([
+      {
+        elementId: "element-1",
+        before: { top: 10, left: 20, width: 100, height: 80, rotation: 5 },
+        after: { top: 30, left: 40, width: 100, height: 80, rotation: 15 },
+        changedFields: ["x", "y", "rotation"],
+      },
+    ]);
   });
 
   it("omits candidates whose Canva element identity is absent", () => {

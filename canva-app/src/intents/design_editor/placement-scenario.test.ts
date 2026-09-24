@@ -39,8 +39,26 @@ async function reviewedSnapshot(): Promise<CanvaDesignSnapshot> {
     pageType: "absolute",
     pageDimensions: { width: 1000, height: 800 },
     elements: [
-      { id: "a", type: "shape", top: 100, left: 100, width: 100, height: 100, rotation: 0, locked: false },
-      { id: "b", type: "shape", top: 100, left: 700, width: 100, height: 100, rotation: 0, locked: false },
+      {
+        id: "a",
+        type: "shape",
+        top: 100,
+        left: 100,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        locked: false,
+      },
+      {
+        id: "b",
+        type: "shape",
+        top: 100,
+        left: 700,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        locked: false,
+      },
     ],
   };
   return {

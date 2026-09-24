@@ -40,9 +40,21 @@ function buildScenario(): HoloForgeScenario {
   return {
     contractVersion: 1,
     scenarioId: "scenario-1",
-    source: { designId: "design-1", snapshotId: "snapshot-1", pageIds: ["page-1"], snapshotFingerprint: fingerprint },
-    intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" },
-    constraints: { hard: [{ id: "keep-element", elementId: "element-1" }], soft: [{ id: "spacing", weight: 0.4 }] },
+    source: {
+      designId: "design-1",
+      snapshotId: "snapshot-1",
+      pageIds: ["page-1"],
+      snapshotFingerprint: fingerprint,
+    },
+    intent: {
+      summary: "Improve hierarchy",
+      objectiveId: "hierarchy-v1",
+      objectiveDirection: "maximize",
+    },
+    constraints: {
+      hard: [{ id: "keep-element", elementId: "element-1" }],
+      soft: [{ id: "spacing", weight: 0.4 }],
+    },
     candidate: {
       changedElementIds: ["element-1"],
       layout: { elements: { "element-1": { x: 40, y: 20 } } },
@@ -54,13 +66,22 @@ function buildScenario(): HoloForgeScenario {
       seed: "seed-1",
       status: "complete",
       objectiveScore: 0.9,
-      baseline: { backend: "classical-reference", algorithm: "exact-reference-v1", objectiveScore: 0.95 },
+      baseline: {
+        backend: "classical-reference",
+        algorithm: "exact-reference-v1",
+        objectiveScore: 0.95,
+      },
       objectiveGap: 0.05,
       durationMs: 12,
       hardConstraintsPassed: true,
       warnings: [],
     },
-    interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
+    interpretation: {
+      producer: "auren",
+      label: "Hierarchy",
+      summary: "Improve hierarchy",
+      tradeoffs: [],
+    },
     presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
     provenance: { scenarioFingerprint: "", optimizationFingerprint: "" },
   };
@@ -104,16 +125,18 @@ describe("Canva snapshot fingerprint", () => {
     designId: "design-1",
     pageId: "page-1",
     pageDimensions: { width: 1200, height: 800 },
-    elements: [{
-      id: "element-1",
-      type: "RECTANGLE",
-      top: 20,
-      left: 40,
-      width: 200,
-      height: 100,
-      rotation: 0,
-      locked: false,
-    }],
+    elements: [
+      {
+        id: "element-1",
+        type: "RECTANGLE",
+        top: 20,
+        left: 40,
+        width: 200,
+        height: 100,
+        rotation: 0,
+        locked: false,
+      },
+    ],
   } as const;
 
   it("is deterministic for equivalent snapshots", async () => {
@@ -128,7 +151,10 @@ describe("Canva snapshot fingerprint", () => {
 
   it("binds identity, geometry, and element order into the fingerprint", async () => {
     const original = await computeCanvaSnapshotFingerprint(base);
-    const identityChanged = await computeCanvaSnapshotFingerprint({ ...base, designId: "design-2" });
+    const identityChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      designId: "design-2",
+    });
     const geometryChanged = await computeCanvaSnapshotFingerprint({
       ...base,
       elements: [{ ...base.elements[0], left: 41 }],
@@ -155,8 +181,26 @@ describe("Canva snapshot fingerprint", () => {
 
 describe("reviewed element binding", () => {
   const elements = [
-    { id: "element-1", type: "RECTANGLE", top: 20, left: 40, width: 200, height: 100, rotation: 0, locked: false },
-    { id: "element-2", type: "TEXT", top: 60, left: 80, width: 300, height: 50, rotation: 0, locked: false },
+    {
+      id: "element-1",
+      type: "RECTANGLE",
+      top: 20,
+      left: 40,
+      width: 200,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    },
+    {
+      id: "element-2",
+      type: "TEXT",
+      top: 60,
+      left: 80,
+      width: 300,
+      height: 50,
+      rotation: 0,
+      locked: false,
+    },
   ];
 
   async function buildSnapshot() {

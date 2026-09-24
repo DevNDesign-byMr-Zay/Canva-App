@@ -65,9 +65,7 @@ function deepFreeze<T>(value: T): T {
   return Object.freeze(value);
 }
 
-function sourceElement(
-  element: CanvaDesignSnapshot["elements"][number],
-): SpatialScenarioElement {
+function sourceElement(element: CanvaDesignSnapshot["elements"][number]): SpatialScenarioElement {
   return {
     elementId: element.id,
     x: element.left,
@@ -95,16 +93,10 @@ export async function createSpatialScenarioView(
   ) {
     throw new TypeError("scenario source fingerprint must match the reviewed Canva snapshot");
   }
-  if (
-    scenario.presentation.advisoryOnly !== true ||
-    scenario.presentation.autoApply !== false
-  ) {
+  if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false) {
     throw new TypeError("spatial scenario view requires advisory-only explicit apply semantics");
   }
-  if (
-    scenario.evidence.status !== "complete" ||
-    scenario.evidence.hardConstraintsPassed !== true
-  ) {
+  if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true) {
     throw new TypeError("spatial scenario view requires complete constraint-valid evidence");
   }
   if (!(await hasCanonicalProvenance(scenario))) {

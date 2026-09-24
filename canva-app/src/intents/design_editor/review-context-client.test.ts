@@ -149,9 +149,7 @@ describe("trusted review context client", () => {
 
   it("snapshots and recursively freezes nested scenario decision state", async () => {
     const backendScenario = scenario();
-    backendScenario.constraints.hard = [
-      { type: "bounds", limits: { minX: 0, maxX: 100 } },
-    ];
+    backendScenario.constraints.hard = [{ type: "bounds", limits: { minX: 0, maxX: 100 } }];
     backendScenario.candidate.layout.elements["element-1"] = {
       x: 10,
       y: 20,
@@ -177,13 +175,11 @@ describe("trusted review context client", () => {
     backendScenario.candidate.layout.elements["element-1"].x = 999;
     (backendScenario.candidate.delta.moved as { to: { x: number } }).to.x = 999;
 
-    expect(
-      (context.scenario.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX,
-    ).toBe(100);
+    expect((context.scenario.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX).toBe(
+      100,
+    );
     expect(context.scenario.candidate.layout.elements["element-1"].x).toBe(10);
-    expect(
-      (context.scenario.candidate.delta.moved as { to: { x: number } }).to.x,
-    ).toBe(10);
+    expect((context.scenario.candidate.delta.moved as { to: { x: number } }).to.x).toBe(10);
     expect(Object.isFrozen(context.scenario.constraints)).toBe(true);
     expect(Object.isFrozen(context.scenario.constraints.hard)).toBe(true);
     expect(Object.isFrozen(context.scenario.constraints.hard[0])).toBe(true);

@@ -130,8 +130,13 @@ export async function computeCanvaSnapshotFingerprint(
   });
 }
 
-export async function readCurrentDesignSnapshot(options: { trustedDesignId?: string } = {}): Promise<CanvaDesignSnapshot> {
-  const [{ title }, pageMetadata] = await Promise.all([getDesignMetadata(), getCurrentPageMetadata()]);
+export async function readCurrentDesignSnapshot(
+  options: { trustedDesignId?: string } = {},
+): Promise<CanvaDesignSnapshot> {
+  const [{ title }, pageMetadata] = await Promise.all([
+    getDesignMetadata(),
+    getCurrentPageMetadata(),
+  ]);
   if (pageMetadata.type !== "absolute" || !pageMetadata.id || !pageMetadata.dimensions) {
     throw new Error("HoloForge currently requires an absolute Canva page with stable dimensions.");
   }
@@ -191,22 +196,39 @@ export function getReviewedElementBinding(
 ): ReadonlyMap<string, number> | null {
   if (!scenario.source?.designId || scenario.source.designId !== snapshot.designId) return null;
   if (!scenario.source.pageIds?.includes(snapshot.pageId)) return null;
-  if (!HEX_64.test(scenario.source.snapshotFingerprint) || scenario.source.snapshotFingerprint !== snapshot.fingerprint) return null;
+  if (
+    !HEX_64.test(scenario.source.snapshotFingerprint) ||
+    scenario.source.snapshotFingerprint !== snapshot.fingerprint
+  )
+    return null;
   if (!hasUniqueSnapshotElementIds(snapshot)) return null;
-  if (!Array.isArray(scenario.candidate.changedElementIds) || !hasUniqueChangedElementIds(scenario)) return null;
-  if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return null;
+  if (!Array.isArray(scenario.candidate.changedElementIds) || !hasUniqueChangedElementIds(scenario))
+    return null;
+  if (
+    !scenario.candidate.layout?.elements ||
+    typeof scenario.candidate.layout.elements !== "object"
+  )
+    return null;
 
   const binding = new Map<string, number>();
   for (const scenarioElementId of scenario.candidate.changedElementIds) {
-    const snapshotIndex = snapshot.elements.findIndex((element) => element.id === scenarioElementId);
-    if (snapshotIndex < 0 || !hasOwnLayoutElement(scenario.candidate.layout.elements, scenarioElementId)) return null;
+    const snapshotIndex = snapshot.elements.findIndex(
+      (element) => element.id === scenarioElementId,
+    );
+    if (
+      snapshotIndex < 0 ||
+      !hasOwnLayoutElement(scenario.candidate.layout.elements, scenarioElementId)
+    )
+      return null;
     binding.set(scenarioElementId, snapshotIndex);
   }
   return new ReadonlyMapView(binding);
 }
 
 function scenarioTransformIds(scenario: HoloForgeScenario): string[] {
-  return scenario.candidate.changedElementIds.filter((id) => hasOwnLayoutElement(scenario.candidate.layout.elements, id));
+  return scenario.candidate.changedElementIds.filter((id) =>
+    hasOwnLayoutElement(scenario.candidate.layout.elements, id),
+  );
 }
 
 export async function canApplyScenario(
@@ -215,26 +237,48 @@ export async function canApplyScenario(
 ): Promise<boolean> {
   if (!scenario || !snapshot) return false;
   if (scenario.contractVersion !== 1) return false;
-  if (!snapshot.designId || !scenario.scenarioId || !scenario.source?.designId || !scenario.source.snapshotId) return false;
+  if (
+    !snapshot.designId ||
+    !scenario.scenarioId ||
+    !scenario.source?.designId ||
+    !scenario.source.snapshotId
+  )
+    return false;
   if (!HEX_64.test(snapshot.fingerprint)) return false;
   if ((await computeCanvaSnapshotFingerprint(snapshot)) !== snapshot.fingerprint) return false;
   if (scenario.source.designId !== snapshot.designId) return false;
-  if (!Array.isArray(scenario.source.pageIds) || !scenario.source.pageIds.includes(snapshot.pageId)) return false;
+  if (!Array.isArray(scenario.source.pageIds) || !scenario.source.pageIds.includes(snapshot.pageId))
+    return false;
   if (!HEX_64.test(scenario.source.snapshotFingerprint)) return false;
   if (scenario.source.snapshotFingerprint !== snapshot.fingerprint) return false;
-  if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true) return false;
-  if (scenario.presentation.advisoryOnly !== true || scenario.presentation.autoApply !== false || scenario.presentation.target !== "web-dashboard") return false;
+  if (scenario.evidence.status !== "complete" || scenario.evidence.hardConstraintsPassed !== true)
+    return false;
+  if (
+    scenario.presentation.advisoryOnly !== true ||
+    scenario.presentation.autoApply !== false ||
+    scenario.presentation.target !== "web-dashboard"
+  )
+    return false;
   if (!scenario.intent?.objectiveId || !scenario.intent?.objectiveDirection) return false;
-  if (!Array.isArray(scenario.candidate.changedElementIds) || scenario.candidate.changedElementIds.length === 0) return false;
+  if (
+    !Array.isArray(scenario.candidate.changedElementIds) ||
+    scenario.candidate.changedElementIds.length === 0
+  )
+    return false;
   if (!hasUniqueChangedElementIds(scenario)) return false;
-  if (!scenario.candidate.layout?.elements || typeof scenario.candidate.layout.elements !== "object") return false;
+  if (
+    !scenario.candidate.layout?.elements ||
+    typeof scenario.candidate.layout.elements !== "object"
+  )
+    return false;
 
   const binding = getReviewedElementBinding(scenario, snapshot);
   if (!binding) return false;
   const changedIds = scenarioTransformIds(scenario);
   if (changedIds.length !== scenario.candidate.changedElementIds.length) return false;
   if (!changedIds.every((id) => binding.has(id))) return false;
-  if (!changedIds.every((id) => isCanvaWritableTransform(scenario.candidate.layout.elements[id]))) return false;
+  if (!changedIds.every((id) => isCanvaWritableTransform(scenario.candidate.layout.elements[id])))
+    return false;
 
   return hasCanonicalProvenance(scenario);
 }
@@ -256,7 +300,9 @@ export async function applyScenario(
   snapshot: CanvaDesignSnapshot,
 ): Promise<ApplyVerificationReceipt> {
   if (!(await canApplyScenario(scenario, snapshot))) {
-    throw new Error("Scenario is not safe to apply: it is stale, incomplete, unsupported, or unverified.");
+    throw new Error(
+      "Scenario is not safe to apply: it is stale, incomplete, unsupported, or unverified.",
+    );
   }
 
   const reviewedBinding = getReviewedElementBinding(scenario, snapshot);
@@ -268,16 +314,24 @@ export async function applyScenario(
   let verificationReceipt: ApplyVerificationReceipt | null = null;
 
   await openDesign({ type: "current_page" }, async (session) => {
-    if (session.page.type !== "absolute" || session.page.locked || session.page.id !== snapshot.pageId) {
+    if (
+      session.page.type !== "absolute" ||
+      session.page.locked ||
+      session.page.id !== snapshot.pageId
+    ) {
       throw new Error("The Canva page is no longer compatible with the selected scenario.");
     }
 
     const liveFingerprint = await currentFingerprint(session.page, snapshot.designId!);
     if (liveFingerprint !== scenario.source.snapshotFingerprint) {
-      throw new Error("The Canva design changed after review. Read the current design again before applying.");
+      throw new Error(
+        "The Canva design changed after review. Read the current design again before applying.",
+      );
     }
     if (!(await hasCanonicalProvenance(scenario))) {
-      throw new Error("The selected scenario provenance no longer matches its canonical fingerprints.");
+      throw new Error(
+        "The selected scenario provenance no longer matches its canonical fingerprints.",
+      );
     }
 
     const liveElements = session.page.elements.toArray();
@@ -285,7 +339,13 @@ export async function applyScenario(
       const transform = scenario.candidate.layout.elements[elementId];
       const elementIndex = reviewedBinding.get(elementId);
       const element = elementIndex === undefined ? undefined : liveElements[elementIndex];
-      if (!transform || !isCanvaWritableTransform(transform) || !element || element.locked || element.type === "unsupported") {
+      if (
+        !transform ||
+        !isCanvaWritableTransform(transform) ||
+        !element ||
+        element.locked ||
+        element.type === "unsupported"
+      ) {
         throw new Error(`Scenario references an unavailable or unsupported element: ${elementId}`);
       }
       if (transform.x !== undefined) element.left = transform.x;

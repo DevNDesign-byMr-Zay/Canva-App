@@ -23,7 +23,11 @@ async function buildScenario(scenarioId: string): Promise<HoloForgeScenario> {
       pageIds: ["page-1"],
       snapshotFingerprint: "",
     },
-    intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" as const },
+    intent: {
+      summary: "Improve hierarchy",
+      objectiveId: "hierarchy-v1",
+      objectiveDirection: "maximize" as const,
+    },
     constraints: { hard: [], soft: [] },
     candidate: {
       changedElementIds: ["element-1"],
@@ -42,8 +46,17 @@ async function buildScenario(scenarioId: string): Promise<HoloForgeScenario> {
       hardConstraintsPassed: true,
       warnings: [],
     },
-    interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
-    presentation: { advisoryOnly: true as const, autoApply: false as const, target: "web-dashboard" as const },
+    interpretation: {
+      producer: "auren",
+      label: "Hierarchy",
+      summary: "Improve hierarchy",
+      tradeoffs: [],
+    },
+    presentation: {
+      advisoryOnly: true as const,
+      autoApply: false as const,
+      target: "web-dashboard" as const,
+    },
     provenance: { scenarioFingerprint: "", optimizationFingerprint: "" },
   } satisfies HoloForgeScenario;
 
@@ -51,7 +64,18 @@ async function buildScenario(scenarioId: string): Promise<HoloForgeScenario> {
     designId: scenario.source.designId,
     pageId: "page-1",
     pageDimensions: { width: 1000, height: 800 },
-    elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 80, rotation: 5, locked: false }],
+    elements: [
+      {
+        id: "element-1",
+        type: "shape",
+        top: 10,
+        left: 20,
+        width: 100,
+        height: 80,
+        rotation: 5,
+        locked: false,
+      },
+    ],
     fingerprint: "",
   };
   snapshot.fingerprint = await sha256({
@@ -73,7 +97,18 @@ describe("AI scene/operator apply roundtrip integrity", () => {
       designId: scenario.source.designId,
       pageId: "page-1",
       pageDimensions: { width: 1000, height: 800 },
-      elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 80, rotation: 5, locked: false }],
+      elements: [
+        {
+          id: "element-1",
+          type: "shape",
+          top: 10,
+          left: 20,
+          width: 100,
+          height: 80,
+          rotation: 5,
+          locked: false,
+        },
+      ],
       fingerprint: scenario.source.snapshotFingerprint,
     };
     const expected = await projectExpectedPostApplyFingerprint(snapshot, scenario);
@@ -93,7 +128,18 @@ describe("AI scene/operator apply roundtrip integrity", () => {
       designId: scenario.source.designId,
       pageId: "page-1",
       pageDimensions: { width: 1000, height: 800 },
-      elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 80, rotation: 5, locked: false }],
+      elements: [
+        {
+          id: "element-1",
+          type: "shape",
+          top: 10,
+          left: 20,
+          width: 100,
+          height: 80,
+          rotation: 5,
+          locked: false,
+        },
+      ],
       fingerprint: scenario.source.snapshotFingerprint,
     };
     const expected = await projectExpectedPostApplyFingerprint(snapshot, scenario);
@@ -114,17 +160,30 @@ describe("AI scene/operator apply roundtrip integrity", () => {
       designId: scenario.source.designId,
       pageId: "page-1",
       pageDimensions: { width: 1000, height: 800 },
-      elements: [{ id: "element-1", type: "shape", top: 10, left: 20, width: 100, height: 80, rotation: 5, locked: false }],
+      elements: [
+        {
+          id: "element-1",
+          type: "shape",
+          top: 10,
+          left: 20,
+          width: 100,
+          height: 80,
+          rotation: 5,
+          locked: false,
+        },
+      ],
       fingerprint: scenario.source.snapshotFingerprint,
     };
     const expected = await projectExpectedPostApplyFingerprint(snapshot, scenario);
     const diverged = await sha256({ expected, unexpectedOperatorMutation: true });
-    await expect(createApplyVerificationReceipt({
-      scenario,
-      sourceFingerprint: scenario.source.snapshotFingerprint,
-      expectedFingerprint: expected,
-      resultingFingerprint: diverged,
-      changedElementIds: scenario.candidate.changedElementIds,
-    })).rejects.toThrow(/does not match/);
+    await expect(
+      createApplyVerificationReceipt({
+        scenario,
+        sourceFingerprint: scenario.source.snapshotFingerprint,
+        expectedFingerprint: expected,
+        resultingFingerprint: diverged,
+        changedElementIds: scenario.candidate.changedElementIds,
+      }),
+    ).rejects.toThrow(/does not match/);
   });
 });

@@ -56,12 +56,7 @@ const RECEIPT_KEYS = [
   "version",
 ].sort();
 
-const SAFETY_KEYS = [
-  "authoritative",
-  "autoApply",
-  "explicitUserApply",
-  "physicalActuation",
-].sort();
+const SAFETY_KEYS = ["authoritative", "autoApply", "explicitUserApply", "physicalActuation"].sort();
 
 function readExactDataObject(
   value: unknown,
@@ -159,7 +154,10 @@ export async function projectExpectedPostApplyFingerprint(
   if (!hasUniqueSnapshotElementIds(snapshot.elements)) {
     throw new TypeError("reviewed snapshot element identities must be unique");
   }
-  if (new Set(scenario.candidate.changedElementIds).size !== scenario.candidate.changedElementIds.length) {
+  if (
+    new Set(scenario.candidate.changedElementIds).size !==
+    scenario.candidate.changedElementIds.length
+  ) {
     throw new TypeError("changed element identities must be unique");
   }
 
@@ -304,7 +302,7 @@ export async function validateApplyVerificationReceipt(
         physicalActuation: false as const,
       },
     };
-    return receiptFingerprint === await sha256(body);
+    return receiptFingerprint === (await sha256(body));
   } catch {
     return false;
   }

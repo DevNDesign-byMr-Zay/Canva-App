@@ -124,7 +124,9 @@ export function buildSpatialPreviewModel(
     };
   });
 
-  const changedIds = elements.filter((element) => element.changed).map((element) => element.elementId);
+  const changedIds = elements
+    .filter((element) => element.changed)
+    .map((element) => element.elementId);
   const relationships = changedIds.slice(1).map((elementId, index) => ({
     fromElementId: changedIds[index],
     toElementId: elementId,

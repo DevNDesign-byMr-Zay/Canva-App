@@ -40,12 +40,7 @@ const ATTESTATION_KEYS = [
   "version",
 ].sort();
 
-const SAFETY_KEYS = [
-  "authoritative",
-  "autoApply",
-  "explicitUserApply",
-  "physicalActuation",
-].sort();
+const SAFETY_KEYS = ["authoritative", "autoApply", "explicitUserApply", "physicalActuation"].sort();
 
 function deepFreeze<T>(value: T): T {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -203,7 +198,8 @@ export async function validateApplyAttestation(
     if (value.scenarioId !== expectedBody.scenarioId) return false;
     if (value.scenarioFingerprint !== expectedBody.scenarioFingerprint) return false;
     if (value.receiptFingerprint !== expectedBody.receiptFingerprint) return false;
-    if (value.designId !== expectedBody.designId || value.pageId !== expectedBody.pageId) return false;
+    if (value.designId !== expectedBody.designId || value.pageId !== expectedBody.pageId)
+      return false;
     if (value.sourceFingerprint !== expectedBody.sourceFingerprint) return false;
     if (value.resultingFingerprint !== expectedBody.resultingFingerprint) return false;
     if (

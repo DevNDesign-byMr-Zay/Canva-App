@@ -192,15 +192,20 @@ export function hasUniqueChangedElementIds(scenario: HoloForgeScenario): boolean
 }
 
 export function isSafeTransform(value: CanonicalCandidateElement): boolean {
-  return [value.x, value.y, value.width, value.height, value.rotation, value.scale]
-    .every((number) => number === undefined || Number.isFinite(number))
-    && (value.scale === undefined || value.scale > 0);
+  return (
+    [value.x, value.y, value.width, value.height, value.rotation, value.scale].every(
+      (number) => number === undefined || Number.isFinite(number),
+    ) &&
+    (value.scale === undefined || value.scale > 0)
+  );
 }
 
 export function isCanvaWritableTransform(value: CanonicalCandidateElement): boolean {
-  return isSafeTransform(value)
-    && value.width === undefined
-    && value.height === undefined
-    && value.scale === undefined
-    && value.locked === undefined;
+  return (
+    isSafeTransform(value) &&
+    value.width === undefined &&
+    value.height === undefined &&
+    value.scale === undefined &&
+    value.locked === undefined
+  );
 }

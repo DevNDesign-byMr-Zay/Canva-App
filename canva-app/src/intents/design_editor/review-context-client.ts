@@ -28,7 +28,11 @@ function nonEmptyText(value: unknown, name: string): string {
   return value.trim();
 }
 
-function snapshotJson(value: unknown, path = "review context", seen = new WeakSet<object>()): unknown {
+function snapshotJson(
+  value: unknown,
+  path = "review context",
+  seen = new WeakSet<object>(),
+): unknown {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new TypeError(`${path} numbers must be finite`);
@@ -122,7 +126,9 @@ function parseTrustedReviewContext(value: unknown): TrustedReviewContext {
     scenario.presentation?.autoApply !== false ||
     scenario.presentation?.target !== "web-dashboard"
   ) {
-    throw new TypeError("scenario presentation boundary must remain advisory and explicit-apply only");
+    throw new TypeError(
+      "scenario presentation boundary must remain advisory and explicit-apply only",
+    );
   }
 
   return deepFreeze({
@@ -144,10 +150,7 @@ export async function loadTrustedReviewContext({
   }
   if (typeof fetchImpl !== "function") throw new TypeError("fetchImpl must be a function");
 
-  const [designTokenResult, userTokenValue] = await Promise.all([
-    getDesignToken(),
-    getUserToken(),
-  ]);
+  const [designTokenResult, userTokenValue] = await Promise.all([getDesignToken(), getUserToken()]);
   const designToken = nonEmptyText(designTokenResult?.token, "design token");
   const userToken = nonEmptyText(userTokenValue, "user token");
 

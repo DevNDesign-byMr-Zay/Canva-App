@@ -41,10 +41,14 @@ export async function createPlacementScenario({
   const changedElementIds = experiment.candidate.assignments.map((assignment) => {
     const element = byId.get(assignment.elementId);
     if (!element) {
-      throw new TypeError(`candidate element is not present in reviewed snapshot: ${assignment.elementId}`);
+      throw new TypeError(
+        `candidate element is not present in reviewed snapshot: ${assignment.elementId}`,
+      );
     }
     if (element.locked) {
-      throw new TypeError(`candidate element is locked in reviewed snapshot: ${assignment.elementId}`);
+      throw new TypeError(
+        `candidate element is locked in reviewed snapshot: ${assignment.elementId}`,
+      );
     }
     return assignment.elementId;
   });
@@ -127,9 +131,7 @@ export async function createPlacementScenario({
       label: "Measured placement comparison",
       summary:
         "Compare the deterministic VÆLON placement candidate with the exact classical reference before any explicit Apply.",
-      tradeoffs: [
-        `Measured objective gap: ${experiment.objectiveGap}`,
-      ],
+      tradeoffs: [`Measured objective gap: ${experiment.objectiveGap}`],
     },
     presentation: {
       advisoryOnly: true,
