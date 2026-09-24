@@ -99,6 +99,11 @@ async function main() {
   assert(/canva-app-sbom\.cdx\.json/u.test(release), "release workflow must generate Design Editor dependency evidence");
   assert(/python -m pip list --format=json/u.test(release), "release workflow must snapshot Python dependencies");
   assert(/release-artifacts\.sha256/u.test(release), "release workflow must checksum attached evidence");
+  assert(/release-manifest\.json/u.test(release), 'release workflow must attach an exact provenance manifest');
+  assert(
+    /RELEASE_TAG/u.test(release) && /GITHUB_SHA/u.test(release),
+    'release manifest must bind requested tag and exact commit',
+  );
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(/No hosted release is claimed/iu.test(changelog), "changelog must not fabricate a hosted release");
