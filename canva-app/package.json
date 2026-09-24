@@ -11,7 +11,9 @@
     "start:preview": "npx @canva/cli apps start --preview",
     "build": "npx @canva/cli apps build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "format:check": "npx --yes prettier@3.6.2 --check \"src/**/*.{ts,tsx}\"",
+    "format": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@canva/app-hooks": "^0.0.0-beta.4",

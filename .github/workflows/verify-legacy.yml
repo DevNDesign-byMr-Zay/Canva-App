@@ -95,6 +95,8 @@ jobs:
           else
             node scripts/verify-dev-audit.mjs npm-audit.json
           fi
+      - name: Check Design Editor formatting
+        run: npm run format:check
       - name: Type-check Design Editor app
         run: npm run typecheck
       - name: Run Design Editor app tests

@@ -1,4 +1,4 @@
-.PHONY: setup verify test test-js test-app lint typecheck typecheck-app audit audit-app build-app app-check check verify-fresh
+.PHONY: setup verify test test-js test-app lint typecheck typecheck-app format-check-app audit audit-app build-app app-check check verify-fresh
 
 setup:
 	python -m pip install --disable-pip-version-check -r requirements.lock.txt
@@ -27,6 +27,9 @@ typecheck:
 typecheck-app:
 	npm --prefix canva-app run typecheck
 
+format-check-app:
+	npm --prefix canva-app run format:check
+
 audit:
 	python -m pip check
 	pip-audit -r requirements.lock.txt
@@ -50,6 +53,6 @@ build-app:
 
 check: lint typecheck test test-js audit verify
 
-app-check: audit-app typecheck-app test-app build-app
+app-check: audit-app format-check-app typecheck-app test-app build-app
 
 verify-fresh: setup check app-check

@@ -173,7 +173,7 @@ The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit.
 make check
 ```
 
-The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The Design Editor workspace can also be verified from the repository root with `npm run app:verify`, which performs its locked install, production dependency audit, typecheck, tests, and production build. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
+The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The Design Editor workspace can also be verified from the repository root with `npm run app:verify`, which performs its locked install, production dependency audit, TypeScript/TSX formatting check, typecheck, tests, and production build. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
@@ -181,7 +181,7 @@ The root Node package pins `@canva/app-middleware` for server-side Canva user/de
 
 1. Python tests + branch coverage
 2. reproducible `npm ci` + `npm audit` + `npm test` for the maintained v115 runtime adapters
-3. locked install + dependency audit + TypeScript typecheck + Vitest + production build for the real `canva-app/` Design Editor package
+3. locked install + dependency audit + pinned Prettier formatting check + TypeScript typecheck + Vitest + production build for the real `canva-app/` Design Editor package
 4. Ruff + strict mypy
 5. Python dependency graph + vulnerability audit
 6. authenticated 84-occurrence archive verification and deterministic v115 reconstruction
