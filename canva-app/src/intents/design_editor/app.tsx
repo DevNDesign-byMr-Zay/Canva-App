@@ -20,6 +20,10 @@ import {
 } from "./review-context-guard";
 import { buildScenarioReview } from "./scenario-review";
 import { snapshotScenarioForPresentation } from "./scenario-contract";
+import {
+  createSpatialScenarioView,
+  type SpatialScenarioView,
+} from "./spatial-scenario-view";
 
 export type AppScenario = Parameters<typeof canApplyScenario>[0];
 
@@ -43,6 +47,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const [scenarioVerified, setScenarioVerified] = useState(false);
   const [receipt, setReceipt] = useState<ApplyVerificationReceipt | null>(null);
   const [attestation, setAttestation] = useState<ApplyAttestation | null>(null);
+  const [spatialView, setSpatialView] = useState<Readonly<SpatialScenarioView> | null>(null);
   const applyRunGate = useRef(createApplyRunGate());
   const reviewScenario = useMemo(
     () => (scenario ? snapshotScenarioForPresentation(scenario) : null),
@@ -94,6 +99,29 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
         ? { scenario: reviewScenario, snapshot, trustedDesignId, trustedPageId }
         : null;
   }, [reviewScenario, snapshot, trustedDesignId, trustedPageId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSpatialView(null);
+
+    if (!reviewScenario || !snapshot) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void createSpatialScenarioView(reviewScenario, snapshot)
+      .then((view) => {
+        if (!cancelled) setSpatialView(view);
+      })
+      .catch(() => {
+        if (!cancelled) setSpatialView(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewScenario, snapshot]);
 
   useEffect(() => {
     if (!receipt || !attestation) return;
@@ -350,6 +378,46 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
                   />
                 </Text>
               )}
+            </Rows>
+          )}
+
+          {spatialView && (
+            <Rows spacing="0.5u">
+              <Title>
+                <FormattedMessage
+                  defaultMessage="Scenario Lab"
+                  description="Heading for the read-only source-versus-candidate spatial scenario comparison."
+                />
+              </Title>
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Source depth {sourceDepth, number} → Candidate depth {candidateDepth, number}"
+                  description="Shows the two deterministic depth layers used by the read-only spatial comparison."
+                  values={{
+                    sourceDepth: spatialView.layers[0].depth,
+                    candidateDepth: spatialView.layers[1].depth,
+                  }}
+                />
+              </Text>
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Objective {objective}: baseline {baseline, number} → candidate {candidate, number} · gap {gap, number}"
+                  description="Shows measured classical-baseline and candidate objective evidence for the spatial scenario."
+                  values={{
+                    objective: spatialView.objective.id,
+                    baseline: spatialView.objective.baselineScore,
+                    candidate: spatialView.objective.candidateScore,
+                    gap: spatialView.objective.objectiveGap,
+                  }}
+                />
+              </Text>
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Read-only comparison · view {fingerprint} · explicit Apply still required"
+                  description="Explains the safety posture and stable identity of the spatial scenario comparison."
+                  values={{ fingerprint: `${spatialView.viewFingerprint.slice(0, 12)}…` }}
+                />
+              </Text>
             </Rows>
           )}
 
