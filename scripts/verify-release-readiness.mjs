@@ -151,7 +151,12 @@ async function main() {
   );
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
-  assert(/No hosted release is claimed/iu.test(changelog), "changelog must not fabricate a hosted release");
+  assert(
+    /candidate is not published until the gated manual release workflow publishes it/iu.test(
+      changelog,
+    ),
+    "changelog must distinguish the current candidate from hosted releases",
+  );
   assert(/explicit-user-Apply/iu.test(changelog), "release notes must preserve explicit Apply authority");
 
   assert(/make verify-fresh/u.test(readme), "README must document full fresh-clone verification");
