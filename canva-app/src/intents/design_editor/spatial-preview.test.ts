@@ -128,17 +128,23 @@ describe("spatial preview model", () => {
   it("scrubs deterministically between reviewed source and advisory candidate", () => {
     const model = buildSpatialPreviewModel(scenario, snapshot);
 
-    expect(interpolateSpatialPreview(model, 0).find((item) => item.elementId === "headline")).toMatchObject({
+    expect(
+      interpolateSpatialPreview(model, 0).find((item) => item.elementId === "headline"),
+    ).toMatchObject({
       x: 80,
       y: 100,
       rotation: 0,
     });
-    expect(interpolateSpatialPreview(model, 0.5).find((item) => item.elementId === "headline")).toMatchObject({
+    expect(
+      interpolateSpatialPreview(model, 0.5).find((item) => item.elementId === "headline"),
+    ).toMatchObject({
       x: 100,
       y: 85,
       rotation: 2.5,
     });
-    expect(interpolateSpatialPreview(model, 1).find((item) => item.elementId === "headline")).toMatchObject({
+    expect(
+      interpolateSpatialPreview(model, 1).find((item) => item.elementId === "headline"),
+    ).toMatchObject({
       x: 120,
       y: 70,
       rotation: 5,

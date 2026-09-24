@@ -102,10 +102,8 @@ function baseScenario(): HoloForgeScenario {
 
 async function sealedScenario(): Promise<HoloForgeScenario> {
   const scenario = baseScenario();
-  scenario.provenance.optimizationFingerprint =
-    await computeOptimizationFingerprint(scenario);
-  scenario.provenance.scenarioFingerprint =
-    await computeScenarioFingerprint(scenario);
+  scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+  scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
   return scenario;
 }
 

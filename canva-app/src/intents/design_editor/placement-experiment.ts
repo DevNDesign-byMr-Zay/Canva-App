@@ -189,7 +189,8 @@ export function runPlacementExperiment({
   const elements = elementIds.map((elementId) => {
     const element = snapshot.elements.find((entry) => entry.id === elementId);
     if (!element) throw new TypeError(`element not found in reviewed snapshot: ${elementId}`);
-    if (element.locked) throw new TypeError(`locked element cannot enter placement experiment: ${elementId}`);
+    if (element.locked)
+      throw new TypeError(`locked element cannot enter placement experiment: ${elementId}`);
     return {
       id: element.id,
       left: finite(element.left, `${elementId}.left`),
@@ -206,12 +207,7 @@ export function runPlacementExperiment({
   const normalizedSeed = text(seed, "seed");
 
   const exact = exactReference(elements, normalizedSlots, pageWidth, pageHeight);
-  const candidate = deterministicBinaryCandidate(
-    elements,
-    normalizedSlots,
-    pageWidth,
-    pageHeight,
-  );
+  const candidate = deterministicBinaryCandidate(elements, normalizedSlots, pageWidth, pageHeight);
 
   return Object.freeze({
     version: 1,
@@ -232,9 +228,7 @@ export function runPlacementExperiment({
       algorithm: "deterministic-binary-local-search-v1",
       seed: normalizedSeed,
       objectiveScore: candidate.score,
-      assignments: Object.freeze(
-        assignmentsFromOrder(elements, normalizedSlots, candidate.order),
-      ),
+      assignments: Object.freeze(assignmentsFromOrder(elements, normalizedSlots, candidate.order)),
       status: "complete",
       deterministic: true,
       advisoryOnly: true,

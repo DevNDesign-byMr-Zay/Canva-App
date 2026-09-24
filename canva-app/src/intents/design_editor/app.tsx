@@ -266,7 +266,10 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   return (
     <Rows spacing="2u">
       <Title>
-        <FormattedMessage defaultMessage="HoloForge" description="Name of the HoloForge Canva app." />
+        <FormattedMessage
+          defaultMessage="HoloForge"
+          description="Name of the HoloForge Canva app."
+        />
       </Title>
 
       <Text>
@@ -338,8 +341,8 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
               </Text>
               {review.map(({ elementId, before, after, changedFields }) => (
                 <Text key={elementId}>
-                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} → {after.left}×
-                  {after.top} {after.width}×{after.height} · {changedFields.join(", ")}
+                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} →{" "}
+                  {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
                 </Text>
               ))}
               {review.length === 0 && (

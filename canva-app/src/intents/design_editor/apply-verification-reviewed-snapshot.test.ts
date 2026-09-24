@@ -138,8 +138,10 @@ describe("reviewed snapshot receipt lineage", () => {
       y: 30,
       rotation: 10,
     };
-    changedScenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(changedScenario);
-    changedScenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(changedScenario);
+    changedScenario.provenance.optimizationFingerprint =
+      await computeOptimizationFingerprint(changedScenario);
+    changedScenario.provenance.scenarioFingerprint =
+      await computeScenarioFingerprint(changedScenario);
     expect(
       await validateApplyVerificationReceiptForReviewedSnapshot(receipt, changedScenario, snapshot),
     ).toBe(false);

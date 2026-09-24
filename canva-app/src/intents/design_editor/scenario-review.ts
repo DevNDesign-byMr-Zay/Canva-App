@@ -48,21 +48,23 @@ export function buildScenarioReview(
     const transform = scenario.candidate.layout.elements[elementId];
     if (!element || !transform || !isCanvaWritableTransform(transform)) return [];
 
-    const changedFields = (Object.keys(transform) as Array<keyof CanonicalCandidateElement>)
-      .filter((field): field is "x" | "y" | "rotation" =>
-        ["x", "y", "rotation"].includes(field));
+    const changedFields = (Object.keys(transform) as Array<keyof CanonicalCandidateElement>).filter(
+      (field): field is "x" | "y" | "rotation" => ["x", "y", "rotation"].includes(field),
+    );
 
-    return [{
-      elementId,
-      before: {
-        top: element.top,
-        left: element.left,
-        width: element.width,
-        height: element.height,
-        rotation: element.rotation,
+    return [
+      {
+        elementId,
+        before: {
+          top: element.top,
+          left: element.left,
+          width: element.width,
+          height: element.height,
+          rotation: element.rotation,
+        },
+        after: projectTransform(element, transform),
+        changedFields,
       },
-      after: projectTransform(element, transform),
-      changedFields,
-    }];
+    ];
   });
 }

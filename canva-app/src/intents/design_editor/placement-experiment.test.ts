@@ -9,9 +9,36 @@ const snapshot: CanvaDesignSnapshot = {
   pageType: "absolute",
   pageDimensions: { width: 1000, height: 800 },
   elements: [
-    { id: "a", type: "shape", top: 100, left: 100, width: 100, height: 100, rotation: 0, locked: false },
-    { id: "b", type: "shape", top: 100, left: 700, width: 100, height: 100, rotation: 0, locked: false },
-    { id: "brand", type: "image", top: 20, left: 850, width: 100, height: 60, rotation: 0, locked: true },
+    {
+      id: "a",
+      type: "shape",
+      top: 100,
+      left: 100,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    },
+    {
+      id: "b",
+      type: "shape",
+      top: 100,
+      left: 700,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    },
+    {
+      id: "brand",
+      type: "image",
+      top: 20,
+      left: 850,
+      width: 100,
+      height: 60,
+      rotation: 0,
+      locked: true,
+    },
   ],
   fingerprint: "a".repeat(64),
 };
@@ -51,13 +78,9 @@ describe("placement experiment", () => {
       slots,
     });
 
-    expect(result.candidate.objectiveScore).toBeGreaterThanOrEqual(
-      result.classical.objectiveScore,
-    );
+    expect(result.candidate.objectiveScore).toBeGreaterThanOrEqual(result.classical.objectiveScore);
     expect(result.objectiveGap).toBe(
-      Number(
-        (result.candidate.objectiveScore - result.classical.objectiveScore).toFixed(9),
-      ),
+      Number((result.candidate.objectiveScore - result.classical.objectiveScore).toFixed(9)),
     );
   });
 

@@ -11,10 +11,7 @@ vi.mock("@canva/user", () => ({
 }));
 
 import type { TrustedReviewContext } from "./review-context-client";
-import {
-  loadProductionReviewContext,
-  resolveReviewContextForMount,
-} from "./review-context-mount";
+import { loadProductionReviewContext, resolveReviewContextForMount } from "./review-context-mount";
 
 function trustedContext(): TrustedReviewContext {
   return {

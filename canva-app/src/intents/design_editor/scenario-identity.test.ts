@@ -15,9 +15,7 @@ function scenarioWith(ids: string[]): HoloForgeScenario {
   } as HoloForgeScenario;
 }
 
-function identityScenario(
-  overrides: Partial<HoloForgeScenario> = {},
-): HoloForgeScenario {
+function identityScenario(overrides: Partial<HoloForgeScenario> = {}): HoloForgeScenario {
   return {
     contractVersion: 1,
     scenarioId: "scenario-identity-1",
@@ -33,7 +31,10 @@ function identityScenario(
       objectiveDirection: "maximize",
     },
     constraints: {
-      hard: [{ type: "bounds", axis: "x", max: 100 }, { type: "locked", id: "element-2" }],
+      hard: [
+        { type: "bounds", axis: "x", max: 100 },
+        { type: "locked", id: "element-2" },
+      ],
       soft: [{ type: "spacing", weight: 0.5 }],
     },
     candidate: {
@@ -145,15 +146,11 @@ describe("canonical scenario fingerprints", () => {
     const symbolic = { type: "bounds" } as Record<PropertyKey, unknown>;
     symbolic[Symbol("hidden")] = true;
     symbolBacked.constraints.hard = [symbolic];
-    await expect(computeOptimizationFingerprint(symbolBacked)).rejects.toThrow(
-      /symbol properties/,
-    );
+    await expect(computeOptimizationFingerprint(symbolBacked)).rejects.toThrow(/symbol properties/);
 
     const sparse = identityScenario();
     sparse.constraints.hard = new Array(1);
-    await expect(computeOptimizationFingerprint(sparse)).rejects.toThrow(
-      /sparse arrays/,
-    );
+    await expect(computeOptimizationFingerprint(sparse)).rejects.toThrow(/sparse arrays/);
 
     const decorated = identityScenario();
     const values = [{ type: "bounds" }] as Array<unknown> & { authority?: string };
@@ -168,9 +165,7 @@ describe("canonical scenario fingerprints", () => {
     const scenario = identityScenario();
     scenario.candidate.layout.elements["element-1"].x = Number.NaN;
 
-    await expect(computeScenarioFingerprint(scenario)).rejects.toThrow(
-      /numbers must be finite/,
-    );
+    await expect(computeScenarioFingerprint(scenario)).rejects.toThrow(/numbers must be finite/);
   });
 
   it("fails closed on deceptive provenance instead of evaluating accessors", async () => {
@@ -192,9 +187,7 @@ describe("canonical scenario fingerprints", () => {
 describe("presentation scenario snapshot", () => {
   it("isolates rendered decision state from later caller mutation", () => {
     const source = identityScenario();
-    source.constraints.hard = [
-      { type: "bounds", limits: { maxX: 100 } },
-    ];
+    source.constraints.hard = [{ type: "bounds", limits: { maxX: 100 } }];
     source.candidate.layout.elements["element-1"] = { x: 10, y: 20 };
     source.candidate.delta = { moved: { to: { x: 10 } } };
 
@@ -204,9 +197,7 @@ describe("presentation scenario snapshot", () => {
     source.candidate.layout.elements["element-1"].x = 999;
     (source.candidate.delta.moved as { to: { x: number } }).to.x = 999;
 
-    expect(
-      (captured.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX,
-    ).toBe(100);
+    expect((captured.constraints.hard[0] as { limits: { maxX: number } }).limits.maxX).toBe(100);
     expect(captured.candidate.layout.elements["element-1"].x).toBe(10);
     expect((captured.candidate.delta.moved as { to: { x: number } }).to.x).toBe(10);
     expect(Object.isFrozen(captured)).toBe(true);
@@ -229,4 +220,3 @@ describe("presentation scenario snapshot", () => {
     expect(reads).toBe(0);
   });
 });
-

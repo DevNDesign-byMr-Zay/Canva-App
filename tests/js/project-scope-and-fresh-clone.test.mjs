@@ -10,7 +10,7 @@ const CLASSIFICATION = new URL('../../.repo-class.json', import.meta.url);
 test('fresh-clone verification covers the complete Design Editor app contract', async () => {
   const makefile = await readFile(MAKEFILE, 'utf8');
 
-  assert.match(makefile, /^app-check: audit-app typecheck-app test-app build-app$/mu);
+  assert.match(makefile, /^app-check: audit-app format-check-app typecheck-app test-app build-app$/mu);
   assert.match(makefile, /^verify-fresh: setup check app-check$/mu);
   assert.match(makefile, /npm --prefix canva-app audit --omit=dev --audit-level=moderate/u);
   assert.match(makefile, /verify-dev-audit\.mjs/u);
@@ -29,6 +29,8 @@ test('repository scope identifies the maintained application boundary', async ()
   assert.ok(classification.secondaryClasses.includes('frontend-application'));
   assert.ok(classification.excludedClasses.includes('infrastructure-as-code'));
   assert.ok(classification.maintainedSurfaces.includes('canva-app'));
+  assert.equal(typeof pkg?.scripts?.['format:check'], 'string');
+  assert.match(pkg.scripts['format:check'], /prettier@3\.6\.2/u);
   assert.equal(typeof pkg?.scripts?.typecheck, 'string');
   assert.equal(typeof pkg?.scripts?.test, 'string');
   assert.equal(typeof pkg?.scripts?.build, 'string');

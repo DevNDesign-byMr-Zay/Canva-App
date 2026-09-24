@@ -115,12 +115,13 @@ describe("reviewed Canva apply attestation", () => {
     const attestation = await createApplyAttestation({ scenario, snapshot, receipt });
     const substitute = structuredClone(scenario);
     substitute.scenarioId = "scenario-attest-2";
-    substitute.provenance.optimizationFingerprint = await computeOptimizationFingerprint(substitute);
+    substitute.provenance.optimizationFingerprint =
+      await computeOptimizationFingerprint(substitute);
     substitute.provenance.scenarioFingerprint = await computeScenarioFingerprint(substitute);
 
-    expect(await validateApplyAttestation(attestation, { scenario: substitute, snapshot, receipt })).toBe(
-      false,
-    );
+    expect(
+      await validateApplyAttestation(attestation, { scenario: substitute, snapshot, receipt }),
+    ).toBe(false);
   });
 
   it("rejects reviewed snapshot substitution and post-state identity tampering", async () => {

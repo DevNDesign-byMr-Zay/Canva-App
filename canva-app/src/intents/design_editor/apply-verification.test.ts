@@ -59,7 +59,11 @@ async function fixture() {
       pageIds: ["page-1"],
       snapshotFingerprint: snapshot.fingerprint,
     },
-    intent: { summary: "Improve hierarchy", objectiveId: "hierarchy-v1", objectiveDirection: "maximize" },
+    intent: {
+      summary: "Improve hierarchy",
+      objectiveId: "hierarchy-v1",
+      objectiveDirection: "maximize",
+    },
     constraints: { hard: [], soft: [] },
     candidate: {
       changedElementIds: ["element-1"],
@@ -78,7 +82,12 @@ async function fixture() {
       hardConstraintsPassed: true,
       warnings: [],
     },
-    interpretation: { producer: "auren", label: "Hierarchy", summary: "Improve hierarchy", tradeoffs: [] },
+    interpretation: {
+      producer: "auren",
+      label: "Hierarchy",
+      summary: "Improve hierarchy",
+      tradeoffs: [],
+    },
     presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
     provenance: {
       scenarioFingerprint: "",
@@ -228,7 +237,8 @@ describe("HoloForge post-apply evidence", () => {
 
     const substituted = structuredClone(scenario);
     substituted.scenarioId = "scenario-apply-2";
-    substituted.provenance.optimizationFingerprint = await computeOptimizationFingerprint(substituted);
+    substituted.provenance.optimizationFingerprint =
+      await computeOptimizationFingerprint(substituted);
     substituted.provenance.scenarioFingerprint = await computeScenarioFingerprint(substituted);
 
     expect(await validateApplyVerificationReceipt(receipt)).toBe(true);
@@ -236,7 +246,8 @@ describe("HoloForge post-apply evidence", () => {
 
     const driftedSource = structuredClone(scenario);
     driftedSource.source.snapshotFingerprint = "b".repeat(64);
-    driftedSource.provenance.optimizationFingerprint = await computeOptimizationFingerprint(driftedSource);
+    driftedSource.provenance.optimizationFingerprint =
+      await computeOptimizationFingerprint(driftedSource);
     driftedSource.provenance.scenarioFingerprint = await computeScenarioFingerprint(driftedSource);
     expect(await validateApplyVerificationReceiptForScenario(receipt, driftedSource)).toBe(false);
   });
