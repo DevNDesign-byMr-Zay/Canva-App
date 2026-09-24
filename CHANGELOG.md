@@ -24,6 +24,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Verification
 
+- Release readiness now requires the security policy, contribution guide, review ownership, and pull-request validation template alongside application quality gates.
 - Gated releases now attach root and Design Editor CycloneDX SBOMs, a Python dependency snapshot, exact commit evidence, and SHA-256 checksums.
 - Root-level `npm run verify:release` now checks the coherent maintained release surface before any real semantic tag is cut, without claiming a hosted release.
 - Root runtime/backend, Python verifier, Design Editor workspace, Docker verifier, and CodeQL remain separate blocking quality/security lanes.
