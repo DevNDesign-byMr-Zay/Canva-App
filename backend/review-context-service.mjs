@@ -1,12 +1,15 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 
+import rootPackage from '../package.json' with { type: 'json' };
+
 import { design as canvaDesign, user as canvaUser } from '@canva/app-middleware/express';
 
 import { createErrorReporter } from './error-reporting.mjs';
 import { createJsonLogger } from './logging.mjs';
 
 const MAX_BODY_BYTES = 64 * 1024;
+const DEFAULT_SERVICE_VERSION = rootPackage.version;
 
 function requireText(value, name) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -244,7 +247,7 @@ export function createReviewContextServer({
   logger = createJsonLogger(),
   onError = null,
   startedAt = Date.now(),
-  serviceVersion = '1.1.0',
+  serviceVersion = DEFAULT_SERVICE_VERSION,
 } = {}) {
   const resolvedAppId = requireText(appId, 'appId');
   const resolvedOrigin = new URL(requireText(allowedOrigin, 'allowedOrigin')).origin;
@@ -397,7 +400,7 @@ export function parseReviewContextConfig(environment = process.env) {
 
 export async function startReviewContextService(
   environment = process.env,
-  { logger = createJsonLogger(), serviceVersion = '1.1.0' } = {},
+  { logger = createJsonLogger(), serviceVersion = DEFAULT_SERVICE_VERSION } = {},
 ) {
   const config = parseReviewContextConfig(environment);
   const server = createReviewContextServer({ ...config, logger, serviceVersion });
