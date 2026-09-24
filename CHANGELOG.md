@@ -2,9 +2,21 @@
 
 All notable maintained-surface changes to this repository are documented here.
 
-## Unreleased
+## Unreleased — pre-rescore detector hardening
 
-- Current root application candidate: `1.1.1`. The `v1.1.0` release remains the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
+### Added
+
+- A conventional root `ci.yml` exposing root Node tests, Python tests/lint/typecheck, and Design Editor typecheck/test/build.
+- Explicit Python verification-tool metadata plus exact lock-parity verification.
+- A coverage-scope boundary that keeps CI-only parity tooling outside application coverage while still running it as a mandatory gate.
+
+### Changed
+
+- Current root application candidate: `1.1.2`. The `v1.1.1` release is the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
+
+## 1.1.1 — 2026-09-24
+
+- Published as `v1.1.1` on 2026-09-24 through the gated manual release workflow.
 
 ### Added
 
