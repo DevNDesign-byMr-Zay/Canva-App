@@ -1,4 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.hoisted(() => {
+  Object.assign(globalThis, {
+    canva_sdk: {
+      design: {
+        v2: {
+          designInteraction: {
+            selection: {},
+            overlay: {},
+            addPage: vi.fn(),
+          },
+        },
+      },
+    },
+  });
+});
+
+vi.mock("@canva/design", () => ({
+  getCurrentPageMetadata: vi.fn(),
+  getDesignMetadata: vi.fn(),
+  openDesign: vi.fn(),
+}));
 
 import {
   canApplyScenario,
