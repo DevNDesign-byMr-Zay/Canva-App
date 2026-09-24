@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "primaryClass": "application-tooling",
+  "secondaryClasses": [
+    "frontend-application",
+    "developer-tooling",
+    "archive-verification"
+  ],
+  "excludedClasses": [
+    "infrastructure-as-code"
+  ],
+  "maintainedSurfaces": [
+    "canva-app",
+    "archive_verifier",
+    "runtime",
+    "src",
+    "backend"
+  ],
+  "evidence": {
+    "projectScope": "docs/PROJECT_SCOPE.md",
+    "designEditorPackage": "canva-app/package.json",
+    "reviewContextBackend": "backend/review-context-service.mjs"
+  }
+}
