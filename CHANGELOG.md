@@ -6,6 +6,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Added
 
+- A deterministic read-only HoloForge spatial scenario view that compares source and candidate geometry as separate depth layers, binds the view to canonical provenance, and carries measured classical-baseline/candidate objective evidence without adding mutation authority.
 - A real Canva Design Editor workspace with locked SDK dependencies, TypeScript verification, Vitest coverage, and production build gates.
 - A trusted server-side review-context boundary using Canva's official middleware to verify fresh user and design tokens before canonical scenario context reaches the browser.
 - Explicit source-design, page, snapshot, provenance, and post-apply verification boundaries so stale or substituted context fails closed before mutation.
