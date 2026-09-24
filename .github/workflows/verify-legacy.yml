@@ -31,6 +31,14 @@ jobs:
         run: |
           python -m coverage run -m pytest -q
           python -m coverage report --fail-under=90
+          python -m coverage xml -o coverage.xml
+      - name: Retain Python coverage evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-coverage-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: coverage.xml
 
   maintained-runtime:
     name: Authenticated v115 chat runtime
@@ -59,7 +67,16 @@ jobs:
           test -s "$RUNNER_TEMP/release-manifest.json"
 
       - name: Test maintained runtime adapter with coverage
+        env:
+          NODE_V8_COVERAGE: coverage/v8
         run: npm test
+      - name: Retain maintained runtime V8 coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-v8-coverage-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: coverage/v8/
       - name: Run diagnostic energy runtime demo
         run: npm run demo:energy-runtime
 

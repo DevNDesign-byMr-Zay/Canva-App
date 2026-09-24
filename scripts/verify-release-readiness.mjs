@@ -107,6 +107,12 @@ async function main() {
   assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");
   assert(/npm run build/u.test(ci), "Design Editor CI must build");
   assert(/npm test/u.test(appCi), "HoloForge app workflow must run tests");
+  assert(
+    /coverage xml -o coverage\.xml/u.test(ci) &&
+      /NODE_V8_COVERAGE:\s*coverage\/v8/u.test(ci) &&
+      /actions\/upload-artifact@v7/u.test(ci),
+    "engineering CI must retain Python and maintained-runtime coverage evidence",
+  );
   assert(/pull_request:/u.test(codeql), "CodeQL must run on pull requests");
   assert(
     /javascript-typescript/u.test(codeql) && /python/u.test(codeql),
