@@ -4,6 +4,8 @@ All notable maintained-surface changes to this repository are documented here.
 
 ## Unreleased
 
+- Current root application candidate: `1.1.0`. No hosted tag or release is claimed until the gated manual release workflow publishes it.
+
 ### Added
 
 - A measured HoloForge placement experiment with exact classical reference, deterministic VÆLON candidate evidence, observational objective-gap reporting, and a canonical bridge into the existing spatial preview and explicit Apply boundary.
