@@ -91,6 +91,10 @@ async function main() {
   assert(/github\.ref == 'refs\/heads\/main'/u.test(release), "release workflow must require main");
   assert(/make verify-fresh/u.test(release), "release workflow must verify the full fresh application path");
   assert(/Requested tag must equal/u.test(release), "release workflow must bind the tag to package version");
+  assert(/npm sbom --sbom-format=cyclonedx/u.test(release), "release workflow must generate root dependency evidence");
+  assert(/canva-app-sbom\.cdx\.json/u.test(release), "release workflow must generate Design Editor dependency evidence");
+  assert(/python -m pip list --format=json/u.test(release), "release workflow must snapshot Python dependencies");
+  assert(/release-artifacts\.sha256/u.test(release), "release workflow must checksum attached evidence");
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(/No hosted release is claimed/iu.test(changelog), "changelog must not fabricate a hosted release");
