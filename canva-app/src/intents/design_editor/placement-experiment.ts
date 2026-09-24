@@ -18,7 +18,7 @@ export type PlacementEvidence = {
   algorithm: "exact-enumeration-v1" | "deterministic-binary-local-search-v1";
   seed: string;
   objectiveScore: number;
-  assignments: PlacementAssignment[];
+  assignments: ReadonlyArray<PlacementAssignment>;
   status: "complete";
   deterministic: true;
   advisoryOnly: true;
