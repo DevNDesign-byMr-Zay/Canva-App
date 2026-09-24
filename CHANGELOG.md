@@ -24,6 +24,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Verification
 
+- Gated releases now attach root and Design Editor CycloneDX SBOMs, a Python dependency snapshot, exact commit evidence, and SHA-256 checksums.
 - Root-level `npm run verify:release` now checks the coherent maintained release surface before any real semantic tag is cut, without claiming a hosted release.
 - Root runtime/backend, Python verifier, Design Editor workspace, Docker verifier, and CodeQL remain separate blocking quality/security lanes.
 - No hosted release is claimed by this entry; it records the current coherent application state before a real semantic release is cut.
