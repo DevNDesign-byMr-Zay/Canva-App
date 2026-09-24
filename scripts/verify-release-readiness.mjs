@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 
 const REQUIRED_FILES = Object.freeze([
   "Dockerfile",
+  "compose.yaml",
   "package-lock.json",
   "requirements.lock.txt",
   "CHANGELOG.md",
@@ -85,6 +86,9 @@ async function main() {
   assert(/npm ci --ignore-scripts/u.test(ci), "engineering CI must use locked Node installs");
   assert(/npm audit --audit-level=moderate/u.test(ci), "engineering CI must audit root dependencies");
   assert(/npm run verify:release/u.test(ci), "engineering CI must enforce release-readiness verifier");
+  assert(/docker compose config --quiet/u.test(ci), "engineering CI must validate Compose configuration");
+  assert(/docker compose up --build/u.test(ci), "engineering CI must execute the maintained Compose path");
+  assert(/\/health/u.test(ci), "engineering CI must probe the trusted backend health endpoint");
   assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");
   assert(/npm run build/u.test(ci), "Design Editor CI must build");
   assert(/npm test/u.test(appCi), "HoloForge app workflow must run tests");
