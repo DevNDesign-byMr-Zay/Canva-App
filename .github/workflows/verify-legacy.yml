@@ -97,16 +97,6 @@ jobs:
           fi
       - name: Check Design Editor formatting
         run: npm run format:check
-      - name: Materialize formatter repair output
-        if: failure()
-        run: npm run format
-      - name: Upload formatter repair artifact
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: design-editor-prettier-repair
-          path: canva-app/src
-          retention-days: 1
       - name: Type-check Design Editor app
         run: npm run typecheck
       - name: Run Design Editor app tests
