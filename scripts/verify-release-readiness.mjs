@@ -69,6 +69,10 @@ async function main() {
   }
 
   assert(/## Unreleased/u.test(changelog), "changelog must contain current unreleased state");
+  assert(
+    changelog.includes(`Current root application candidate: \`${pkg.version}\``),
+    "changelog candidate version must match root package.json",
+  );
   assert(/trusted server-side review-context boundary/iu.test(changelog), "changelog must record trusted backend boundary");
   assert(/spatial scenario view/iu.test(changelog), "changelog must record spatial scenario work");
 
