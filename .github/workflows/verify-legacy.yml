@@ -48,6 +48,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Audit Node dependency graph
         run: npm audit --audit-level=moderate
+      - name: Verify release-readiness contract
+        run: npm run verify:release
       - name: Test maintained runtime adapter with coverage
         run: npm test
       - name: Run diagnostic energy runtime demo
