@@ -3,6 +3,8 @@ import { pathToFileURL } from 'node:url';
 
 import { design as canvaDesign, user as canvaUser } from '@canva/app-middleware/express';
 
+import { createErrorReporter } from './error-reporting.mjs';
+
 const MAX_BODY_BYTES = 64 * 1024;
 
 function requireText(value, name) {
@@ -239,9 +241,11 @@ export function createReviewContextServer({
   loadScenario,
   fetchImpl = globalThis.fetch,
   logger = console,
+  onError = null,
 } = {}) {
   const resolvedAppId = requireText(appId, 'appId');
   const resolvedOrigin = new URL(requireText(allowedOrigin, 'allowedOrigin')).origin;
+  const reportError = createErrorReporter({ onError, logger });
   const user =
     userVerifier ??
     middlewareVerifier(canvaUser.verifyToken({ appId: resolvedAppId }), 'user');
@@ -356,6 +360,7 @@ export function createReviewContextServer({
         designId,
         errorName: error instanceof Error ? error.name : 'Error',
       });
+      reportError(error, { scope: 'review-context-source', designId });
       sendJson(res, 502, { error: 'review_context_unavailable' }, resolvedOrigin, requestOrigin);
     }
   });

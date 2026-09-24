@@ -87,7 +87,8 @@ async function startServer(overrides = {}) {
     userVerifier,
     designVerifier,
     loadScenario,
-    logger: { info() {}, warn() {} },
+    logger: overrides.logger ?? { info() {}, warn() {} },
+    onError: overrides.onError ?? null,
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -280,4 +281,63 @@ test('review-context backend configuration is explicit and secret-free', () => {
       }),
     /CANVA_APP_ID/,
   );
+});
+
+
+test('reports upstream failures with bounded context without exposing request tokens', async (t) => {
+  const reports = [];
+  const runtime = await startServer({
+    loadScenario: async () => {
+      throw new Error('upstream failed');
+    },
+    onError(error, context) {
+      reports.push({ error, context });
+    },
+  });
+  t.after(runtime.close);
+
+  const response = await fetch(`${runtime.base}/review-context`, requestOptions());
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'review_context_unavailable' });
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].error.message, 'upstream failed');
+  assert.deepEqual(reports[0].context, {
+    scope: 'review-context-source',
+    designId: 'design-1',
+  });
+  assert.equal(Object.isFrozen(reports[0].context), true);
+  assert.equal(JSON.stringify(reports).includes('fresh-user-token'), false);
+  assert.equal(JSON.stringify(reports).includes('fresh-design-token'), false);
+});
+
+test('reporter failures are isolated from the sanitized 502 response', async (t) => {
+  const warnings = [];
+  const runtime = await startServer({
+    loadScenario: async () => {
+      throw new Error('source unavailable');
+    },
+    onError() {
+      throw new Error('telemetry unavailable');
+    },
+    logger: {
+      info() {},
+      warn(metadata, message) {
+        warnings.push({ metadata, message });
+      },
+    },
+  });
+  t.after(runtime.close);
+
+  const response = await fetch(`${runtime.base}/review-context`, requestOptions());
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'review_context_unavailable' });
+  assert.ok(
+    warnings.some(
+      ({ metadata, message }) =>
+        metadata.event === 'error_reporter_failed' &&
+        metadata.errorName === 'Error' &&
+        message === 'Error reporter failed',
+    ),
+  );
+  assert.equal(JSON.stringify(warnings).includes('telemetry unavailable'), false);
 });
