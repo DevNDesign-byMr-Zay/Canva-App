@@ -21,6 +21,7 @@ addopts = "-ra"
 [tool.coverage.run]
 branch = true
 source = ["archive_verifier", "scripts"]
+omit = ["scripts/verify_python_lock.py"]
 
 [tool.coverage.report]
 fail_under = 90
