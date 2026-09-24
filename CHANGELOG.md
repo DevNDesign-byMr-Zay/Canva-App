@@ -6,6 +6,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Added
 
+- A measured HoloForge placement experiment with exact classical reference, deterministic VÆLON candidate evidence, observational objective-gap reporting, and a canonical bridge into the existing spatial preview and explicit Apply boundary.
 - A deterministic read-only HoloForge spatial scenario view that compares source and candidate geometry as separate depth layers, binds the view to canonical provenance, and carries measured classical-baseline/candidate objective evidence without adding mutation authority.
 - A real Canva Design Editor workspace with locked SDK dependencies, TypeScript verification, Vitest coverage, and production build gates.
 - A trusted server-side review-context boundary using Canva's official middleware to verify fresh user and design tokens before canonical scenario context reaches the browser.
@@ -20,6 +21,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Verification
 
+- Root-level `npm run verify:release` now checks the coherent maintained release surface before any real semantic tag is cut, without claiming a hosted release.
 - Root runtime/backend, Python verifier, Design Editor workspace, Docker verifier, and CodeQL remain separate blocking quality/security lanes.
 - No hosted release is claimed by this entry; it records the current coherent application state before a real semantic release is cut.
 
