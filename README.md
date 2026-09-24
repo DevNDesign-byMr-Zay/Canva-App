@@ -67,6 +67,10 @@ The trusted review-context backend accepts an optional `onError(error, context)`
 
 Reporting context is intentionally bounded to a failure scope and verified design ID. Raw Canva user/design tokens, request bodies, and upstream response payloads are never passed to the callback. Synchronous or asynchronous reporter failures are isolated and reduced to bounded local warning metadata, so a telemetry outage cannot change the existing sanitized `502 review_context_unavailable` response.
 
+## Structured backend observability
+
+The trusted review-context service exposes `GET /health` with service identity, `status`, `uptimeSeconds`, and the maintained service version. Backend lifecycle and review-context events use the reusable `backend/logging.mjs` JSON logger with timestamp, level, logger name, message, and bounded event metadata. Optional error-reporting callbacks remain isolated from HTTP behavior.
+
 ## Archive scope and provenance
 
 The authenticated legacy lineage contains **84 physical HTML source occurrences** spanning the recovered Depthpop development history. Provenance metadata records source-name hashes, repository filenames, sanitized content hashes, duplicate-state relationships, and recovery status.

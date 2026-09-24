@@ -89,6 +89,8 @@ async function startServer(overrides = {}) {
     loadScenario,
     logger: overrides.logger ?? { info() {}, warn() {} },
     onError: overrides.onError ?? null,
+    startedAt: overrides.startedAt ?? Date.now(),
+    serviceVersion: overrides.serviceVersion ?? '1.1.0',
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -114,6 +116,22 @@ function requestOptions(body = { designToken: 'fresh-design-token' }) {
     body: JSON.stringify(body),
   };
 }
+
+test('health endpoint exposes runtime status, uptime, and version', async (t) => {
+  const runtime = await startServer({
+    startedAt: Date.now() - 5_000,
+    serviceVersion: '1.1.0-test',
+  });
+  t.after(runtime.close);
+
+  const response = await fetch(`${runtime.base}/health`);
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.service, 'canva-review-context');
+  assert.equal(payload.status, 'ok');
+  assert.equal(payload.version, '1.1.0-test');
+  assert.ok(payload.uptimeSeconds >= 4);
+});
 
 test('issues trusted review context only from independently verified identities', async (t) => {
   const runtime = await startServer();
