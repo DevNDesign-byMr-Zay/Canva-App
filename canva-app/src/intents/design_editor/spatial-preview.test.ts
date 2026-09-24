@@ -4,8 +4,10 @@ import type { CanvaDesignSnapshot } from "./canva-design";
 import type { HoloForgeScenario } from "./scenario-contract";
 import { buildSpatialPreviewModel, interpolateSpatialPreview } from "./spatial-preview";
 
+const designId = "design-spatial-1";
+
 const snapshot: CanvaDesignSnapshot = {
-  designId: "design-spatial-1",
+  designId,
   pageId: "page-1",
   pageType: "absolute",
   pageDimensions: { width: 1200, height: 900 },
@@ -48,7 +50,7 @@ const scenario = {
   contractVersion: 1,
   scenarioId: "scenario-spatial-1",
   source: {
-    designId: snapshot.designId,
+    designId,
     snapshotId: "snapshot-spatial-1",
     pageIds: [snapshot.pageId],
     snapshotFingerprint: snapshot.fingerprint,
