@@ -50,6 +50,14 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
+      - name: Smoke-test release manifest generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="v$(node -p "require('./package.json').version")"
+          node scripts/create-release-manifest.mjs "$release_tag" "$GITHUB_SHA" "$RUNNER_TEMP/release-manifest.json"
+          test -s "$RUNNER_TEMP/release-manifest.json"
+
       - name: Test maintained runtime adapter with coverage
         run: npm test
       - name: Run diagnostic energy runtime demo

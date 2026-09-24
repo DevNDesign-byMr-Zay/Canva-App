@@ -51,7 +51,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          node --input-type=module -e 'import { readFileSync, writeFileSync } from "node:fs"; const pkg = JSON.parse(readFileSync("package.json", "utf8")); writeFileSync("release-manifest.json", JSON.stringify({ schemaVersion: 1, tag: process.env.RELEASE_TAG, version: pkg.version, commit: process.env.GITHUB_SHA }, null, 2) + "\n");'
+          node scripts/create-release-manifest.mjs "${{ inputs.tag }}" "$GITHUB_SHA" release-manifest.json
           npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
           (
             cd canva-app
