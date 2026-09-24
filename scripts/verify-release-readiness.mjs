@@ -55,6 +55,11 @@ async function main() {
   );
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
+  assert(pkg.exports && typeof pkg.exports === "object", "root maintained exports are required");
+  for (const [name, target] of Object.entries(pkg.exports)) {
+    assert(typeof target === "string" && target.startsWith("./"), `invalid export target: ${name}`);
+    await access(new URL(target, root));
+  }
 
   assert(/^\d+\.\d+\.\d+$/u.test(appPkg.version), "Design Editor package version must be semantic");
   for (const name of ["typecheck", "test", "build"]) {
@@ -78,6 +83,8 @@ async function main() {
   );
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(/No hosted release is claimed/iu.test(changelog), "changelog must not fabricate a hosted release");
+  assert(/explicit-user-Apply/iu.test(changelog), "release notes must preserve explicit Apply authority");
+
   assert(/make verify-fresh/u.test(readme), "README must document full fresh-clone verification");
 
   process.stdout.write(
