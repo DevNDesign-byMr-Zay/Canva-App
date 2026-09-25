@@ -7,9 +7,9 @@
     "node": "^22 || ^24"
   },
   "scripts": {
-    "start": "npx @canva/cli apps start",
-    "start:preview": "npx @canva/cli apps start --preview",
-    "build": "npx @canva/cli apps build",
+    "start": "npx --yes @canva/cli@2.13.0 apps start",
+    "start:preview": "npx --yes @canva/cli@2.13.0 apps start --preview",
+    "build": "npx --yes @canva/cli@2.13.0 apps build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format:check": "npx --yes prettier@3.6.2 --check \"src/**/*.{ts,tsx}\"",
