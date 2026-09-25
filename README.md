@@ -23,7 +23,7 @@ The maintained JavaScript surface lives under `runtime/` and `tests/js/*.test.mj
 
 The holographic presentation contract is intentionally downstream of decision evidence: scene identity and provenance are required, supported display targets are explicit, payload fingerprints are integrity-checked, and the adapter safety envelope remains non-authoritative/non-actuating. Browser interaction, CSS3D rendering, display-profile execution, and related viewport behavior remain separate presentation concerns rather than being folded into authenticated replay or historical source.
 
-The root Node.js surface contains the maintained runtime adapters plus a small trusted review-context backend. The backend uses Canva's official server-side token verifier package; archive verification itself remains credential-free:
+The root Node.js surface contains the maintained runtime adapters plus a small trusted review-context backend. The backend uses Canva's official server-side token verifier package; archive verification itself remains credential-free. Maintained Node tests enforce minimum coverage of **90% lines, 90% functions, and 80% branches**:
 
 ```bash
 npm ci
