@@ -95,6 +95,10 @@ async function main() {
   for (const name of ["typecheck", "test", "build"]) {
     assert(typeof appPkg.scripts?.[name] === "string", `Design Editor script missing: ${name}`);
   }
+  assert(appPkg.scripts.build === "npx --yes @canva/cli@2.13.0 apps build", "Design Editor build must pin the reviewed Canva CLI version");
+  assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
+  assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");
+  assert(/prettier@3\.6\.2/u.test(appPkg.scripts["format:check"] ?? ""), "Design Editor formatting must pin the reviewed Prettier version");
 
   assert(/## Unreleased/u.test(changelog), "changelog must contain current unreleased state");
   assert(
