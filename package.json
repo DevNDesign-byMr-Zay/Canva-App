@@ -12,8 +12,8 @@
     "application-verification"
   ],
   "scripts": {
-    "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
-    "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
+    "test": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
+    "test:js": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
     "check": "npm run verify:release && npm run verify:syntax && npm test",
     "backend:start": "node backend/review-context-service.mjs",
