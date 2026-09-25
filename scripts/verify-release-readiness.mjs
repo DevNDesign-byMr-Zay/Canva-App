@@ -75,6 +75,9 @@ async function main() {
   );
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
+  assert(/--test-coverage-lines=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% line coverage");
+  assert(/--test-coverage-branches=80/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 80% branch coverage");
+  assert(/--test-coverage-functions=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% function coverage");
   assert(pkg.scripts?.["verify:syntax"] === "node scripts/verify-maintained-js-syntax.mjs", "root maintained JavaScript syntax verifier is required");
   assert(/npm run verify:syntax/u.test(pkg.scripts?.check ?? ""), "root check must include maintained JavaScript syntax verification");
   assert(classification.primaryClass === "application-tooling", "repository classification must remain application tooling");
