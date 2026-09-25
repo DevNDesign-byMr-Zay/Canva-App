@@ -27,6 +27,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
+      - name: Check maintained JavaScript syntax
+        run: npm run verify:syntax
       - name: Run root JavaScript tests
         run: npm test
 
