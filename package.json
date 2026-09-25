@@ -15,10 +15,11 @@
     "test": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "test:js": "node --experimental-test-coverage --test tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
-    "check": "npm run verify:release && npm test",
+    "check": "npm run verify:release && npm run verify:syntax && npm test",
     "backend:start": "node backend/review-context-service.mjs",
     "app:verify": "npm --prefix canva-app ci --ignore-scripts && npm --prefix canva-app audit --omit=dev --audit-level=moderate && npm --prefix canva-app run typecheck && npm --prefix canva-app test && npm --prefix canva-app run build",
-    "verify:release": "node scripts/verify-release-readiness.mjs"
+    "verify:release": "node scripts/verify-release-readiness.mjs",
+    "verify:syntax": "node scripts/verify-maintained-js-syntax.mjs"
   },
   "engines": {
     "node": ">=22"
