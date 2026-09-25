@@ -94,3 +94,25 @@ test('replay boundary falls back to clearing innerHTML when replaceChildren is u
   assert.equal(chatInner.innerHTML, '');
   assert.deepEqual(events, ['assistant:fresh']);
 });
+
+test('replay rejects non-object records and unsupported chat reset capabilities', () => {
+  assert.throws(
+    () => replayAuthenticatedV115Conversation([], { chatInner: validTarget(), renderers: [] }),
+    /renderers must be an object/,
+  );
+  assert.throws(
+    () => replayAuthenticatedV115Conversation([null], { chatInner: validTarget(), renderers: validRenderers() }),
+    /records\[0\] must be an object/,
+  );
+  assert.throws(
+    () => replayAuthenticatedV115Conversation(
+      [{ role: 'user', content: 'safe' }],
+      { chatInner: { appendChild() {} }, renderers: validRenderers() },
+    ),
+    /chatInner must support replaceChildren\(\) or innerHTML reset/,
+  );
+  assert.throws(
+    () => replayAuthenticatedV115Conversation([], { chatInner: null, renderers: validRenderers() }),
+    /chatInner must support appendChild/,
+  );
+});
