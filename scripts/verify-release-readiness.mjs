@@ -31,6 +31,8 @@ const REQUIRED_FILES = Object.freeze([
   ".github/CODEOWNERS",
   ".github/pull_request_template.md",
   "scripts/create-release-manifest.mjs",
+  "scripts/verify-maintained-js-syntax.mjs",
+  "Makefile",
 ]);
 
 function assert(condition, message) {
@@ -49,7 +51,7 @@ async function main() {
   const root = new URL("../", import.meta.url);
   await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
 
-  const [pkg, appPkg, changelog, ci, conventionalCi, appCi, codeql, release, readme, envExample, classification] = await Promise.all([
+  const [pkg, appPkg, changelog, ci, conventionalCi, appCi, codeql, release, readme, envExample, classification, makefile] = await Promise.all([
     json("package.json"),
     json("canva-app/package.json"),
     text("CHANGELOG.md"),
@@ -61,6 +63,7 @@ async function main() {
     text("README.md"),
     text(".env.example"),
     json(".repo-class.json"),
+    text("Makefile"),
   ]);
 
   assert(/^\d+\.\d+\.\d+$/u.test(pkg.version), "root package version must be semantic");
@@ -72,6 +75,8 @@ async function main() {
   );
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
+  assert(pkg.scripts?.["verify:syntax"] === "node scripts/verify-maintained-js-syntax.mjs", "root maintained JavaScript syntax verifier is required");
+  assert(/npm run verify:syntax/u.test(pkg.scripts?.check ?? ""), "root check must include maintained JavaScript syntax verification");
   assert(classification.primaryClass === "application-tooling", "repository classification must remain application tooling");
   assert(classification.excludedClasses?.includes("infrastructure-as-code"), "repository classification must explicitly exclude infrastructure-as-code");
   for (const key of ["CANVA_APP_ID", "CANVA_APP_ORIGIN", "REVIEW_CONTEXT_SOURCE_URL", "PORT", "GITHUB_SHA", "RELEASE_TAG"]) {
@@ -99,6 +104,7 @@ async function main() {
   assert(/npm ci --ignore-scripts/u.test(ci), "engineering CI must use locked Node installs");
   assert(/npm audit --audit-level=moderate/u.test(ci), "engineering CI must audit root dependencies");
   assert(/npm run verify:release/u.test(ci), "engineering CI must enforce release-readiness verifier");
+  assert(/npm run verify:syntax/u.test(ci), "engineering CI must validate maintained JavaScript syntax");
   assert(/docker compose -f docker-compose\.yml config --quiet/u.test(ci), "engineering CI must validate canonical docker-compose.yml");
   assert(/docker compose up --build/u.test(ci), "engineering CI must execute the maintained Compose path");
   assert(/\/health/u.test(ci), "engineering CI must probe the trusted backend health endpoint");
@@ -116,6 +122,7 @@ async function main() {
     "engineering CI must retain Python and maintained-runtime coverage evidence",
   );
   assert(/npm test/u.test(conventionalCi), "conventional CI must expose root tests");
+  assert(/npm run verify:syntax/u.test(conventionalCi), "conventional CI must validate maintained JavaScript syntax");
   assert(/python -m pytest/u.test(conventionalCi), "conventional CI must expose Python tests");
   assert(/python -m ruff check/u.test(conventionalCi), "conventional CI must expose Python lint");
   assert(/python -m mypy/u.test(conventionalCi), "conventional CI must expose Python typecheck");
@@ -166,6 +173,7 @@ async function main() {
   );
   assert(/explicit-user-Apply/iu.test(changelog), "release notes must preserve explicit Apply authority");
 
+  assert(/syntax-js:/u.test(makefile) && /npm run verify:syntax/u.test(makefile), "fresh-clone Makefile must include maintained JavaScript syntax verification");
   assert(/make verify-fresh/u.test(readme), "README must document full fresh-clone verification");
 
   process.stdout.write(
