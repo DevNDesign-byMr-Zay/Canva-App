@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+env:
+  CANVA_CLI_DISABLE_TELEMETRY: "true"
+
 permissions:
   contents: read
 
@@ -27,6 +30,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
+      - name: Lint maintained JavaScript
+        run: npm run lint
       - name: Check maintained JavaScript syntax
         run: npm run verify:syntax
       - name: Run root JavaScript tests
@@ -80,5 +85,64 @@ jobs:
         run: npm run typecheck
       - name: Test Design Editor app
         run: npm test
+      - name: Retain Design Editor coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: design-editor-coverage-ci-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: canva-app/coverage/
       - name: Build Design Editor app
         run: npm run build
+
+  fresh-clone:
+    name: Zero-cache Node Python and Design Editor verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@v7
+      - name: Set up Node.js without cache restoration
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Set up Python without cache restoration
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Clone and verify with isolated dependency caches
+        shell: bash
+        env:
+          NPM_CONFIG_CACHE: ${{ runner.temp }}/canva-empty-npm-cache
+          PIP_NO_CACHE_DIR: "1"
+        run: |
+          set -euo pipefail
+          candidate="$(git rev-parse HEAD)"
+          git clone --no-local . "$RUNNER_TEMP/canva-fresh"
+          cd "$RUNNER_TEMP/canva-fresh"
+          test "$(git rev-parse HEAD)" = "$candidate"
+          test ! -d node_modules
+          test ! -d canva-app/node_modules
+          test ! -d "$NPM_CONFIG_CACHE"
+          python -m venv "$RUNNER_TEMP/canva-fresh-venv"
+          source "$RUNNER_TEMP/canva-fresh-venv/bin/activate"
+          {
+            printf 'Verified candidate: %s\n' "$candidate"
+            node --version
+            python --version
+            make verify-fresh
+            python scripts/materialize_v115.py
+            python -m archive_verifier.provenance_integrity
+            python -m archive_verifier.runtime_contract
+            git diff --exit-code -- app/authenticated-v115
+          } 2>&1 | tee "$RUNNER_TEMP/fresh-verification.log"
+      - name: Retain zero-cache verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fresh-verification-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/fresh-verification.log
+            ${{ runner.temp }}/canva-fresh/canva-app/coverage/

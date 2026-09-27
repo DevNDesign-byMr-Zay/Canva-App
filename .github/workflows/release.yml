@@ -8,6 +8,9 @@ on:
         required: true
         type: string
 
+env:
+  CANVA_CLI_DISABLE_TELEMETRY: "true"
+
 permissions:
   contents: write
 
@@ -59,11 +62,30 @@ jobs:
           fi
           printf 'tag=%s\n' "$normalized" >> "$GITHUB_OUTPUT"
 
+      - name: Require successful exact-main CI and CodeQL evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" = "$GITHUB_SHA"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100" > "$RUNNER_TEMP/candidate-runs.json"
+          for workflow in ci.yml verify-legacy.yml codeql.yml; do
+            jq --exit-status --arg path ".github/workflows/$workflow" --arg sha "$GITHUB_SHA" '
+              [.[].workflow_runs[] | select(.path == $path and .event == "push")]
+              | sort_by(.run_number, .run_attempt) | last
+              | .head_sha == $sha and .status == "completed" and .conclusion == "success"
+            ' "$RUNNER_TEMP/candidate-runs.json"
+          done
+
       - name: Verify complete application release candidate
         run: make verify-fresh
 
       - name: Verify container path
-        run: docker build --tag canva-release-candidate:${{ github.sha }} .
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose build --no-cache --pull verifier
+          docker compose up --abort-on-container-exit --exit-code-from verifier verifier
 
       - name: Build release evidence bundle
         shell: bash

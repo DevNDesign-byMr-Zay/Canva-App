@@ -13,6 +13,9 @@ on:
       - "canva-app/**"
       - ".github/workflows/holoforge-canva.yml"
 
+env:
+  CANVA_CLI_DISABLE_TELEMETRY: "true"
+
 permissions:
   contents: read
 

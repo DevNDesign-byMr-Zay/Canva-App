@@ -8,6 +8,9 @@ on:
     - cron: "23 9 * * 1"
   workflow_dispatch:
 
+env:
+  CANVA_CLI_DISABLE_TELEMETRY: "true"
+
 permissions:
   contents: read
 
@@ -60,6 +63,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
+      - name: Lint maintained JavaScript
+        run: npm run lint
       - name: Check maintained JavaScript syntax
         run: npm run verify:syntax
       - name: Smoke-test release manifest generation
@@ -122,6 +127,13 @@ jobs:
         run: npm run typecheck
       - name: Run Design Editor app tests
         run: npm test
+      - name: Retain Design Editor coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: design-editor-coverage-engineering-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: canva-app/coverage/
       - name: Build Design Editor app
         run: npm run build
 
@@ -198,6 +210,8 @@ jobs:
         uses: actions/checkout@v7
       - name: Validate canonical Compose configuration
         run: docker compose -f docker-compose.yml config --quiet
+      - name: Build verifier without cached image layers
+        run: docker compose build --no-cache --pull verifier
       - name: Run maintained verifier through Compose
         run: docker compose up --build --abort-on-container-exit --exit-code-from verifier verifier
       - name: Start trusted review-context backend

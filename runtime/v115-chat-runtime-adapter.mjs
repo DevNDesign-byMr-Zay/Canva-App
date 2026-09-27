@@ -94,7 +94,7 @@ export function buildV115ChatCompletionRequest({
 
 async function requireSuccessfulResponse(response) {
   if (response?.ok) return response;
-  let detail = '';
+  let detail;
   try {
     detail = typeof response?.text === 'function' ? await response.text() : '';
   } catch {

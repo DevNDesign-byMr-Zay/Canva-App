@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:22-trixie-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -8,6 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-venv python3-pip \
     && rm -rf /var/lib/apt/lists/* \
+    && python3 -c "import sys; assert sys.version_info >= (3, 12)" \
     && python3 -m venv "$VIRTUAL_ENV"
 
 WORKDIR /app

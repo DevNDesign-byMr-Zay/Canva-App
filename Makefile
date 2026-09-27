@@ -1,4 +1,6 @@
-.PHONY: setup verify test test-js syntax-js test-app lint typecheck typecheck-app format-check-app audit audit-app build-app app-check check verify-fresh
+export CANVA_CLI_DISABLE_TELEMETRY := true
+
+.PHONY: lint-js release-check lock-check audit-js setup verify test test-js syntax-js test-app lint typecheck typecheck-app format-check-app audit audit-app build-app app-check check verify-fresh
 
 setup:
 	python -m pip install --disable-pip-version-check -r requirements.lock.txt
@@ -20,6 +22,18 @@ syntax-js:
 
 test-app:
 	npm --prefix canva-app test
+
+lint-js:
+	npm run lint
+
+release-check:
+	npm run verify:release
+
+lock-check:
+	python scripts/verify_python_lock.py
+
+audit-js:
+	npm audit --audit-level=moderate
 
 lint:
 	python -m ruff check archive_verifier scripts tests
@@ -54,7 +68,7 @@ audit-app:
 build-app:
 	npm --prefix canva-app run build
 
-check: lint typecheck test syntax-js test-js audit verify
+check: release-check lock-check lint-js lint typecheck test syntax-js test-js audit-js audit verify
 
 app-check: audit-app format-check-app typecheck-app test-app build-app
 

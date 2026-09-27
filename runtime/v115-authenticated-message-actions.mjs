@@ -166,7 +166,7 @@ export function createAuthenticatedV115MessageActions({
       emitFeedback('pending', action);
       const userText = getPreviousUserText(wrap) || '';
       resetConversation();
-      try { createConversation(userText, []); } catch {}
+      try { createConversation(userText, []); } catch { /* The active-conversation check below reports failure. */ }
 
       try {
         const conversation = getActiveConversation();
