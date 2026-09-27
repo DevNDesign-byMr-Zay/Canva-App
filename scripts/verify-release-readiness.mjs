@@ -99,10 +99,15 @@ async function main() {
   }
   assert(typeof appPkg.scripts?.["test:coverage"] === "string", "Design Editor test:coverage script is required");
   assert(appPkg.vitest === undefined, "Design Editor coverage policy must live in canva-app/vitest.config.ts");
-  assert(/provider:\\s*"v8"/u.test(appVitestConfig), "Design Editor Vitest coverage provider must remain v8");
+  assert(/provider:\s*"v8"/u.test(appVitestConfig), "Design Editor Vitest coverage provider must remain v8");
   for (const metric of ["lines", "functions", "branches", "statements"]) {
-    const match = appVitestConfig.match(new RegExp(`\\b${metric}:\\s*(\\d+(?:\\.\\d+)?)`, "u"));
-    assert(match && Number(match[1]) >= 80, `Design Editor Vitest ${metric} coverage threshold must remain at least 80%`);
+    const match = appVitestConfig.match(
+      new RegExp("\\b" + metric + ":\\s*(\\d+(?:\\.\\d+)?)", "u"),
+    );
+    assert(
+      match && Number(match[1]) >= 80,
+      "Design Editor Vitest " + metric + " coverage threshold must remain at least 80%",
+    );
   }
   assert(appPkg.scripts.build === "npx --yes @canva/cli@2.13.0 apps build", "Design Editor build must pin the reviewed Canva CLI version");
   assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
@@ -157,155 +162,19 @@ async function main() {
     "fresh-clone-smoke",
     "container-smoke",
   ]) {
-    assert(new RegExp(`^  ${jobName}:\\s*import { access, readFile } from "node:fs/promises";
-
-const REQUIRED_FILES = Object.freeze([
-  "Dockerfile",
-  "compose.yaml",
-  "docker-compose.yml",
-  ".env.example",
-  ".repo-class.json",
-  "package-lock.json",
-  "requirements.lock.txt",
-  "CHANGELOG.md",
-  "README.md",
-  "docs/RELEASE_READINESS.md",
-  "backend/review-context-service.mjs",
-  "backend/logging.mjs",
-  "canva-app/package.json",
-  "canva-app/package-lock.json",
-  "canva-app/vitest.config.ts",
-  "canva-app/src/intents/design_editor/app.tsx",
-  "canva-app/src/intents/design_editor/scenario-contract.ts",
-  "canva-app/src/intents/design_editor/spatial-scenario-view.ts",
-  "canva-app/src/intents/design_editor/spatial-preview.ts",
-  "canva-app/src/intents/design_editor/placement-experiment.ts",
-  "canva-app/src/intents/design_editor/placement-scenario.ts",
-  ".github/workflows/verify-legacy.yml",
-  ".github/workflows/ci.yml",
-  ".github/workflows/holoforge-canva.yml",
-  ".github/workflows/codeql.yml",
-  ".github/workflows/release.yml",
-  "SECURITY.md",
-  "CONTRIBUTING.md",
-  ".github/CODEOWNERS",
-  ".github/pull_request_template.md",
-  "scripts/create-release-manifest.mjs",
-  "scripts/verify-maintained-js-syntax.mjs",
-  "Makefile",
-]);
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
-async function text(path) {
-  return readFile(new URL(`../${path}`, import.meta.url), "utf8");
-}
-
-async function json(path) {
-  return JSON.parse(await text(path));
-}
-
-async function main() {
-  const root = new URL("../", import.meta.url);
-  await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
-
-  const [pkg, appPkg, appVitestConfig, changelog, ci, conventionalCi, appCi, codeql, release, readme, envExample, classification, makefile] = await Promise.all([
-    json("package.json"),
-    json("canva-app/package.json"),
-    text("canva-app/vitest.config.ts"),
-    text("CHANGELOG.md"),
-    text(".github/workflows/verify-legacy.yml"),
-    text(".github/workflows/ci.yml"),
-    text(".github/workflows/holoforge-canva.yml"),
-    text(".github/workflows/codeql.yml"),
-    text(".github/workflows/release.yml"),
-    text("README.md"),
-    text(".env.example"),
-    json(".repo-class.json"),
-    text("Makefile"),
-  ]);
-
-  assert(/^\d+\.\d+\.\d+$/u.test(pkg.version), "root package version must be semantic");
-  assert(pkg.private === true, "root package must remain private");
-  assert(pkg.type === "module", "root package must remain ESM");
+    assert(
+      new RegExp("^  " + jobName + ":\\s*$", "mu").test(conventionalCi),
+      "conventional CI must retain scanner-visible job: " + jobName,
+    );
+  }
   assert(
-    typeof pkg.engines?.node === "string" && pkg.engines.node.includes("22"),
-    "root Node 22+ contract is required",
+    /design-editor-coverage:[\s\S]*npm run test:coverage/u.test(conventionalCi),
+    "design-editor-coverage job must enforce Vitest coverage",
   );
-  assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
-  assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
-  assert(/--test-coverage-lines=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% line coverage");
-  assert(/--test-coverage-branches=80/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 80% branch coverage");
-  assert(/--test-coverage-functions=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% function coverage");
-  assert(pkg.scripts?.["verify:syntax"] === "node scripts/verify-maintained-js-syntax.mjs", "root maintained JavaScript syntax verifier is required");
-  assert(/npm run verify:syntax/u.test(pkg.scripts?.check ?? ""), "root check must include maintained JavaScript syntax verification");
-  assert(classification.primaryClass === "application-tooling", "repository classification must remain application tooling");
-  assert(classification.excludedClasses?.includes("infrastructure-as-code"), "repository classification must explicitly exclude infrastructure-as-code");
-  for (const key of ["CANVA_APP_ID", "CANVA_APP_ORIGIN", "REVIEW_CONTEXT_SOURCE_URL", "PORT", "GITHUB_SHA", "RELEASE_TAG"]) {
-    assert(new RegExp(`^${key}=`, "mu").test(envExample), `.env.example must document ${key}`);
-  }
-  assert(pkg.exports && typeof pkg.exports === "object", "root maintained exports are required");
-  for (const [name, target] of Object.entries(pkg.exports)) {
-    assert(typeof target === "string" && target.startsWith("./"), `invalid export target: ${name}`);
-    await access(new URL(target, root));
-  }
-
-  assert(/^\d+\.\d+\.\d+$/u.test(appPkg.version), "Design Editor package version must be semantic");
-  for (const name of ["typecheck", "test", "build"]) {
-    assert(typeof appPkg.scripts?.[name] === "string", `Design Editor script missing: ${name}`);
-  }
-  assert(typeof appPkg.scripts?.["test:coverage"] === "string", "Design Editor test:coverage script is required");
-  assert(appPkg.vitest === undefined, "Design Editor coverage policy must live in canva-app/vitest.config.ts");
-  assert(/provider:\\s*"v8"/u.test(appVitestConfig), "Design Editor Vitest coverage provider must remain v8");
-  for (const metric of ["lines", "functions", "branches", "statements"]) {
-    const match = appVitestConfig.match(new RegExp(`\\b${metric}:\\s*(\\d+(?:\\.\\d+)?)`, "u"));
-    assert(match && Number(match[1]) >= 80, `Design Editor Vitest ${metric} coverage threshold must remain at least 80%`);
-  }
-  assert(appPkg.scripts.build === "npx --yes @canva/cli@2.13.0 apps build", "Design Editor build must pin the reviewed Canva CLI version");
-  assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
-  assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");
-  assert(/prettier@3\.6\.2/u.test(appPkg.scripts["format:check"] ?? ""), "Design Editor formatting must pin the reviewed Prettier version");
-
-  assert(/## Unreleased/u.test(changelog), "changelog must contain current unreleased state");
   assert(
-    changelog.includes(`Current root application candidate: \`${pkg.version}\``),
-    "changelog candidate version must match root package.json",
+    /fresh-clone-smoke:[\s\S]*npm --prefix canva-app run test:coverage/u.test(conventionalCi),
+    "fresh-clone-smoke must enforce Design Editor coverage",
   );
-  assert(/trusted server-side review-context boundary/iu.test(changelog), "changelog must record trusted backend boundary");
-  assert(/spatial scenario view/iu.test(changelog), "changelog must record spatial scenario work");
-
-  assert(/npm ci --ignore-scripts/u.test(ci), "engineering CI must use locked Node installs");
-  assert(/npm audit --audit-level=moderate/u.test(ci), "engineering CI must audit root dependencies");
-  assert(/npm run verify:release/u.test(ci), "engineering CI must enforce release-readiness verifier");
-  assert(/npm run verify:syntax/u.test(ci), "engineering CI must validate maintained JavaScript syntax");
-  assert(/docker compose -f docker-compose\.yml config --quiet/u.test(ci), "engineering CI must validate canonical docker-compose.yml");
-  assert(/docker compose up --build/u.test(ci), "engineering CI must execute the maintained Compose path");
-  assert(/\/health/u.test(ci), "engineering CI must probe the trusted backend health endpoint");
-  const backendSource = await text("backend/review-context-service.mjs");
-  const loggingSource = await text("backend/logging.mjs");
-  assert(/uptimeSeconds/u.test(backendSource) && /version/u.test(backendSource), "backend health payload must expose uptime and version");
-  assert(/createJsonLogger/u.test(backendSource) && /timestamp/u.test(loggingSource) && /level/u.test(loggingSource), "backend must use a structured JSON logger");
-  assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");
-  assert(/npm run build/u.test(ci), "Design Editor CI must build");
-  assert(/npm test/u.test(appCi), "HoloForge app workflow must run tests");
-  assert(/npm run test:coverage/u.test(appCi), "HoloForge app workflow must enforce Design Editor coverage");
-  assert(
-    /coverage xml -o coverage\.xml/u.test(ci) &&
-      /NODE_V8_COVERAGE:\s*coverage\/v8/u.test(ci) &&
-      /actions\/upload-artifact@v7/u.test(ci),
-    "engineering CI must retain Python and maintained-runtime coverage evidence",
-  );
-  assert(/npm test/u.test(conventionalCi), "conventional CI must expose root tests");
-  assert(/npm run verify:syntax/u.test(conventionalCi), "conventional CI must validate maintained JavaScript syntax");
-  assert(/python -m pytest/u.test(conventionalCi), "conventional CI must expose Python tests");
-  assert(/python -m ruff check/u.test(conventionalCi), "conventional CI must expose Python lint");
-  assert(/python -m mypy/u.test(conventionalCi), "conventional CI must expose Python typecheck");
-, "mu").test(conventionalCi), `conventional CI must retain scanner-visible job: ${jobName}`);
-  }
-  assert(/design-editor-coverage:[\\s\\S]*npm run test:coverage/u.test(conventionalCi), "design-editor-coverage job must enforce Vitest coverage");
-  assert(/fresh-clone-smoke:[\\s\\S]*npm --prefix canva-app run test:coverage/u.test(conventionalCi), "fresh-clone-smoke must enforce Design Editor coverage");
   assert(/pull_request:/u.test(codeql), "CodeQL must run on pull requests");
   assert(
     /javascript-typescript/u.test(codeql) && /python/u.test(codeql),
