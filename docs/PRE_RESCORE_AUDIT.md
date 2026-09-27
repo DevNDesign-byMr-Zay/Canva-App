@@ -94,7 +94,7 @@ new virtual environment. No live Canva account or upstream deployment was used.
 The first revised CI run found an npm 10 / npm 11 lockfile compatibility gap
 (missing nested `@noble/hashes` entries). The lock was repaired with npm
 10.9.8 and a clean npm 10 install passed; a passing local npm 11 install alone is
-not accepted as proof. Candidate CI must also validate the repaired lock. PR checks, not this prose, determine candidate readiness.
+not accepted as proof. The repaired quality-gate candidate passed conventional CI, full engineering CI, Node 24 editor verification, and both CodeQL languages. PR checks, not this prose, determine candidate readiness.
 
 Baseline exact-main hosted evidence:
 
@@ -104,6 +104,21 @@ Baseline exact-main hosted evidence:
 - [v1.1.2 release execution](https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/36172831351): successful.
 
 Candidate changes are reviewed in [PR #189](https://github.com/DevNDesign-byMr-Zay/Canva-App/pull/189).
+Quality-gate candidate `6afded4d024932f8231a009cc6da731f210aaaed` passed:
+
+- [Conventional CI including zero-cache verification](https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/36288264507).
+- [Engineering CI and no-cache containers](https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/36288264515).
+- [Node 24 editor](https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/36288264601).
+- [Both-language CodeQL](https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/36288264475).
+
+The cold-clone PR job tested merge candidate
+`369802a8d8edccef046e837995df2753c6bb58f9`, using Node **22.23.2** and Python
+**3.12.14**. Root coverage on Node 22 was **96.07% lines / 86.82% branches /
+93.65% functions**; the local Node 24 figures above differ with runtime
+instrumentation. Both pass the unchanged floors. A controlled negative editor
+run with a 100% line requirement failed as expected, proving the configured
+coverage gate is executable rather than a documentation-only claim.
+
 A successful candidate run does not certify a later merge commit; exact-main
 checks must run after merge. Successful CodeQL analysis is not a claim that no
 security alert or vulnerability can exist.
