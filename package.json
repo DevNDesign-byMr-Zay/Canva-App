@@ -12,12 +12,12 @@
     "application-verification"
   ],
   "scripts": {
-    "test": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
-    "test:js": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
+    "test": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/review-context-service.test.mjs tests/js/*.test.mjs",
+    "test:js": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/review-context-service.test.mjs tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
     "check": "npm run verify:release && npm run verify:syntax && npm test",
     "backend:start": "node backend/review-context-service.mjs",
-    "app:verify": "npm --prefix canva-app ci --ignore-scripts && npm --prefix canva-app audit --omit=dev --audit-level=moderate && npm --prefix canva-app run typecheck && npm --prefix canva-app test && npm --prefix canva-app run build",
+    "app:verify": "npm --prefix canva-app ci --ignore-scripts && npm --prefix canva-app audit --omit=dev --audit-level=moderate && npm --prefix canva-app run typecheck && npm --prefix canva-app run test:coverage && npm --prefix canva-app run build",
     "verify:release": "node scripts/verify-release-readiness.mjs",
     "verify:syntax": "node scripts/verify-maintained-js-syntax.mjs"
   },

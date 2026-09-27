@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  root-node-tests:
-    name: Root Node tests
+  root-node-test:
+    name: root-node-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,8 +32,25 @@ jobs:
       - name: Run root JavaScript tests
         run: npm test
 
-  python-quality:
-    name: Python tests lint and typecheck
+  root-node-coverage:
+    name: root-node-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Reproducible root install
+        run: npm ci --ignore-scripts
+      - name: Run root Node tests with blocking coverage
+        run: npm test
+
+  python-test:
+    name: python-test
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -56,8 +73,28 @@ jobs:
       - name: Type-check Python
         run: python -m mypy archive_verifier scripts
 
-  design-editor:
-    name: Design Editor typecheck test and build
+  python-coverage:
+    name: python-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked Python toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Run Python coverage report
+        run: |
+          python -m coverage run -m pytest -q
+          python -m coverage report --fail-under=90
+
+  design-editor-typecheck:
+    name: design-editor-typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -78,7 +115,151 @@ jobs:
         run: npm run format:check
       - name: Type-check Design Editor app
         run: npm run typecheck
+
+  design-editor-test:
+    name: design-editor-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible Design Editor install
+        run: npm ci --ignore-scripts
       - name: Test Design Editor app
         run: npm test
+
+  design-editor-coverage:
+    name: design-editor-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible Design Editor install
+        run: npm ci --ignore-scripts
+      - name: Measure Design Editor Vitest coverage
+        run: npm run test:coverage
+
+  design-editor-build:
+    name: design-editor-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: canva-app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: canva-app/package-lock.json
+      - name: Reproducible Design Editor install
+        run: npm ci --ignore-scripts
       - name: Build Design Editor app
         run: npm run build
+
+  dependency-audit:
+    name: dependency-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Audit root dependencies
+        run: npm audit --audit-level=moderate
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install locked Python toolchain
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Audit Python dependencies
+        run: python -m pip check
+
+  fresh-clone-smoke:
+    name: fresh-clone-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Root Node locked install
+        run: npm ci --ignore-scripts
+      - name: Python locked install
+        run: python -m pip install --disable-pip-version-check -r requirements.lock.txt
+      - name: Python pip check
+        run: python -m pip check
+      - name: Design Editor npm ci
+        run: npm --prefix canva-app ci --ignore-scripts
+      - name: Root release readiness
+        run: npm run verify:release
+      - name: Maintained JS syntax check
+        run: npm run verify:syntax
+      - name: Root Node tests and coverage
+        run: npm test
+      - name: Python Ruff lint
+        run: python -m ruff check archive_verifier scripts tests
+      - name: Python mypy typecheck
+        run: python -m mypy archive_verifier scripts
+      - name: Python pytest and coverage
+        run: |
+          python -m coverage run -m pytest -q
+          python -m coverage report --fail-under=90
+      - name: Design Editor formatting check
+        run: npm --prefix canva-app run format:check
+      - name: Design Editor typecheck
+        run: npm --prefix canva-app run typecheck
+      - name: Design Editor test
+        run: npm --prefix canva-app test
+      - name: Design Editor coverage
+        run: npm --prefix canva-app run test:coverage
+      - name: Design Editor build
+        run: npm --prefix canva-app run build
+      - name: Authenticated archive verification
+        run: python -m archive_verifier
+
+  container-smoke:
+    name: container-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Validate Docker Compose configuration
+        run: docker compose -f docker-compose.yml config --quiet
+      - name: Build and verify container
+        run: docker compose up --build verifier
