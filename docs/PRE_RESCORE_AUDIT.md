@@ -156,5 +156,8 @@ requires an authorized browser fallback or repository Settings/About access.
 7. A devcontainer is optional and absent; historical HTML's missing assets/CDN
    dependencies remain explicitly separate from the maintained editor.
 
-**Rescore status for the currently audited main: NOT READY to claim recovery.**
-It remains unchanged while the fixes are in PRs. No new release was published.
+**Baseline rescore status: NOT READY to claim recovery.** The original SHA lacks
+the fixes above. After integration, evaluate the resulting main SHA against all
+required CI, zero-cache, container, and CodeQL checks. GitHub About metadata and
+external classification correction remain separate follow-ups. No new release
+was published by this audit.
