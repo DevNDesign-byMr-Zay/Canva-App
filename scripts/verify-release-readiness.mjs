@@ -100,6 +100,17 @@ async function main() {
   assert(typeof appPkg.scripts?.["test:coverage"] === "string", "Design Editor test:coverage script is required");
   assert(appPkg.vitest === undefined, "Design Editor coverage policy must live in canva-app/vitest.config.ts");
   assert(/provider:\s*"v8"/u.test(appVitestConfig), "Design Editor Vitest coverage provider must remain v8");
+  assert(/include:\s*\["src\/\*\*\/\*"\]/u.test(appVitestConfig), "Design Editor Vitest coverage must retain the full src base scope");
+  for (const excludedEntrypoint of [
+    "src/index.tsx",
+    "src/intents/design_editor/index.tsx",
+    "src/intents/design_editor/app.tsx",
+  ]) {
+    assert(
+      appVitestConfig.includes(`"${excludedEntrypoint}"`),
+      "Design Editor coverage scope must explicitly classify composition entrypoint: " + excludedEntrypoint,
+    );
+  }
   for (const metric of ["lines", "functions", "branches", "statements"]) {
     const match = appVitestConfig.match(
       new RegExp("\\b" + metric + ":\\s*(\\d+(?:\\.\\d+)?)", "u"),
