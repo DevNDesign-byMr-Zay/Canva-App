@@ -9,10 +9,11 @@ All notable maintained-surface changes to this repository are documented here.
 - A conventional root `ci.yml` exposing root Node tests, Python tests/lint/typecheck, and Design Editor typecheck/test/build.
 - Explicit Python verification-tool metadata plus exact lock-parity verification.
 - A coverage-scope boundary that keeps CI-only parity tooling outside application coverage while still running it as a mandatory gate.
+- A real Vitest V8 configuration with blocking 80% statements/branches/functions/lines thresholds and release-readiness protection for scanner-visible coverage/fresh-clone jobs.
 
 ### Changed
 
-- Current root application candidate: `1.1.2`. The `v1.1.1` release is the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
+- Current root application candidate: `1.1.3`. The `v1.1.2` release is the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
 
 ## 1.1.1 — 2026-09-24
 
