@@ -13,6 +13,7 @@ env:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: github-release
