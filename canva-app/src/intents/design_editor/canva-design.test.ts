@@ -341,6 +341,23 @@ describe("readCurrentDesignSnapshot and applyScenario execution", () => {
     expect(snapshot.elements[0].id).toBe("element-1");
   });
 
+  it("readCurrentDesignSnapshot rejects invalid page metadata before opening design", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata } = await import("@canva/design");
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    vi.mocked(getDesignMetadata).mockResolvedValue({ title: "My Design" } as any);
+
+    for (const metadata of [
+      { type: "fixed", id: "page-1", dimensions: { width: 800, height: 600 } },
+      { type: "absolute", id: "", dimensions: { width: 800, height: 600 } },
+      { type: "absolute", id: "page-1", dimensions: undefined },
+    ]) {
+      vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce(metadata as any);
+      await expect(readCurrentDesignSnapshot()).rejects.toThrow(
+        "HoloForge currently requires an absolute Canva page with stable dimensions.",
+      );
+    }
+  });
+
   it("readCurrentDesignSnapshot throws if page ID changes in session", async () => {
     const { getCurrentPageMetadata, getDesignMetadata, openDesign } = await import("@canva/design");
     vi.mocked(getDesignMetadata).mockResolvedValueOnce({ title: "My Design" } as any);
