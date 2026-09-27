@@ -5,7 +5,14 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*"],
-      exclude: ["src/**/*.test.{ts,tsx}"],
+      // Canva/React composition entrypoints are verified by typecheck + production build.
+      // The blocking unit-coverage gate targets the deterministic Design Editor core.
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/index.tsx",
+        "src/intents/design_editor/index.tsx",
+        "src/intents/design_editor/app.tsx",
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
