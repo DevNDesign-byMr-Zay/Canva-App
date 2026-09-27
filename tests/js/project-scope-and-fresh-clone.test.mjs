@@ -10,7 +10,7 @@ const CLASSIFICATION = new URL('../../.repo-class.json', import.meta.url);
 test('fresh-clone verification covers the complete Design Editor app contract', async () => {
   const makefile = await readFile(MAKEFILE, 'utf8');
 
-  assert.match(makefile, /^app-check: audit-app format-check-app typecheck-app test-app build-app$/mu);
+  assert.match(makefile, /^app-check: audit-app format-check-app typecheck-app test-app coverage-app build-app$/mu);
   assert.match(makefile, /^verify-fresh: setup check app-check$/mu);
   assert.match(makefile, /npm --prefix canva-app audit --omit=dev --audit-level=moderate/u);
   assert.match(makefile, /verify-dev-audit\.mjs/u);
