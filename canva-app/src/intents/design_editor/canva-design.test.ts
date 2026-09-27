@@ -300,3 +300,129 @@ describe("reviewed element binding", () => {
     expect(getReviewedElementBinding(scenario, duplicateSnapshot)).toBeNull();
   });
 });
+
+describe("readCurrentDesignSnapshot and applyScenario execution", () => {
+  it("readCurrentDesignSnapshot reads current design and snapshot successfully", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata, openDesign } = await import("@canva/design");
+    vi.mocked(getDesignMetadata).mockResolvedValueOnce({ title: "My Design" } as any);
+    vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce({
+      type: "absolute",
+      id: "page-1" as any,
+      dimensions: { width: 800, height: 600 },
+    });
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          id: "page-1" as any,
+          elements: {
+            toArray: () => [
+              {
+                type: "TEXT",
+                top: 10,
+                left: 20,
+                width: 100,
+                height: 50,
+                rotation: 0,
+                locked: false,
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    const snapshot = await readCurrentDesignSnapshot({ trustedDesignId: "design-1" });
+    expect(snapshot.designTitle).toBe("My Design");
+    expect(snapshot.designId).toBe("design-1");
+    expect(snapshot.pageId).toBe("page-1");
+    expect(snapshot.elements.length).toBe(1);
+    expect(snapshot.elements[0].id).toBe("element-1");
+  });
+
+  it("readCurrentDesignSnapshot throws if page ID changes in session", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata, openDesign } = await import("@canva/design");
+    vi.mocked(getDesignMetadata).mockResolvedValueOnce({ title: "My Design" } as any);
+    vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce({
+      type: "absolute",
+      id: "page-1" as any,
+      dimensions: { width: 800, height: 600 },
+    });
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          id: "page-2",
+        },
+      });
+    });
+
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    await expect(readCurrentDesignSnapshot({ trustedDesignId: "design-1" })).rejects.toThrow(
+      "The current Canva page changed while HoloForge was reading it.",
+    );
+  });
+
+  it("applyScenario mutates live design and produces verification receipt", async () => {
+    const { openDesign } = await import("@canva/design");
+    const { readCurrentDesignSnapshot, applyScenario, computeCanvaSnapshotFingerprint } =
+      await import("./canva-design");
+
+    const snapshot = {
+      designId: "design-1",
+      pageId: "page-1",
+      pageType: "absolute" as const,
+      pageDimensions: { width: 1000, height: 1000 },
+      elements: [
+        {
+          id: "element-1",
+          type: "RECTANGLE" as const,
+          top: 10,
+          left: 10,
+          width: 100,
+          height: 100,
+          rotation: 0,
+          locked: false,
+        },
+      ],
+      fingerprint: "",
+    };
+    snapshot.fingerprint = await computeCanvaSnapshotFingerprint(snapshot);
+
+    const scenario = buildScenario();
+    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+    scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+
+    const liveElement = {
+      type: "RECTANGLE",
+      top: 10,
+      left: 10,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    };
+
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          locked: false,
+          id: "page-1" as any,
+          dimensions: { width: 1000, height: 1000 },
+          elements: {
+            toArray: () => [liveElement],
+          },
+        },
+        sync: vi.fn(async () => {}),
+      });
+    });
+
+    const receipt = await applyScenario(scenario, snapshot);
+    expect(receipt.scenarioId).toBe("scenario-1");
+    expect(receipt.changedElementIds).toEqual(["element-1"]);
+    expect(liveElement.left).toBe(40);
+  });
+});

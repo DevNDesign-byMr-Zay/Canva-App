@@ -50,5 +50,7 @@ jobs:
         run: npm run typecheck
       - name: Test Canva app
         run: npm test
+      - name: Measure Canva app Vitest coverage
+        run: npm run test:coverage
       - name: Build Canva app
         run: npm run build

@@ -8,3 +8,8 @@ __pycache__/
 coverage.xml
 htmlcov/
 .env
+node_modules/
+.coverage
+coverage/
+__pycache__/
+canva-app/dist/

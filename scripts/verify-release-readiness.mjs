@@ -95,6 +95,8 @@ async function main() {
   for (const name of ["typecheck", "test", "build"]) {
     assert(typeof appPkg.scripts?.[name] === "string", `Design Editor script missing: ${name}`);
   }
+  assert(typeof appPkg.scripts?.["test:coverage"] === "string", "Design Editor test:coverage script is required");
+  assert(appPkg.vitest?.coverage?.thresholds?.lines >= 80, "Design Editor Vitest coverage thresholds required");
   assert(appPkg.scripts.build === "npx --yes @canva/cli@2.13.0 apps build", "Design Editor build must pin the reviewed Canva CLI version");
   assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
   assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");

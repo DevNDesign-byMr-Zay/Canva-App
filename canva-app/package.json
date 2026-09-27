@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format:check": "npx --yes prettier@3.6.2 --check \"src/**/*.{ts,tsx}\"",
-    "format": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\""
+    "format": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\"",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@canva/app-hooks": "^0.0.0-beta.4",
@@ -21,17 +22,35 @@
     "@canva/app-ui-kit": "^5.14.3",
     "@canva/design": "^2.13.0",
     "@canva/intents": "^2.7.0",
+    "@canva/user": "^2.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-intl": "^7.1.11",
-    "@canva/user": "^2.2.0"
+    "react-intl": "^7.1.11"
   },
   "devDependencies": {
     "@canva/app-scripts": "^1.1.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@types/webpack-env": "^1.18.8",
+    "@vitest/coverage-v8": "^5.0.2",
     "typescript": "^5.9.2",
     "vitest": "^5.0.0"
+  },
+  "vitest": {
+    "coverage": {
+      "provider": "v8",
+      "include": [
+        "src/**/*"
+      ],
+      "exclude": [
+        "src/**/*.test.{ts,tsx}"
+      ],
+      "thresholds": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 80,
+        "statements": 80
+      }
+    }
   }
 }
