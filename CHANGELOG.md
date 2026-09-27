@@ -2,7 +2,19 @@
 
 All notable maintained-surface changes to this repository are documented here.
 
-## Unreleased — pre-rescore detector hardening
+## Unreleased
+
+- Enforced all-source Design Editor coverage with UI, SDK transaction, and entrypoint tests.
+- Added root JavaScript linting, cache-isolated fresh-clone evidence, and exact-main CI/CodeQL release prerequisites.
+- Clarified maintained application entrypoints, separate package versions, and the role of provenance and containers.
+- No new release has been published for these changes. A future candidate is not published until the gated manual release workflow publishes it.
+
+## 1.1.2 — 2026-09-25
+
+Published at `38bcaed63b93950fea26ba4dc254c2ea09759f92` through the gated manual release workflow.
+[Hosted release](https://github.com/DevNDesign-byMr-Zay/Canva-App/releases/tag/v1.1.2).
+
+Current root package version: `1.1.2`. Changes after the release remain unreleased.
 
 ### Added
 
@@ -12,7 +24,7 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Changed
 
-- Current root application candidate: `1.1.2`. The `v1.1.1` release is the latest hosted milestone; this candidate is not published until the gated manual release workflow publishes it.
+- Conventional application CI and Python lock-parity checks are included in this release.
 
 ## 1.1.1 — 2026-09-24
 

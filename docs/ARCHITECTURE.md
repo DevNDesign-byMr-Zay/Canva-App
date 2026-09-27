@@ -2,14 +2,17 @@
 
 ## Purpose
 
-`Canva-App` now contains four deliberately separated layers:
+`Canva-App` contains six deliberately separated application and provenance surfaces:
 
 1. **Historical provenance** — the authenticated, deidentified 84-occurrence HTML lineage and recovery metadata.
 2. **Authenticated application surface** — the exact v115 final-fix application materialized at `app/authenticated-v115/index.html` from the committed archive.
 3. **Maintained verification/materialization application** — typed Python code that reconstructs the archive, validates provenance and safety rules, and proves that the committed v115 application bytes match the authenticated source.
 4. **Maintained holographic presentation boundary** — renderer-neutral scene adaptation and related presentation contracts that consume validated upstream scene/result evidence without becoming authoritative, mutating historical content, or physically actuating displays.
 
-No missing React/TypeScript tree is fabricated. The physical application surface is produced only from authenticated bytes already present in the repository's archive.
+5. **Canva Design Editor application** — `canva-app/src/index.tsx` registers the intent; `intents/design_editor/index.tsx` resolves trusted context and mounts `app.tsx`. Read, review, explicit Apply, SDK synchronization, and post-state proof are covered by domain and UI tests.
+6. **Trusted review-context backend** — `backend/review-context-service.mjs` verifies Canva user/design tokens and obtains the canonical upstream scenario. `/health` reports status, service version, and uptime; `/review-context` does not forward raw tokens upstream.
+
+The historical v115 HTML is produced only from authenticated archive bytes. The maintained TypeScript/React editor is separate, inspectable application source. Docker/Compose support verification and backend execution; they do not provision cloud resources.
 
 ## Trust chain
 

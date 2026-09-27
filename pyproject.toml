@@ -5,6 +5,10 @@ description = "Typed integrity and deidentification verifier for the curated Can
 requires-python = ">=3.12"
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/DevNDesign-byMr-Zay/Canva-App"
+Documentation = "https://github.com/DevNDesign-byMr-Zay/Canva-App/blob/main/README.md"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=9.1,<10",

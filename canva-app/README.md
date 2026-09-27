@@ -1,6 +1,6 @@
 # HoloForge Canva App
 
-This directory is the Canva Apps SDK surface for HoloForge. It is intentionally separate from the repository's Node-based archive verification tooling.
+This directory is the Canva Apps SDK surface for HoloForge. It is intentionally separate from the repository's Python archive verifier and Node runtime/backend tooling.
 
 ## Product contract
 
@@ -96,3 +96,17 @@ Only backend-verified scenario/design/page context is passed into `App`. If the 
 
 The Canva CLI resolves `BACKEND_HOST` from `CANVA_BACKEND_HOST`. Copy `canva-app/.env.template` to `canva-app/.env` for local preview and point that value at the trusted review-context backend. Keep the production host in deployment configuration rather than hard-coding a URL in the app source.
 
+
+## Coverage and offline verification
+
+`npm test` runs Vitest with V8 coverage and fails below 90% lines, 80% branches,
+90% functions, or 85% statements. The denominator includes all application TS/TSX
+source, including `app.tsx` and both entrypoints; only test files are excluded.
+Reports are written to `coverage/` as LCOV and JSON summary and retained in CI.
+UI tests replace Canva host components and SDK calls, while integration tests
+exercise the real snapshot/apply/receipt logic against an in-memory SDK session.
+They require no live Canva account. They do not prove live-host behavior.
+
+Set `CANVA_CLI_DISABLE_TELEMETRY=true` for direct CLI build commands. The Makefile
+and CI already set it. `make app-check` from the repository root also checks
+formatting, types, build output, and the complete dependency advisory policy.

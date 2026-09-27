@@ -1,10 +1,31 @@
-# Canva Depth Application & Runtime Verification Tooling
+# Canva-App: HoloForge Design Editor and Application Tooling
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, and a **physically materialized authenticated application build** recovered from that archive.
+Canva-App contains a **React/TypeScript Canva Design Editor application**, a **Node.js trusted review-context backend**, maintained **JavaScript runtime adapters**, and **Python authenticated archive verification tools**. The editor lets a user review an upstream scenario against the current design and explicitly apply it, then verifies the resulting state. It does not generate scenarios or apply changes autonomously.
 
-The maintained project is application/developer tooling. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
+## Application entrypoints and repository map
 
-The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
+| Surface | Source / entrypoint | Run or verify |
+| --- | --- | --- |
+| Design Editor UI | `canva-app/src/index.tsx` → `canva-app/src/intents/design_editor/index.tsx` → `app.tsx` | `npm --prefix canva-app start`; `make app-check` |
+| Trusted backend | `backend/review-context-service.mjs` | `npm run backend:start`; `GET /health`, `POST /review-context` |
+| Runtime and scene adapters | `runtime/`, `src/`; exports in root `package.json` | `npm test`; `npm run lint` |
+| Python verifier and reconstruction CLI | `archive_verifier/__main__.py`, `archive_verifier/materializer.py` | `python -m archive_verifier`; `python scripts/materialize_v115.py` |
+| Authenticated historical application | `app/authenticated-v115/index.html` | Deterministic reconstruction and SHA verification; preserved historical source |
+| Tests | `tests/js/`, `tests/`, `canva-app/src/**/*.test.{ts,tsx}` | `make verify-fresh` runs the maintained quality gates |
+| CI and containers | `.github/workflows/`, `Dockerfile`, `docker-compose.yml` | Verification environments and an optional backend service; not the product architecture |
+
+This is an **application/developer-tooling repository**. Terraform, Kubernetes, Helm, and cloud provisioning are outside its current scope. Docker and Compose make the verifier/backend reproducible; they are not infrastructure-as-code product modules. See [project scope](docs/PROJECT_SCOPE.md) and [architecture](docs/ARCHITECTURE.md).
+
+The maintained editor and backend are distinct from the recovered historical HTML lineage. Historical source is retained as authenticated provenance; it is not presented as newly authored application code or evidence of production adoption.
+
+## Quality gates at a glance
+
+- Root Node: `npm run check` runs release-contract checks, syntax checks, ESLint, and tests with **90% lines / 80% branches / 90% functions** required.
+- Design Editor: `npm --prefix canva-app test` measures **all TS/TSX application source, including UI and entrypoints**, with **90% lines / 80% branches / 90% functions / 85% statements** required. CI retains LCOV and JSON coverage. `make app-check` also audits, formats, type-checks, and builds.
+- Python: Ruff, strict mypy, locked dependency audit, **90% combined statement/branch coverage**, and authenticated reconstruction checks.
+- Conventional `.github/workflows/ci.yml` exposes each language/app job and a **zero-cache fresh-clone** job. Independent engineering CI verifies containers, provenance, and security; CodeQL analyzes JavaScript/TypeScript and Python.
+
+The root Node release is `1.1.2`, the independently versioned Python verifier is `1.0.0`, and the private Design Editor package is `0.1.0`. These are separate package surfaces; shared repository membership does not require matching versions. See [release readiness](docs/RELEASE_READINESS.md) for exact-commit publication gates.
 
 ## What is executable and inspectable today
 
@@ -97,7 +118,7 @@ Historical duplicates are preserved as provenance rather than silently discarded
 Requirements:
 
 - Python 3.12+
-- Node.js 22+
+- Node.js 22.13+ (CI exercises supported Node 22 and 24 lines)
 - Git
 - GNU Make is optional
 
@@ -105,9 +126,11 @@ Requirements:
 git clone https://github.com/DevNDesign-byMr-Zay/Canva-App.git
 cd Canva-App
 python -m venv .venv
-python -m pip install -r requirements.lock.txt
-npm ci
+source .venv/bin/activate
+make verify-fresh
 ```
+
+On PowerShell, activate with `.\.venv\Scripts\Activate.ps1` instead of `source`. GNU Make is required for the combined command; individual npm/Python commands remain available. Set `$env:CANVA_CLI_DISABLE_TELEMETRY="true"` before invoking the Canva CLI directly. Make and CI set this supported opt-out automatically.
 
 Or install all maintained toolchains with:
 
@@ -177,13 +200,13 @@ make typecheck
 make audit
 ```
 
-The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit. Run the complete local Python quality path with:
+The Python quality toolchain uses Ruff, strict mypy, `pip check`, and pip-audit. Run the combined Python and root Node quality path with:
 
 ```bash
 make check
 ```
 
-The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The Design Editor workspace can also be verified from the repository root with `npm run app:verify`, which performs its locked install, production dependency audit, TypeScript/TSX formatting check, typecheck, tests, and production build. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
+The root Node package pins `@canva/app-middleware` for server-side Canva user/design token verification; `npm audit` keeps that runtime dependency and its transitive graph inside the blocking audit boundary. The Design Editor workspace can also be verified from the repository root with `npm run app:verify`, which performs its locked install, production dependency audit, typecheck, coverage-gated tests, and production build. Use `make app-check` for formatting and the full development-advisory policy as well. The separate `canva-app/` package enforces a blocking production-dependency audit and machine-verifies the currently reviewed upstream development-tool advisory chain; any changed or newly fixable advisory fails that policy gate.
 
 ## CI/CD
 
