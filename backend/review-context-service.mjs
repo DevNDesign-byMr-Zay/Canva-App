@@ -1,14 +1,15 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 
-import * as canvaDesign from '@canva/app-middleware/design';
-import * as canvaUser from '@canva/app-middleware/user';
+import rootPackage from '../package.json' with { type: 'json' };
+
+import { design as canvaDesign, user as canvaUser } from '@canva/app-middleware/express';
 
 import { createErrorReporter } from './error-reporting.mjs';
 import { createJsonLogger } from './logging.mjs';
 
-const DEFAULT_SERVICE_VERSION = '1.1.3';
 const MAX_BODY_BYTES = 64 * 1024;
+const DEFAULT_SERVICE_VERSION = rootPackage.version;
 
 function requireText(value, name) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -18,115 +19,110 @@ function requireText(value, name) {
 }
 
 function requireHttpUrl(value, name) {
-  const text = requireText(value, name);
-  let parsed;
-  try {
-    parsed = new URL(text);
-  } catch {
-    throw new TypeError(`${name} must be a valid HTTP or HTTPS URL`);
+  const url = new URL(requireText(value, name));
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new TypeError(`${name} must use http or https`);
   }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new TypeError(`${name} must be a valid HTTP or HTTPS URL`);
-  }
-  return parsed.href;
-}
-
-function middlewareVerifier(handler, name) {
-  if (typeof handler !== 'function') throw new TypeError(`${name} middleware handler must be a function`);
-  return {
-    async verify(token, { request = null, body = null } = {}) {
-      if (typeof token !== 'string' || !token.trim()) throw new TypeError('token must be a non-empty string');
-      let status = 200;
-      let responseHeader = null;
-      let responseBody = null;
-      let nextCalled = false;
-
-      const dummyReq = Object.assign(Object.create(request ?? {}), {
-        headers: {
-          ...(request?.headers ?? {}),
-          authorization: `Bearer ${token.trim()}`,
-        },
-        body: body ?? {},
-      });
-
-      const dummyRes = {
-        status(code) {
-          status = code;
-          return this;
-        },
-        setHeader(name, value) {
-          if (String(name).toLowerCase() === 'www-authenticate') responseHeader = value;
-          return this;
-        },
-        json(data) {
-          responseBody = data;
-          return this;
-        },
-      };
-
-      await new Promise((resolve, reject) => {
-        try {
-          handler(dummyReq, dummyRes, (err) => {
-            if (err) reject(err);
-            else {
-              nextCalled = true;
-              resolve();
-            }
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
-
-      if (!nextCalled || status >= 400) {
-        const message =
-          responseHeader ||
-          (typeof responseBody === 'object' && responseBody?.error) ||
-          `verification failed with status ${status}`;
-        throw new Error(String(message));
-      }
-
-      const payload = dummyReq.canvaUser ?? dummyReq.canvaDesign;
-      if (!payload || typeof payload !== 'object') {
-        throw new TypeError('verification completed without setting payload on request');
-      }
-      return payload;
-    },
-  };
-}
-
-function designTokenFromBody(req) {
-  const body = req?.body;
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-  return typeof body.designToken === 'string' && body.designToken.trim() ? body.designToken.trim() : null;
-}
-
-function snapshotJson(value, label) {
-  try {
-    return JSON.parse(JSON.stringify(value));
-  } catch {
-    throw new TypeError(`${label} must be serializable to JSON`);
-  }
+  return url.toString();
 }
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const key of Object.keys(value)) {
-    deepFreeze(value[key]);
-  }
+  for (const child of Object.values(value)) deepFreeze(child);
   return Object.freeze(value);
 }
 
+function snapshotJson(value, path = 'payload', seen = new WeakSet()) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError(`${path} numbers must be finite`);
+    return value;
+  }
+  if (!value || typeof value !== 'object') {
+    throw new TypeError(`${path} must contain JSON-compatible data`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new TypeError(`${path} must not contain symbol properties`);
+  }
+  if (seen.has(value)) throw new TypeError(`${path} must not contain circular references`);
+  seen.add(value);
+
+  let copy;
+  if (Array.isArray(value)) {
+    copy = value.map((item, index) => snapshotJson(item, `${path}[${index}]`, seen));
+  } else {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError(`${path} must use plain objects`);
+    }
+    copy = {};
+    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+      if (!descriptor.enumerable || 'get' in descriptor || 'set' in descriptor) {
+        throw new TypeError(`${path}.${key} must be enumerable data`);
+      }
+      Object.defineProperty(copy, key, {
+        value: snapshotJson(descriptor.value, `${path}.${key}`, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+
+  seen.delete(value);
+  return copy;
+}
+
+function middlewareVerifier(middleware, kind) {
+  if (typeof middleware !== 'function') throw new TypeError('Canva token middleware is required');
+
+  return Object.freeze({
+    async verify(_token, { request, body } = {}) {
+      if (!request || typeof request !== 'object') {
+        throw new TypeError('request is required for Canva token verification');
+      }
+      request.body = body;
+
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const next = (error) => {
+          if (settled) return;
+          settled = true;
+          if (error) reject(error);
+          else resolve();
+        };
+
+        try {
+          Promise.resolve(middleware(request, {}, next)).catch(reject);
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      const payload = request.canva?.[kind];
+      if (!payload || typeof payload !== 'object') {
+        throw new TypeError(`verified Canva ${kind} identity is unavailable`);
+      }
+      return payload;
+    },
+  });
+}
+
+function designTokenFromBody(request) {
+  const token = request?.body?.designToken;
+  return typeof token === 'string' && token.trim() ? token.trim() : undefined;
+}
+
 function responseHeaders(allowedOrigin, requestOrigin) {
-  return {
+  const headers = {
+    'cache-control': 'no-store',
     'content-type': 'application/json; charset=utf-8',
-    'access-control-allow-origin': allowedOrigin,
-    'access-control-allow-methods': 'POST, OPTIONS',
-    'access-control-allow-headers': 'Authorization, Content-Type',
-    'access-control-max-age': '600',
-    vary: 'Origin',
-    ...(requestOrigin && requestOrigin !== allowedOrigin ? {} : {}),
   };
+  if (requestOrigin && requestOrigin === allowedOrigin) {
+    headers['access-control-allow-origin'] = allowedOrigin;
+    headers.vary = 'Origin';
+  }
+  return headers;
 }
 
 function sendJson(res, statusCode, body, allowedOrigin, requestOrigin) {
@@ -276,16 +272,16 @@ export function createReviewContextServer({
       canvaDesign.verifyToken({ appId: resolvedAppId, tokenExtractor: designTokenFromBody }),
       'design',
     );
-
-  if (typeof user?.verify !== 'function' || typeof design?.verify !== 'function') {
-    throw new TypeError('Canva user and design token verifiers are required');
-  }
   const scenarioLoader =
     loadScenario ??
     createRemoteScenarioSource({
       endpoint: requireHttpUrl(sourceUrl, 'sourceUrl'),
       fetchImpl,
     });
+
+  if (typeof user?.verify !== 'function' || typeof design?.verify !== 'function') {
+    throw new TypeError('Canva user and design token verifiers are required');
+  }
   if (typeof scenarioLoader !== 'function') throw new TypeError('loadScenario must be a function');
 
   return http.createServer(async (req, res) => {

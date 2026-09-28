@@ -27,7 +27,9 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
-      - name: Check maintained JavaScript syntax and lint
+      - name: Check maintained JavaScript syntax
+        run: npm run verify:syntax
+      - name: Lint root JS
         run: npm run lint
       - name: Run root JavaScript tests
         run: npm test
@@ -228,7 +230,7 @@ jobs:
       - name: Root release readiness
         run: npm run verify:release
       - name: Maintained JS syntax check
-        run: npm run lint
+        run: npm run verify:syntax
       - name: Root Node tests and coverage
         run: npm test
       - name: Python Ruff lint
