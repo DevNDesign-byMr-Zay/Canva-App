@@ -140,6 +140,21 @@ function extractBearerToken(headerValue) {
   return match ? match[1].trim() || null : null;
 }
 
+export function validateReviewContextRequest(parsed) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new TypeError('request body must be an object');
+  }
+  const allowedKeys = new Set(['designToken']);
+  const extraKeys = Object.keys(parsed).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    throw new TypeError('request body contains unsupported fields');
+  }
+  if (typeof parsed.designToken !== 'string' || !parsed.designToken.trim()) {
+    throw new TypeError('request body must include a valid designToken string');
+  }
+  return { designToken: parsed.designToken.trim() };
+}
+
 async function readJsonBody(req) {
   let size = 0;
   const chunks = [];
@@ -155,13 +170,7 @@ async function readJsonBody(req) {
   } catch {
     throw new TypeError('request body must be valid JSON');
   }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new TypeError('request body must be an object');
-  }
-  if (Object.keys(parsed).some((key) => key !== 'designToken')) {
-    throw new TypeError('request body contains unsupported fields');
-  }
-  return parsed;
+  return validateReviewContextRequest(parsed);
 }
 
 function validateScenarioEnvelope(value, designId) {
