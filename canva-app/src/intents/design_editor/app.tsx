@@ -4,6 +4,8 @@ import { openDesign } from "@canva/design";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import "./app.css";
+
 import {
   applyScenario,
   canApplyScenario,
@@ -264,173 +266,420 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
-    <Rows spacing="2u">
-      <Title>
-        <FormattedMessage
-          defaultMessage="HoloForge"
-          description="Name of the HoloForge Canva app."
-        />
-      </Title>
-
-      <Text>
-        <FormattedMessage
-          defaultMessage="Compare an evidence-backed scenario with the current design, then choose whether to apply it."
-          description="Explains the purpose of HoloForge in the Canva editor."
-        />
-      </Text>
-
-      {!designEditingSupported && (
-        <Alert tone="warn">
-          <FormattedMessage
-            defaultMessage="Design editing isn't supported in this Canva context. Preview remains read-only."
-            description="Capability warning when Canva does not support design editing in the current context."
-          />
-        </Alert>
-      )}
-
-      {message && <Alert tone={messageTone}>{message}</Alert>}
-
-      <Rows spacing="1u">
-        <Button
-          variant="secondary"
-          onClick={refresh}
-          loading={status === "reading"}
-          disabled={status === "applying"}
-          stretch
-        >
-          {refreshLabel}
-        </Button>
-
-        <Text>
-          {snapshot ? (
-            <FormattedMessage
-              defaultMessage="Snapshot ready · {count, number} element(s) · fingerprint {fingerprint}"
-              description="Shows the current Canva snapshot state used for stale-scenario protection."
-              values={{
-                count: snapshot.elements.length,
-                fingerprint: `${snapshot.fingerprint.slice(0, 12)}…`,
-              }}
-            />
-          ) : (
-            <FormattedMessage
-              defaultMessage="No design snapshot yet. Read the current design before reviewing a candidate."
-              description="Empty state before the current Canva design has been read."
-            />
-          )}
-        </Text>
-      </Rows>
-
-      {reviewScenario ? (
-        <Rows spacing="1u">
-          <Text>
-            <FormattedMessage
-              defaultMessage="Selected scenario: {id}"
-              description="Identifies the scenario currently selected for review."
-              values={{ id: reviewScenario.scenarioId }}
-            />
-          </Text>
-
-          {snapshot && (
-            <Rows spacing="0.5u">
-              <Text>
-                <FormattedMessage
-                  defaultMessage="Review: {count, number} element change(s)"
-                  description="Summarizes the selected scenario changes before apply."
-                  values={{ count: review.length }}
-                />
-              </Text>
-              {review.map(({ elementId, before, after, changedFields }) => (
-                <Text key={elementId}>
-                  {elementId}: {before.left}×{before.top} {before.width}×{before.height} →{" "}
-                  {after.left}×{after.top} {after.width}×{after.height} · {changedFields.join(", ")}
-                </Text>
-              ))}
-              {review.length === 0 && (
-                <Text>
+    <div className="hf-shell">
+      <Rows spacing="2u">
+        <section className="hf-hero" aria-labelledby="holoforge-title">
+          <div className="hf-brand-row">
+            <div className="hf-brand-lockup">
+              <div className="hf-mark" aria-hidden="true">
+                HF
+              </div>
+              <div>
+                <div className="hf-kicker">
                   <FormattedMessage
-                    defaultMessage="No reviewable Canva element mapping was found for this candidate."
-                    description="Explains an empty candidate projection without inventing a mapping."
+                    defaultMessage="HoloForge · Design Editor"
+                    description="Compact product label for the HoloForge Canva Design Editor experience."
                   />
-                </Text>
-              )}
-            </Rows>
-          )}
+                </div>
+                <div id="holoforge-title" className="hf-title-wrap">
+                  <Title>
+                    <FormattedMessage
+                      defaultMessage="HoloForge"
+                      description="Name of the HoloForge Canva app."
+                    />
+                  </Title>
+                </div>
+              </div>
+            </div>
+            <span className="hf-trust-pill">
+              <FormattedMessage
+                defaultMessage="Evidence-backed"
+                description="Trust label explaining that HoloForge reviews use verified scenario evidence."
+              />
+            </span>
+          </div>
 
-          <Button
-            variant="primary"
-            onClick={apply}
-            loading={status === "applying"}
-            disabled={!readyToApply || status === "reading"}
-            stretch
-          >
-            {applyLabel}
-          </Button>
-          {!readyToApply && (
+          <div className="hf-hero-copy">
             <Text>
               <FormattedMessage
-                defaultMessage="Apply stays locked until the canonical scenario provenance and current Canva snapshot are verified."
-                description="Explains why HoloForge keeps the apply action disabled."
+                defaultMessage="Review verified design changes before anything touches the canvas."
+                description="Short production-facing description of the HoloForge review workflow."
               />
             </Text>
-          )}
-        </Rows>
-      ) : (
-        <Alert tone="info">
-          <FormattedMessage
-            defaultMessage="Waiting for an upstream scenario candidate. HoloForge will not invent a layout or silently change your design."
-            description="Explains that scenario generation happens upstream and HoloForge is not an autonomous solver."
-          />
-        </Alert>
-      )}
+          </div>
 
-      {receipt && attestation && (
-        <Rows spacing="0.5u">
-          <Title>
+          <div className="hf-stage-rail" aria-label="HoloForge review workflow">
+            <div
+              className={`hf-stage ${snapshot ? "is-complete" : status === "reading" ? "is-active" : ""}`}
+            >
+              <span className="hf-stage-number">01</span>
+              <span className="hf-stage-label">
+                <FormattedMessage
+                  defaultMessage="Read"
+                  description="Workflow stage for reading the current Canva design."
+                />
+              </span>
+            </div>
+            <div
+              className={`hf-stage ${
+                receipt && attestation
+                  ? "is-complete"
+                  : reviewScenario && snapshot
+                    ? "is-active"
+                    : ""
+              }`}
+            >
+              <span className="hf-stage-number">02</span>
+              <span className="hf-stage-label">
+                <FormattedMessage
+                  defaultMessage="Review"
+                  description="Workflow stage for reviewing a scenario against the current design."
+                />
+              </span>
+            </div>
+            <div
+              className={`hf-stage ${
+                receipt && attestation
+                  ? "is-complete"
+                  : readyToApply || status === "applying"
+                    ? "is-active"
+                    : ""
+              }`}
+            >
+              <span className="hf-stage-number">03</span>
+              <span className="hf-stage-label">
+                <FormattedMessage
+                  defaultMessage="Apply"
+                  description="Workflow stage for explicitly applying a verified scenario."
+                />
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {!designEditingSupported && (
+          <Alert tone="warn">
             <FormattedMessage
-              defaultMessage="Verified result"
-              description="Heading for the post-apply verification evidence shown after a successful apply."
+              defaultMessage="Design editing isn't supported in this Canva context. Preview remains read-only."
+              description="Capability warning when Canva does not support design editing in the current context."
             />
-          </Title>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Scenario {id} · {count, number} changed element(s) · post-apply state matched the reviewed expectation."
-              description="Summarizes the immutable verification receipt after apply."
-              values={{ id: receipt.scenarioId, count: receipt.changedElementIds.length }}
-            />
-          </Text>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Reviewed target · design {designId} · page {pageId} · source {sourceFingerprint}"
-              description="Identifies the exact Canva design, page, and reviewed source fingerprint bound into the apply attestation."
-              values={{
-                designId: attestation.designId,
-                pageId: attestation.pageId,
-                sourceFingerprint: `${attestation.sourceFingerprint.slice(0, 12)}…`,
-              }}
-            />
-          </Text>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Expected {expected} · Result {result}"
-              description="Shows the expected and resulting state fingerprints from the verification receipt."
-              values={{
-                expected: `${receipt.expectedFingerprint.slice(0, 12)}…`,
-                result: `${receipt.resultingFingerprint.slice(0, 12)}…`,
-              }}
-            />
-          </Text>
-          <Text>
-            <FormattedMessage
-              defaultMessage="Receipt {receiptFingerprint} · Attestation {attestationFingerprint} · explicit apply · no auto-apply"
-              description="Shows the receipt and reviewed apply attestation fingerprints and their safety posture."
-              values={{
-                receiptFingerprint: `${receipt.receiptFingerprint.slice(0, 12)}…`,
-                attestationFingerprint: `${attestation.attestationFingerprint.slice(0, 12)}…`,
-              }}
-            />
-          </Text>
-        </Rows>
-      )}
-    </Rows>
+          </Alert>
+        )}
+
+        {message && <Alert tone={messageTone}>{message}</Alert>}
+
+        <section className="hf-card" aria-labelledby="snapshot-title">
+          <div className="hf-card-header">
+            <div>
+              <div className="hf-card-eyebrow">
+                <FormattedMessage
+                  defaultMessage="01 · Current design"
+                  description="Label for the first HoloForge workflow card."
+                />
+              </div>
+              <div id="snapshot-title">
+                <Title>
+                  <FormattedMessage
+                    defaultMessage="Design snapshot"
+                    description="Heading for the current Canva design snapshot card."
+                  />
+                </Title>
+              </div>
+            </div>
+            <span className={`hf-state-pill ${snapshot ? "is-ready" : "is-locked"}`}>
+              {snapshot ? (
+                <FormattedMessage
+                  defaultMessage="Ready"
+                  description="State label shown when the current design snapshot is available."
+                />
+              ) : status === "reading" ? (
+                <FormattedMessage
+                  defaultMessage="Reading"
+                  description="State label shown while HoloForge reads the current Canva design."
+                />
+              ) : (
+                <FormattedMessage
+                  defaultMessage="Required"
+                  description="State label shown before the current design snapshot has been captured."
+                />
+              )}
+            </span>
+          </div>
+
+          <div className="hf-card-copy">
+            <Text>
+              <FormattedMessage
+                defaultMessage="Capture the live design state used for stale-review protection and verified Apply."
+                description="Explains why HoloForge reads the current design before review."
+              />
+            </Text>
+          </div>
+
+          <div className="hf-card-actions">
+            <Button
+              variant="secondary"
+              onClick={refresh}
+              loading={status === "reading"}
+              disabled={status === "applying"}
+              stretch
+            >
+              {refreshLabel}
+            </Button>
+          </div>
+
+          {snapshot ? (
+            <div className="hf-snapshot-meta">
+              <div className="hf-metric">
+                <span className="hf-metric-value">{snapshot.elements.length}</span>
+                <span className="hf-metric-label">
+                  <FormattedMessage
+                    defaultMessage="Elements"
+                    description="Label for the number of elements captured in the design snapshot."
+                  />
+                </span>
+              </div>
+              <div className="hf-fingerprint">
+                <span className="hf-data-label">
+                  <FormattedMessage
+                    defaultMessage="Snapshot fingerprint"
+                    description="Label for the immutable current-design snapshot fingerprint."
+                  />
+                </span>
+                <span className="hf-code">{`${snapshot.fingerprint.slice(0, 18)}…`}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="hf-empty">
+              <Text>
+                <FormattedMessage
+                  defaultMessage="No snapshot yet. Read the current design before reviewing a candidate."
+                  description="Compact empty state before the current Canva design has been read."
+                />
+              </Text>
+            </div>
+          )}
+        </section>
+
+        {reviewScenario ? (
+          <section className="hf-card" aria-labelledby="review-title">
+            <div className="hf-card-header">
+              <div>
+                <div className="hf-card-eyebrow">
+                  <FormattedMessage
+                    defaultMessage="02 · Scenario review"
+                    description="Label for the second HoloForge workflow card."
+                  />
+                </div>
+                <div id="review-title">
+                  <Title>
+                    <FormattedMessage
+                      defaultMessage="Review changes"
+                      description="Heading for HoloForge scenario change review."
+                    />
+                  </Title>
+                </div>
+              </div>
+              <span className={`hf-state-pill ${scenarioVerified ? "is-ready" : "is-locked"}`}>
+                {scenarioVerified ? (
+                  <FormattedMessage
+                    defaultMessage="Verified"
+                    description="State label shown when a HoloForge scenario is safe to apply."
+                  />
+                ) : (
+                  <FormattedMessage
+                    defaultMessage="Checking"
+                    description="State label shown while a HoloForge scenario is awaiting verification."
+                  />
+                )}
+              </span>
+            </div>
+
+            <div className="hf-card-copy">
+              <span className="hf-data-label">
+                <FormattedMessage
+                  defaultMessage="Scenario"
+                  description="Label for the selected HoloForge scenario identifier."
+                />
+              </span>
+              <span className="hf-code">{reviewScenario.scenarioId}</span>
+            </div>
+
+            {snapshot ? (
+              <>
+                <div className="hf-change-list">
+                  {review.map(({ elementId, before, after, changedFields }) => (
+                    <article className="hf-change-item" key={elementId}>
+                      <div className="hf-change-topline">
+                        <span className="hf-change-id">{elementId}</span>
+                        <span className="hf-field-pill">{changedFields.join(" · ")}</span>
+                      </div>
+                      <div className="hf-change-values">
+                        <span>
+                          {before.left}×{before.top} · {before.width}×{before.height}
+                        </span>
+                        <span className="hf-arrow">↓</span>
+                        <span>
+                          {after.left}×{after.top} · {after.width}×{after.height}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {review.length === 0 && (
+                  <div className="hf-empty">
+                    <Text>
+                      <FormattedMessage
+                        defaultMessage="No reviewable Canva element mapping was found for this candidate."
+                        description="Explains an empty candidate projection without inventing a mapping."
+                      />
+                    </Text>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="hf-empty">
+                <Text>
+                  <FormattedMessage
+                    defaultMessage="Capture the current design to unlock a verified element-by-element review."
+                    description="Explains that a snapshot is needed before HoloForge can show a scenario review."
+                  />
+                </Text>
+              </div>
+            )}
+
+            <div className="hf-apply-zone">
+              <Button
+                variant="primary"
+                onClick={apply}
+                loading={status === "applying"}
+                disabled={!readyToApply || status === "reading"}
+                stretch
+              >
+                {applyLabel}
+              </Button>
+              {!readyToApply && (
+                <div className="hf-lock-note">
+                  <Text>
+                    <FormattedMessage
+                      defaultMessage="Apply stays locked until scenario provenance and the current Canva snapshot are verified."
+                      description="Explains why HoloForge keeps the apply action disabled."
+                    />
+                  </Text>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <section className="hf-card" aria-labelledby="waiting-title">
+            <div className="hf-card-eyebrow">
+              <FormattedMessage
+                defaultMessage="02 · Scenario review"
+                description="Label for the second HoloForge workflow card while waiting for a scenario."
+              />
+            </div>
+            <div id="waiting-title">
+              <Title>
+                <FormattedMessage
+                  defaultMessage="Waiting for a candidate"
+                  description="Heading shown while HoloForge waits for an upstream scenario."
+                />
+              </Title>
+            </div>
+            <div className="hf-card-copy">
+              <Alert tone="info">
+                <FormattedMessage
+                  defaultMessage="HoloForge will not invent a layout or silently change your design. An evidence-backed candidate must arrive from the trusted upstream workflow."
+                  description="Explains that scenario generation happens upstream and HoloForge is not an autonomous solver."
+                />
+              </Alert>
+            </div>
+          </section>
+        )}
+
+        {receipt && attestation && (
+          <section className="hf-proof-card" aria-labelledby="proof-title">
+            <div className="hf-proof-topline">
+              <div>
+                <div className="hf-card-eyebrow">
+                  <FormattedMessage
+                    defaultMessage="03 · Verified result"
+                    description="Label for the third HoloForge workflow card."
+                  />
+                </div>
+                <div id="proof-title">
+                  <Title>
+                    <FormattedMessage
+                      defaultMessage="Apply proof sealed"
+                      description="Heading for the post-apply verification evidence."
+                    />
+                  </Title>
+                </div>
+              </div>
+              <span className="hf-proof-seal" aria-hidden="true">
+                ✓
+              </span>
+            </div>
+
+            <div className="hf-card-copy">
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Scenario {id} changed {count, number} element(s) and the Canva post-state matched the reviewed expectation."
+                  description="Summarizes the immutable verification receipt after apply."
+                  values={{ id: receipt.scenarioId, count: receipt.changedElementIds.length }}
+                />
+              </Text>
+            </div>
+
+            <div className="hf-proof-list">
+              <div className="hf-proof-row">
+                <span className="hf-proof-label">
+                  <FormattedMessage
+                    defaultMessage="Reviewed target"
+                    description="Label for the design and page bound into the reviewed apply proof."
+                  />
+                </span>
+                <span className="hf-proof-value">
+                  {attestation.designId} · {attestation.pageId}
+                </span>
+              </div>
+              <div className="hf-proof-row">
+                <span className="hf-proof-label">
+                  <FormattedMessage
+                    defaultMessage="Source fingerprint"
+                    description="Label for the source fingerprint in the apply attestation."
+                  />
+                </span>
+                <span className="hf-proof-value">{`${attestation.sourceFingerprint.slice(0, 18)}…`}</span>
+              </div>
+              <div className="hf-proof-row">
+                <span className="hf-proof-label">
+                  <FormattedMessage
+                    defaultMessage="Expected → result"
+                    description="Label for the expected and resulting design-state fingerprints."
+                  />
+                </span>
+                <span className="hf-proof-value">
+                  {`${receipt.expectedFingerprint.slice(0, 12)}…`} →{" "}
+                  {`${receipt.resultingFingerprint.slice(0, 12)}…`}
+                </span>
+              </div>
+              <div className="hf-proof-row">
+                <span className="hf-proof-label">
+                  <FormattedMessage
+                    defaultMessage="Sealed evidence"
+                    description="Label for the immutable receipt and attestation identifiers."
+                  />
+                </span>
+                <span className="hf-proof-value">
+                  {`${receipt.receiptFingerprint.slice(0, 12)}…`} ·{" "}
+                  {`${attestation.attestationFingerprint.slice(0, 12)}…`}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+      </Rows>
+    </div>
   );
 }
