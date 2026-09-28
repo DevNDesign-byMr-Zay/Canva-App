@@ -1,13 +1,19 @@
 {
   "schemaVersion": 1,
   "primaryClass": "application-tooling",
+  "projectType": "Canva Design Editor application/tooling",
   "secondaryClasses": [
     "frontend-application",
     "developer-tooling",
     "archive-verification"
   ],
   "excludedClasses": [
-    "infrastructure-as-code"
+    "infrastructure-as-code",
+    "terraform",
+    "kubernetes",
+    "helm",
+    "pulumi",
+    "ansible"
   ],
   "maintainedSurfaces": [
     "canva-app",

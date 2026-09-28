@@ -14,7 +14,8 @@
     "test": "vitest run",
     "format:check": "npx --yes prettier@3.6.2 --check \"src/**/*.{ts,tsx}\"",
     "format": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\"",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit && npm run format:check"
   },
   "dependencies": {
     "@canva/app-hooks": "^0.0.0-beta.4",
