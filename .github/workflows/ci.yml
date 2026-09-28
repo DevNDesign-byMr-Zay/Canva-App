@@ -27,8 +27,8 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Verify release-readiness contract
         run: npm run verify:release
-      - name: Check maintained JavaScript syntax
-        run: npm run verify:syntax
+      - name: Check maintained JavaScript syntax and lint
+        run: npm run lint
       - name: Run root JavaScript tests
         run: npm test
 
@@ -111,8 +111,8 @@ jobs:
           cache-dependency-path: canva-app/package-lock.json
       - name: Reproducible Design Editor install
         run: npm ci --ignore-scripts
-      - name: Check Design Editor formatting
-        run: npm run format:check
+      - name: Check Design Editor formatting and linting
+        run: npm run lint
       - name: Type-check Design Editor app
         run: npm run typecheck
 
@@ -228,7 +228,7 @@ jobs:
       - name: Root release readiness
         run: npm run verify:release
       - name: Maintained JS syntax check
-        run: npm run verify:syntax
+        run: npm run lint
       - name: Root Node tests and coverage
         run: npm test
       - name: Python Ruff lint
@@ -239,8 +239,8 @@ jobs:
         run: |
           python -m coverage run -m pytest -q
           python -m coverage report --fail-under=90
-      - name: Design Editor formatting check
-        run: npm --prefix canva-app run format:check
+      - name: Design Editor lint
+        run: npm --prefix canva-app run lint
       - name: Design Editor typecheck
         run: npm --prefix canva-app run typecheck
       - name: Design Editor test

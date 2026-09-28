@@ -1,14 +1,14 @@
-# Canva Depth Application & Runtime Verification Tooling
+# Canva Design Editor Application & Tooling
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, and a **physically materialized authenticated application build** recovered from that archive.
+This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, a **TypeScript Canva Design Editor application** (`canva-app/`), and a **physically materialized authenticated application build** recovered from that archive.
 
-The maintained project is application/developer tooling. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
+The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
 ## What is executable and inspectable today
 
-The maintained Python package is `archive_verifier/`, with:
+The maintained Python package is `archive_verifier/`, using pinned root lockfile `requirements.lock.txt`, with:
 
 - `config.py` — validated verification configuration and authenticated production expectations.
 - `models.py` — typed scan and verification result models.
@@ -23,14 +23,14 @@ The maintained JavaScript surface lives under `runtime/` and `tests/js/*.test.mj
 
 The holographic presentation contract is intentionally downstream of decision evidence: scene identity and provenance are required, supported display targets are explicit, payload fingerprints are integrity-checked, and the adapter safety envelope remains non-authoritative/non-actuating. Browser interaction, CSS3D rendering, display-profile execution, and related viewport behavior remain separate presentation concerns rather than being folded into authenticated replay or historical source.
 
-The root Node.js surface contains the maintained runtime adapters plus a small trusted review-context backend. The backend uses Canva's official server-side token verifier package; archive verification itself remains credential-free. Maintained Node tests enforce minimum coverage of **90% lines, 90% functions, and 80% branches**:
+The root Node.js surface contains the maintained runtime adapters plus a small trusted review-context backend (`backend/review-context-service.mjs`). The backend uses Canva's official server-side token verifier package; archive verification itself remains credential-free. Maintained Node tests enforce minimum coverage of **90% lines, 90% functions, and 80% branches**:
 
 ```bash
 npm ci
 npm test
 ```
 
-`package.json` defines the Node 22+ test surface and `package-lock.json` locks it reproducibly. CI installs from that lockfile, runs `npm audit`, and executes the maintained runtime and backend boundary suite through the standard `npm test` entrypoint.
+`package.json` defines the Node 22+ test surface and `package-lock.json` locks it reproducibly. CI installs from that lockfile, runs `npm audit`, `npm run lint`, and executes the maintained runtime and backend boundary suite through the standard `npm test` entrypoint.
 
 The authenticated application is physically present at:
 
@@ -46,7 +46,7 @@ d60ef499cf42c68e06c06cc8906831874aa351ac7d3f9c08cfa5aa4d0ca7e7d1
 
 The committed application file is approximately 571 KB. `app/authenticated-v115/PROVENANCE.md` records its source identity, and `python scripts/materialize_v115.py` deterministically reconstructs it from the committed authenticated archive.
 
-See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy. `docs/PROJECT_SCOPE.md` gives reviewers a concise project-type and maintained-surface map.
+See `docs/ARCHITECTURE.md` for the layer map, domain boundaries, failure model, quality boundaries, and historical-source policy. `docs/PROJECT_SCOPE.md` gives reviewers a concise project-type and maintained-surface map. For clean clone verification proof, see `docs/CLEAN_CLONE_VERIFICATION.md`.
 
 
 ## Trusted review-context backend
@@ -98,25 +98,14 @@ Requirements:
 
 - Python 3.12+
 - Node.js 22+
-- Git
-- GNU Make is optional
+
+Clean-clone setup and full suite verification command:
 
 ```bash
-git clone https://github.com/DevNDesign-byMr-Zay/Canva-App.git
-cd Canva-App
-python -m venv .venv
-python -m pip install -r requirements.lock.txt
-npm ci
+make verify-fresh
 ```
 
-Or install all maintained toolchains with:
-
-```bash
-make setup
-```
-
-To verify the complete maintained repository from one fresh-clone command—including the Python verifier, root Node runtime, Design Editor dependency policy, TypeScript checks, Vitest suite, and production app build—run:
-
+This single entrypoint installs Python packages strictly from pinned root `requirements.lock.txt`, installs Node packages from `package-lock.json` and `canva-app/package-lock.json`, and executes all Python and JavaScript linting, typechecking, tests, coverage gates, and production builds.
 ```bash
 make verify-fresh
 ```

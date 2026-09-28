@@ -373,3 +373,36 @@ test('reporter failures are isolated from the sanitized 502 response', async (t)
   );
   assert.equal(JSON.stringify(warnings).includes('telemetry unavailable'), false);
 });
+
+test('validateReviewContextRequest rejects non-object or invalid designToken inputs', () => {
+  const { validateReviewContextRequest } = require('../../backend/review-context-service.mjs');
+});
+
+test('validateReviewContextRequest rejects malformed HTTP payloads explicitly', async () => {
+  const { validateReviewContextRequest } = await import('../../backend/review-context-service.mjs');
+
+  assert.throws(
+    () => validateReviewContextRequest(null),
+    { name: 'TypeError', message: 'request body must be an object' }
+  );
+
+  assert.throws(
+    () => validateReviewContextRequest(['array']),
+    { name: 'TypeError', message: 'request body must be an object' }
+  );
+
+  assert.throws(
+    () => validateReviewContextRequest({ designToken: 'token-1', unexpected: true }),
+    { name: 'TypeError', message: 'request body contains unsupported fields' }
+  );
+
+  assert.throws(
+    () => validateReviewContextRequest({ designToken: '   ' }),
+    { name: 'TypeError', message: 'request body must include a valid designToken string' }
+  );
+
+  assert.deepEqual(
+    validateReviewContextRequest({ designToken: ' valid-token ' }),
+    { designToken: 'valid-token' }
+  );
+});

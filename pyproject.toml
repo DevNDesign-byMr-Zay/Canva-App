@@ -43,3 +43,5 @@ strict = true
 pretty = true
 show_error_codes = true
 files = ["archive_verifier", "scripts"]
+
+# Lockfile reference: requirements.lock.txt at repository root contains pinned dependencies.
