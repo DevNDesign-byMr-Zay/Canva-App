@@ -30,6 +30,14 @@ describe("Canva product switcher", () => {
     );
     expect(html).toContain("HoloForge");
     expect(html).toContain("DepthPop");
+
+    const depthHtml = renderToString(
+      <RawIntlProvider value={intl}>
+        <ProductSwitcher activeProduct="depthpop" onSelectProduct={vi.fn()} />
+      </RawIntlProvider>,
+    );
+    expect(depthHtml).toContain("HoloForge");
+    expect(depthHtml).toContain("DepthPop");
   });
 
   it("routes both product selections", () => {
