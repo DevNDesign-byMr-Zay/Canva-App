@@ -1,4 +1,3 @@
-import { Alert, Button, Text } from "@canva/app-ui-kit";
 import React, { useMemo, useState } from "react";
 
 import type { CanvaDesignSnapshot } from "../canva-design";
@@ -167,16 +166,16 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReadin
               : "Current design not read"}
           </strong>
         </div>
-        <Button variant="secondary" loading={isReading} onClick={onRefresh}>
-          {snapshot ? "Refresh" : "Read"}
-        </Button>
+        <button className="dp-source-btn" type="button" disabled={isReading} onClick={onRefresh}>
+          {isReading ? "Reading…" : snapshot ? "Refresh" : "Read"}
+        </button>
       </div>
 
       <div className="dp-actions">
-        <Alert tone="info">{execution.reason}</Alert>
-        <Button variant="primary" stretch disabled>
+        <p className="dp-provider-note">{execution.reason}</p>
+        <button className="dp-exec" type="button" disabled aria-disabled="true">
           EXECUTE DEPTHPOP
-        </Button>
+        </button>
         <p className="dp-boundary-note">
           Visual controls and parameter mapping match the maintained Drive v115 DepthPop panel.
           Execution remains fail-closed inside Canva until the authenticated provider seam exists.
