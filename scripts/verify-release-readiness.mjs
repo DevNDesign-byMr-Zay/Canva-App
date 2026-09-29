@@ -234,6 +234,8 @@ async function main() {
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/assemble-canva-ui-package\.mjs/u.test(release), "release workflow must assemble the clean Canva UI package");
   assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the clean Canva UI ZIP");
+  assert(/START-HERE\\\.html|START-HERE\.html/u.test(release), "release workflow must verify the local HTML preview entrypoint");
+  assert(/\^app\\\.js\$/u.test(release) || /app\\\.js/u.test(release), "release workflow must verify root-level app.js");
   assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
   assert(/assemble-canva-ui-package\.mjs/u.test(appCi), "HoloForge workflow must assemble the clean UI package");
   assert(/canva-app-ui-/u.test(appCi), "HoloForge workflow must retain the clean UI build artifact");
