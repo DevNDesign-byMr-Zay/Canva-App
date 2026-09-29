@@ -12,6 +12,10 @@ This is intentionally a separate Canva application from DepthPop. It contains on
 - Production bundle is generated as `dist/app.js`.
 - Upload only `dist/app.js` to the HoloForge app record in Canva Developer Portal.
 
+## Inspection formats
+
+The app project also carries a non-empty `ui.json` describing the visible product contract. Packaged builds include canonical `canva-app.json`, an identical `app.json` alias for inspection tooling, `ui.json`, and an app-specific root HTML entrypoint that opens the standalone preview.
+
 ## Verify
 
 ```bash
