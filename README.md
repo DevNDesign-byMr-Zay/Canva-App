@@ -6,6 +6,18 @@ The maintained project is a **Canva Design Editor application/tooling** reposito
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
+## HoloForge Canva Design Studio
+
+<p align="center">
+  <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
+</p>
+
+**HoloForge** is the maintained Canva holographic design studio in this repository. Its slim sidebar workflow is organized around **CREATE → SPATIAL → VERIFY**: create editable holographic app elements, inspect renderer-neutral 2.5D spatial relationships, then review and explicitly apply supported changes through the existing verified execution boundary.
+
+![HoloForge Canva Studio product interface preview](docs/images/holoforge-canva-studio-preview.svg)
+
+> **Product interface preview.** This is the approved visual direction for the maintained Canva sidebar, not a claim that every illustrated state is a pixel-for-pixel runtime capture. Runtime capabilities and limitations are documented in [docs/HOLOFORGE_CANVA.md](docs/HOLOFORGE_CANVA.md).
+
 ## What is executable and inspectable today
 
 The maintained Python package is `archive_verifier/`, using pinned root lockfile `requirements.lock.txt`, with:

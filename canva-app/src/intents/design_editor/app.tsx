@@ -339,9 +339,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
       <header className="hf-hero">
         <div className="hf-brand-row">
           <div className="hf-brand-lockup">
-            <div className="hf-mark" aria-hidden="true">
-              HF
-            </div>
+            <span className="hf-mark" aria-hidden="true" />
             <div>
               <div className="hf-kicker">HOLOGRAPHIC DESIGN STUDIO</div>
               <div className="hf-title-wrap">

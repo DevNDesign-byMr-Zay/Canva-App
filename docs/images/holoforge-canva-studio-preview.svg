@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" role="img" aria-labelledby="title desc">
+  <title id="title">HoloForge Canva Studio product interface preview</title>
+  <desc id="desc">A three-panel dark holographic interface preview showing Create, Spatial and Verify workflows inside a slim Canva-style app sidebar.</desc>
+  <defs>
+    <linearGradient id="topbar" x1="0" x2="1">
+      <stop stop-color="#10B7E8"/>
+      <stop offset=".5" stop-color="#4363E8"/>
+      <stop offset="1" stop-color="#7C28D9"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#13F2FF"/>
+      <stop offset=".48" stop-color="#6A62FF"/>
+      <stop offset="1" stop-color="#FA4FDC"/>
+    </linearGradient>
+    <linearGradient id="goldHolo" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFD670"/>
+      <stop offset=".35" stop-color="#6BE9FF"/>
+      <stop offset=".72" stop-color="#9B63FF"/>
+      <stop offset="1" stop-color="#FF64D9"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      .bg{fill:#07101d}.panel{fill:#0c1524;stroke:#243550;stroke-width:2}.card{fill:#111c2d;stroke:#243550;stroke-width:2}.txt{fill:#f5f8ff;font-family:Arial,sans-serif}.muted{fill:#8fa2bd;font-family:Arial,sans-serif}.tiny{font-size:13px}.small{font-size:16px}.mid{font-size:20px;font-weight:700}.big{font-size:30px;font-weight:800}.pill{fill:#17243a;stroke:#324560;stroke-width:1}.cyan{fill:#36eaff}.violet{fill:#b06bff}.green{fill:#6df0a0}.line{stroke:#3b5577;stroke-width:2}.accentLine{stroke:url(#accent);stroke-width:4}.btn{fill:#15253c;stroke:#3b5577;stroke-width:2}.btnHot{fill:url(#accent)}
+    </style>
+  </defs>
+
+  <rect width="1536" height="1024" class="bg"/>
+  <rect width="1536" height="48" fill="url(#topbar)"/>
+  <text x="24" y="32" class="txt mid">Canva editor context</text>
+  <text x="1300" y="32" class="txt small">HoloForge product preview</text>
+
+  <!-- CREATE COLUMN -->
+  <g transform="translate(18 74)">
+    <rect width="480" height="920" rx="16" class="panel"/>
+    <text x="18" y="36" class="cyan big">1</text>
+    <text x="62" y="34" class="txt big">CREATE</text>
+    <text x="62" y="56" class="muted small">Design holographic elements</text>
+
+    <rect x="14" y="78" width="452" height="70" rx="12" class="card"/>
+    <circle cx="48" cy="113" r="20" fill="none" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M48 94 60 114 48 125 36 114Z" fill="url(#accent)"/>
+    <text x="78" y="111" class="txt mid">HoloForge</text>
+    <text x="78" y="132" class="muted tiny">Holographic Design Studio</text>
+
+    <g transform="translate(18 165)">
+      <rect width="420" height="42" rx="9" class="card"/>
+      <rect x="2" y="2" width="136" height="38" rx="8" fill="#0d2637" stroke="#18dfff"/>
+      <text x="48" y="28" class="txt small">CREATE</text>
+      <text x="182" y="28" class="txt small">SPATIAL</text>
+      <text x="322" y="28" class="txt small">VERIFY</text>
+    </g>
+
+    <text x="20" y="236" class="txt mid">What do you want to forge?</text>
+    <g transform="translate(18 255)">
+      <g><rect width="202" height="76" rx="12" class="card"/><text x="65" y="32" class="violet mid">A</text><text x="66" y="58" class="txt tiny">Holo Text</text></g>
+      <g transform="translate(218 0)"><rect width="202" height="76" rx="12" class="card"/><path d="M101 16 116 38 101 58 86 38Z" fill="none" stroke="#58eaff" stroke-width="3"/><text x="73" y="68" class="txt tiny">Holo Logo</text></g>
+      <g transform="translate(0 88)"><rect width="202" height="76" rx="12" fill="#10253b" stroke="#17e7ff" stroke-width="2"/><rect x="82" y="18" width="38" height="28" rx="5" fill="url(#accent)"/><text x="62" y="66" class="txt tiny">Holo Graphic</text></g>
+      <g transform="translate(218 88)"><rect width="202" height="76" rx="12" class="card"/><circle cx="101" cy="35" r="18" fill="url(#accent)" opacity=".65"/><text x="84" y="66" class="txt tiny">Glass</text></g>
+      <g transform="translate(0 176)"><rect width="202" height="76" rx="12" class="card"/><circle cx="101" cy="34" r="18" fill="url(#goldHolo)"/><text x="81" y="66" class="txt tiny">Chrome</text></g>
+      <g transform="translate(218 176)"><rect width="202" height="76" rx="12" class="card"/><path d="M101 14 107 31 124 37 107 43 101 60 95 43 78 37 95 31Z" fill="url(#accent)"/><text x="79" y="66" class="txt tiny">Light FX</text></g>
+    </g>
+
+    <text x="20" y="538" class="txt mid">Material</text>
+    <g transform="translate(18 554)">
+      <g><rect width="202" height="64" rx="10" fill="#10253b" stroke="#18eaff" stroke-width="2"/><rect x="8" y="8" width="186" height="30" rx="7" fill="url(#accent)"/><text x="18" y="55" class="txt tiny">Iridescent Chrome</text></g>
+      <g transform="translate(218 0)"><rect width="202" height="64" rx="10" class="card"/><rect x="8" y="8" width="186" height="30" rx="7" fill="url(#goldHolo)" opacity=".75"/><text x="18" y="55" class="txt tiny">Aurora Glass</text></g>
+      <g transform="translate(0 76)"><rect width="202" height="64" rx="10" class="card"/><rect x="8" y="8" width="186" height="30" rx="7" fill="url(#accent)" opacity=".72"/><text x="18" y="55" class="txt tiny">Prism Foil</text></g>
+      <g transform="translate(218 76)"><rect width="202" height="64" rx="10" class="card"/><rect x="8" y="8" width="186" height="30" rx="7" fill="#8995ad"/><text x="18" y="55" class="txt tiny">Liquid Metal</text></g>
+    </g>
+
+    <g transform="translate(20 720)">
+      <text y="0" class="txt mid">Adjustments</text>
+      <text y="34" class="muted tiny">Color Shift</text><line x1="110" y1="29" x2="390" y2="29" class="line"/><circle cx="316" cy="29" r="6" fill="#b366ff"/>
+      <text y="68" class="muted tiny">Depth</text><line x1="110" y1="63" x2="390" y2="63" class="line"/><circle cx="230" cy="63" r="6" fill="#56eaff"/>
+      <text y="102" class="muted tiny">Glow</text><line x1="110" y1="97" x2="390" y2="97" class="line"/><circle cx="286" cy="97" r="6" fill="#d369ff"/>
+    </g>
+    <rect x="18" y="858" width="420" height="44" rx="10" class="btnHot"/>
+    <text x="156" y="886" class="txt mid">Forge into Canva</text>
+  </g>
+
+  <!-- SPATIAL COLUMN -->
+  <g transform="translate(528 74)">
+    <rect width="480" height="920" rx="16" class="panel"/>
+    <text x="18" y="36" class="cyan big">2</text>
+    <text x="62" y="34" class="txt big">SPATIAL</text>
+    <text x="62" y="56" class="muted small">Preview and adjust depth layers</text>
+    <rect x="14" y="78" width="452" height="70" rx="12" class="card"/>
+    <circle cx="48" cy="113" r="20" fill="none" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M48 94 60 114 48 125 36 114Z" fill="url(#accent)"/>
+    <text x="78" y="111" class="txt mid">HoloForge</text>
+
+    <text x="20" y="190" class="txt mid">2.5D Scene Preview</text>
+    <rect x="348" y="168" width="100" height="30" rx="15" class="pill"/><text x="372" y="188" class="txt tiny">HOLO</text>
+    <g transform="translate(55 232)">
+      <path d="M0 50 188 0 330 35 140 86Z" fill="#12213a" stroke="#4deaff"/>
+      <path d="M12 105 200 55 342 90 152 141Z" fill="#15213d" stroke="#876aff"/>
+      <path d="M24 160 212 110 354 145 164 196Z" fill="#17233e" stroke="#e55ed7"/>
+      <path d="M36 215 224 165 366 200 176 251Z" fill="#111a2e" stroke="#4deaff"/>
+      <text x="270" y="20" class="txt tiny">Logo · z 80</text>
+      <text x="282" y="78" class="txt tiny">Headline · z 45</text>
+      <text x="295" y="136" class="txt tiny">Portrait · z 25</text>
+      <text x="306" y="194" class="txt tiny">Background · z 0</text>
+    </g>
+    <text x="20" y="530" class="txt mid">Scene Layers</text>
+    <g transform="translate(20 548)">
+      <rect width="420" height="38" rx="8" class="card"/><text x="14" y="25" class="txt small">Y Logo</text><text x="360" y="25" class="muted tiny">z:80</text>
+      <rect y="48" width="420" height="38" rx="8" class="card"/><text x="14" y="73" class="txt small">Headline</text><text x="360" y="73" class="muted tiny">z:45</text>
+      <rect y="96" width="420" height="38" rx="8" fill="#10253b" stroke="#18eaff"/><text x="14" y="121" class="txt small">Portrait</text><text x="360" y="121" class="muted tiny">z:25</text>
+      <rect y="144" width="420" height="38" rx="8" class="card"/><text x="14" y="169" class="txt small">Background</text><text x="360" y="169" class="muted tiny">z:0</text>
+    </g>
+    <text x="20" y="770" class="txt mid">Selected Element: Portrait</text>
+    <text x="20" y="806" class="muted tiny">Depth (Preview)</text><line x1="150" y1="801" x2="390" y2="801" class="line"/><circle cx="255" cy="801" r="7" fill="#41eaff"/>
+    <text x="20" y="842" class="muted tiny">Rotation (Preview)</text><line x1="150" y1="837" x2="390" y2="837" class="line"/><circle cx="220" cy="837" r="7" fill="#7c69ff"/>
+    <rect x="20" y="868" width="420" height="44" rx="10" class="btn"/><text x="135" y="896" class="txt mid">Compare Source / Holo</text>
+  </g>
+
+  <!-- VERIFY COLUMN -->
+  <g transform="translate(1038 74)">
+    <rect width="480" height="920" rx="16" class="panel"/>
+    <text x="18" y="36" class="cyan big">3</text>
+    <text x="62" y="34" class="txt big">VERIFY</text>
+    <text x="62" y="56" class="muted small">Review, apply and confirm</text>
+    <rect x="14" y="78" width="452" height="70" rx="12" class="card"/>
+    <circle cx="48" cy="113" r="20" fill="none" stroke="url(#accent)" stroke-width="4"/>
+    <path d="M48 94 60 114 48 125 36 114Z" fill="url(#accent)"/>
+    <text x="78" y="111" class="txt mid">HoloForge</text>
+
+    <text x="20" y="188" class="txt mid">01 · Current Design</text>
+    <rect x="352" y="162" width="82" height="28" rx="14" fill="#133a2c" stroke="#37dc80"/><text x="368" y="181" class="green tiny">READY</text>
+    <rect x="20" y="210" width="420" height="118" rx="12" class="card"/>
+    <rect x="34" y="226" width="82" height="82" rx="10" fill="url(#goldHolo)"/>
+    <text x="136" y="246" class="txt small">Design: Get Fit With Yesenia</text>
+    <text x="136" y="270" class="muted tiny">Page: Hero</text>
+    <text x="136" y="294" class="muted tiny">Elements: 12 · fingerprint sealed</text>
+
+    <text x="20" y="370" class="txt mid">02 · Review Changes</text>
+    <rect x="334" y="345" width="100" height="28" rx="14" fill="#12304e" stroke="#20b8ff"/><text x="352" y="364" class="cyan tiny">VERIFIED</text>
+    <g transform="translate(20 390)">
+      <rect width="420" height="76" rx="10" class="card"/><text x="14" y="25" class="txt small">Holo Graphic (App Element)</text><text x="14" y="50" class="muted tiny">Editable HoloForge effect · app-owned</text>
+      <rect y="88" width="420" height="90" rx="10" class="card"/><text x="14" y="114" class="txt small">Headline Position</text><text x="14" y="142" class="muted tiny">x 120 → 96 · y 320 → 308</text>
+      <rect y="190" width="420" height="90" rx="10" class="card"/><text x="14" y="216" class="txt small">CTA Button Position</text><text x="14" y="244" class="muted tiny">x 120 → 120 · y 580 → 588</text>
+    </g>
+    <rect x="20" y="690" width="420" height="48" rx="11" class="btnHot"/><text x="128" y="720" class="txt mid">Apply selected changes</text>
+
+    <text x="20" y="784" class="txt mid">03 · Verified Result</text>
+    <rect x="352" y="758" width="82" height="28" rx="14" fill="#133a2c" stroke="#37dc80"/><text x="362" y="777" class="green tiny">SUCCESS</text>
+    <rect x="20" y="804" width="420" height="104" rx="12" class="card"/>
+    <text x="38" y="835" class="green small">✓ Canva post-state verified</text>
+    <text x="38" y="861" class="green small">✓ Apply receipt created</text>
+    <text x="38" y="887" class="green small">✓ Attestation sealed</text>
+  </g>
+</svg>

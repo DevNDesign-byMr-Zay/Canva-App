@@ -66,19 +66,13 @@
 .hf-brand-lockup { min-width: 0; gap: 10px; }
 
 .hf-mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  place-items: center;
-  border: 1px solid var(--ui-kit-color-ui-border-focused);
-  border-radius: 10px;
-  background: linear-gradient(135deg, #19d7ff, #7757ff 52%, #d05cff);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .12em;
-  box-shadow: 0 5px 16px rgb(0 0 0 / 18%);
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 12px;
+  background: url("../../assets/holoforge-logo.svg") center / contain no-repeat;
+  filter: drop-shadow(0 4px 12px rgb(39 215 255 / 20%));
 }
 
 .hf-kicker,
