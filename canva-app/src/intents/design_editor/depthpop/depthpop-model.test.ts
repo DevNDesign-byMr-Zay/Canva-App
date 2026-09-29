@@ -26,6 +26,12 @@ describe("DepthPop preview model", () => {
     });
   });
 
+  it("falls back to defaults for omitted controls and invalid quality", () => {
+    expect(normalizeDepthPopSettings({ quality: "unsupported" as never })).toEqual(
+      DEFAULT_DEPTHPOP_SETTINGS,
+    );
+  });
+
   it("builds deterministic preview geometry", () => {
     const first = buildDepthPopPreviewModel(DEFAULT_DEPTHPOP_SETTINGS);
     const second = buildDepthPopPreviewModel(DEFAULT_DEPTHPOP_SETTINGS);
