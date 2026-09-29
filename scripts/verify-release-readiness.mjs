@@ -235,9 +235,16 @@ async function main() {
   assert(/assemble-canva-ui-package\.mjs/u.test(release), "release workflow must assemble the clean Canva UI package");
   assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the clean Canva UI ZIP");
   assert(/START-HERE\\\.html|START-HERE\.html/u.test(release), "release workflow must verify the local HTML preview entrypoint");
+  assert(/HOLOFORGE\\\.html|HOLOFORGE\.html/u.test(release), "release workflow must verify the HoloForge HTML entrypoint");
+  assert(/DEPTHPOP\\\.html|DEPTHPOP\.html/u.test(release), "release workflow must verify the DepthPop HTML entrypoint");
+  assert(/app\\\.json|app\.json/u.test(release), "release workflow must verify the app.json manifest alias");
+  assert(/PACKAGE_MANIFEST\\\.json|PACKAGE_MANIFEST\.json/u.test(release), "release workflow must verify the packaged file inventory");
   assert(/\^app\\\.js\$/u.test(release) || /app\\\.js/u.test(release), "release workflow must verify root-level app.js");
+  assert(/type f -empty/u.test(release), "release workflow must fail on empty packaged files");
   assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
   assert(/assemble-canva-ui-package\.mjs/u.test(appCi), "HoloForge workflow must assemble the clean UI package");
+  assert(/app\.json/u.test(appCi) && /HOLOFORGE\.html/u.test(appCi) && /DEPTHPOP\.html/u.test(appCi), "HoloForge workflow must verify JSON and HTML UI entrypoints");
+  assert(/type f -empty/u.test(appCi), "HoloForge workflow must reject empty UI package files");
   assert(/canva-app-ui-/u.test(appCi), "HoloForge workflow must retain the clean UI build artifact");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(

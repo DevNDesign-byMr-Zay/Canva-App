@@ -58,17 +58,46 @@ jobs:
         run: npm run test:coverage
       - name: Build Canva app
         run: npm run build
-      - name: Assemble clean HoloForge + DepthPop UI package
+      - name: Assemble and audit complete HoloForge + DepthPop UI package
         shell: bash
         run: |
           set -euo pipefail
           node ../scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
           node --check ../.artifacts/canva-ui/app.js
-          test -f ../.artifacts/canva-ui/START-HERE.html
-          test -f ../.artifacts/canva-ui/preview/index.html
+
+          for required in \
+            app.js \
+            app.json \
+            canva-app.json \
+            messages_en.json \
+            START-HERE.html \
+            HOLOFORGE.html \
+            DEPTHPOP.html \
+            UPLOAD-TO-CANVA.txt \
+            PACKAGE_CONTENTS.txt \
+            PACKAGE_MANIFEST.json \
+            preview/index.html \
+            preview/styles.css \
+            preview/preview.js \
+            preview/assets/holoforge-logo.svg \
+            preview/assets/depthpop-logo.svg
+          do
+            test -s "../.artifacts/canva-ui/$required"
+          done
+
+          node -e "const fs=require('fs'); for (const p of ['app.json','canva-app.json','messages_en.json','PACKAGE_MANIFEST.json']) JSON.parse(fs.readFileSync('../.artifacts/canva-ui/'+p,'utf8'));"
+          cmp ../.artifacts/canva-ui/app.json ../.artifacts/canva-ui/canva-app.json
           grep -q "HoloForge" ../.artifacts/canva-ui/preview/index.html
           grep -q "DepthPop" ../.artifacts/canva-ui/preview/index.html
+
+          if find ../.artifacts/canva-ui -type f -empty -print -quit | grep -q .; then
+            echo "Empty file found in Canva UI package" >&2
+            find ../.artifacts/canva-ui -type f -empty -print >&2
+            exit 1
+          fi
+
           (cd ../.artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
+          unzip -t ../.artifacts/canva-app-ui.zip
       - name: Retain Canva UI package
         uses: actions/upload-artifact@v7
         with:
