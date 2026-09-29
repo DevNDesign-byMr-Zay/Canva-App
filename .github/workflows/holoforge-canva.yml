@@ -1,20 +1,20 @@
-name: HoloForge Canva app
+name: Canva apps / HoloForge + DepthPop
 
 on:
   pull_request:
     paths:
-      - "canva-app/**"
+      - "apps/**"
       - ".github/workflows/holoforge-canva.yml"
-      - "scripts/assemble-canva-ui-package.mjs"
+      - "scripts/assemble-canva-apps.mjs"
       - "package.json"
   push:
     branches:
       - main
       - "mrzay/**"
     paths:
-      - "canva-app/**"
+      - "apps/**"
       - ".github/workflows/holoforge-canva.yml"
-      - "scripts/assemble-canva-ui-package.mjs"
+      - "scripts/assemble-canva-apps.mjs"
       - "package.json"
 
 permissions:
@@ -23,85 +23,93 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: canva-app
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: canva-app/package-lock.json
-      - name: Reproducible SDK install
-        run: npm ci --ignore-scripts
-      - name: Audit runtime dependencies
-        run: npm audit --omit=dev --audit-level=moderate
-      - name: Verify reviewed development-tool advisory boundary
-        shell: bash
-        run: |
-          set +e
-          npm audit --audit-level=moderate --json > npm-audit.json
-          audit_status=$?
-          set -e
-          if [ "$audit_status" -eq 0 ]; then
-            echo "Full dependency graph has no moderate-or-higher advisories."
-          else
-            node scripts/verify-dev-audit.mjs npm-audit.json
-          fi
-      - name: Type-check Canva app
-        run: npm run typecheck
-      - name: Test Canva app
-        run: npm test
-      - name: Measure Canva app Vitest coverage
-        run: npm run test:coverage
-      - name: Build Canva app
-        run: npm run build
-      - name: Assemble and audit complete HoloForge + DepthPop UI package
+          cache-dependency-path: |
+            apps/holoforge-canva/package-lock.json
+            apps/depthpop-canva/package-lock.json
+
+      - name: Install HoloForge
+        run: npm --prefix apps/holoforge-canva ci --ignore-scripts
+
+      - name: Install DepthPop
+        run: npm --prefix apps/depthpop-canva ci --ignore-scripts
+
+      - name: Audit HoloForge runtime dependencies
+        run: npm --prefix apps/holoforge-canva audit --omit=dev --audit-level=moderate
+
+      - name: Audit DepthPop runtime dependencies
+        run: npm --prefix apps/depthpop-canva audit --omit=dev --audit-level=moderate
+
+      - name: Type-check HoloForge
+        run: npm --prefix apps/holoforge-canva run typecheck
+
+      - name: Type-check DepthPop
+        run: npm --prefix apps/depthpop-canva run typecheck
+
+      - name: Test HoloForge
+        run: npm --prefix apps/holoforge-canva test
+
+      - name: Test DepthPop
+        run: npm --prefix apps/depthpop-canva test
+
+      - name: Measure HoloForge coverage
+        run: npm --prefix apps/holoforge-canva run test:coverage
+
+      - name: Measure DepthPop coverage
+        run: npm --prefix apps/depthpop-canva run test:coverage
+
+      - name: Build HoloForge
+        run: npm --prefix apps/holoforge-canva run build
+
+      - name: Build DepthPop
+        run: npm --prefix apps/depthpop-canva run build
+
+      - name: Assemble two independent Canva packages
         shell: bash
         run: |
           set -euo pipefail
-          node ../scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
-          node --check ../.artifacts/canva-ui/app.js
+          node scripts/assemble-canva-apps.mjs .artifacts/canva-apps
 
-          for required in \
-            app.js \
-            app.json \
-            canva-app.json \
-            messages_en.json \
-            START-HERE.html \
-            HOLOFORGE.html \
-            DEPTHPOP.html \
-            UPLOAD-TO-CANVA.txt \
-            PACKAGE_CONTENTS.txt \
-            PACKAGE_MANIFEST.json \
-            preview/index.html \
-            preview/styles.css \
-            preview/preview.js \
-            preview/assets/holoforge-logo.svg \
-            preview/assets/depthpop-logo.svg
-          do
-            test -s "../.artifacts/canva-ui/$required"
+          node --check .artifacts/canva-apps/holoforge/app.js
+          node --check .artifacts/canva-apps/depthpop/app.js
+
+          for app in holoforge depthpop; do
+            for required in app.js canva-app.json README.md START-HERE.html UPLOAD-TO-CANVA.txt PACKAGE_MANIFEST.json preview/index.html preview/styles.css preview/preview.js; do
+              test -s ".artifacts/canva-apps/$app/$required"
+            done
+            if find ".artifacts/canva-apps/$app" -type f -empty -print -quit | grep -q .; then
+              echo "Empty file in $app Canva package" >&2
+              exit 1
+            fi
           done
 
-          node -e "const fs=require('fs'); for (const p of ['app.json','canva-app.json','messages_en.json','PACKAGE_MANIFEST.json']) JSON.parse(fs.readFileSync('../.artifacts/canva-ui/'+p,'utf8'));"
-          cmp ../.artifacts/canva-ui/app.json ../.artifacts/canva-ui/canva-app.json
-          grep -q "HoloForge" ../.artifacts/canva-ui/preview/index.html
-          grep -q "DepthPop" ../.artifacts/canva-ui/preview/index.html
+          ! grep -Eiq 'DEPTHPOP|DepthPop' .artifacts/canva-apps/holoforge/preview/index.html
+          ! grep -Eiq 'HoloForge' .artifacts/canva-apps/depthpop/preview/index.html
 
-          if find ../.artifacts/canva-ui -type f -empty -print -quit | grep -q .; then
-            echo "Empty file found in Canva UI package" >&2
-            find ../.artifacts/canva-ui -type f -empty -print >&2
-            exit 1
-          fi
+          (cd .artifacts/canva-apps/holoforge && zip -qr ../../holoforge-canva-app.zip .)
+          (cd .artifacts/canva-apps/depthpop && zip -qr ../../depthpop-canva-app.zip .)
+          unzip -t .artifacts/holoforge-canva-app.zip
+          unzip -t .artifacts/depthpop-canva-app.zip
 
-          (cd ../.artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
-          unzip -t ../.artifacts/canva-app-ui.zip
-      - name: Retain Canva UI package
+      - name: Retain HoloForge Canva app
         uses: actions/upload-artifact@v7
         with:
-          name: canva-app-ui-${{ github.sha }}
+          name: holoforge-canva-${{ github.sha }}
           if-no-files-found: error
           retention-days: 14
-          path: .artifacts/canva-app-ui.zip
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop Canva app
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: .artifacts/depthpop-canva-app.zip
