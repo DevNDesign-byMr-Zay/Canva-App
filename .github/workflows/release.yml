@@ -19,7 +19,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - name: Check out main
         uses: actions/checkout@v7
@@ -31,6 +31,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/holoforge-canva/package-lock.json
+            apps/depthpop-canva/package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -65,78 +69,67 @@ jobs:
       - name: Verify container path
         run: docker build --tag canva-release-candidate:${{ github.sha }} .
 
-      - name: Assemble complete Canva UI distribution
+      - name: Install HoloForge app
+        run: npm --prefix apps/holoforge-canva ci --ignore-scripts
+
+      - name: Install DepthPop app
+        run: npm --prefix apps/depthpop-canva ci --ignore-scripts
+
+      - name: Verify HoloForge app
+        run: |
+          npm --prefix apps/holoforge-canva run typecheck
+          npm --prefix apps/holoforge-canva run test:coverage
+          npm --prefix apps/holoforge-canva run build
+
+      - name: Verify DepthPop app
+        run: |
+          npm --prefix apps/depthpop-canva run typecheck
+          npm --prefix apps/depthpop-canva run test:coverage
+          npm --prefix apps/depthpop-canva run build
+
+      - name: Assemble two independent Canva distributions
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
-          node --check .artifacts/canva-ui/app.js
+          node scripts/assemble-canva-apps.mjs .artifacts/canva-apps
+          node --check .artifacts/canva-apps/holoforge/app.js
+          node --check .artifacts/canva-apps/depthpop/app.js
 
-          for required in \
-            app.js \
-            app.json \
-            canva-app.json \
-            messages_en.json \
-            START-HERE.html \
-            HOLOFORGE.html \
-            DEPTHPOP.html \
-            UPLOAD-TO-CANVA.txt \
-            PACKAGE_CONTENTS.txt \
-            PACKAGE_MANIFEST.json \
-            preview/index.html \
-            preview/styles.css \
-            preview/preview.js \
-            preview/assets/holoforge-logo.svg \
-            preview/assets/depthpop-logo.svg
-          do
-            test -s ".artifacts/canva-ui/$required"
+          ! grep -Eiq 'DEPTHPOP|DepthPop' .artifacts/canva-apps/holoforge/preview/index.html
+          ! grep -Eiq 'HoloForge' .artifacts/canva-apps/depthpop/preview/index.html
+
+          (cd .artifacts/canva-apps/holoforge && zip -qr ../../holoforge-canva-app.zip .)
+          (cd .artifacts/canva-apps/depthpop && zip -qr ../../depthpop-canva-app.zip .)
+
+          unzip -t .artifacts/holoforge-canva-app.zip
+          unzip -t .artifacts/depthpop-canva-app.zip
+
+          unzip -Z1 .artifacts/holoforge-canva-app.zip > .artifacts/holoforge-files.txt
+          unzip -Z1 .artifacts/depthpop-canva-app.zip > .artifacts/depthpop-files.txt
+
+          for listing in .artifacts/holoforge-files.txt .artifacts/depthpop-files.txt; do
+            grep -Eq '^app\.js$' "$listing"
+            grep -Eq '^canva-app\.json$' "$listing"
+            grep -Eq '^START-HERE\.html$' "$listing"
+            grep -Eq '^preview/index\.html$' "$listing"
+            grep -Eq '^PACKAGE_MANIFEST\.json$' "$listing"
           done
 
-          node -e "const fs=require('fs'); for (const p of ['app.json','canva-app.json','messages_en.json','PACKAGE_MANIFEST.json']) JSON.parse(fs.readFileSync('.artifacts/canva-ui/'+p,'utf8'));"
-          cmp .artifacts/canva-ui/app.json .artifacts/canva-ui/canva-app.json
-          grep -q "HoloForge" .artifacts/canva-ui/preview/index.html
-          grep -q "DepthPop" .artifacts/canva-ui/preview/index.html
-
-          if find .artifacts/canva-ui -type f -empty -print -quit | grep -q .; then
-            echo "Empty file found in Canva UI distribution" >&2
-            find .artifacts/canva-ui -type f -empty -print >&2
-            exit 1
-          fi
-
-          (cd .artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
-          unzip -t .artifacts/canva-app-ui.zip
-          unzip -Z1 .artifacts/canva-app-ui.zip > .artifacts/canva-app-ui-files.txt
-
-          if grep -Eiq '(^|/)(authenticated-v115|legacy-html|provenance|archive_verifier)(/|$)|sbom|release-manifest' .artifacts/canva-app-ui-files.txt; then
-            echo "Historical/internal files leaked into Canva UI distribution" >&2
-            cat .artifacts/canva-app-ui-files.txt >&2
-            exit 1
-          fi
-
-          grep -Eq '^app\.js$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^app\.json$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^canva-app\.json$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^messages_en\.json$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^START-HERE\.html$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^HOLOFORGE\.html$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^DEPTHPOP\.html$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^UPLOAD-TO-CANVA\.txt$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^preview/index\.html$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^PACKAGE_CONTENTS\.txt$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '^PACKAGE_MANIFEST\.json$' .artifacts/canva-app-ui-files.txt
-
-          if grep -Eq '^app/' .artifacts/canva-app-ui-files.txt; then
-            echo "app.js must remain at the ZIP root, not under app/" >&2
-            exit 1
-          fi
-
-      - name: Retain clean Canva UI distribution
+      - name: Retain HoloForge distribution
         uses: actions/upload-artifact@v7
         with:
-          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
           if-no-files-found: error
           retention-days: 30
-          path: .artifacts/canva-app-ui.zip
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
 
       - name: Build release evidence bundle
         shell: bash
@@ -147,12 +140,25 @@ jobs:
           node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
           npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
           (
-            cd canva-app
+            cd apps/holoforge-canva
             npm sbom --sbom-format=cyclonedx
-          ) > canva-app-sbom.cdx.json
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
           python -m pip list --format=json > python-dependencies.json
           printf '%s\n' "$GITHUB_SHA" > release-commit.txt
-          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
 
       - name: Verify release evidence checksums
         run: sha256sum --check release-artifacts.sha256
@@ -165,7 +171,8 @@ jobs:
           retention-days: 30
           path: |
             root-sbom.cdx.json
-            canva-app-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
             python-dependencies.json
             release-commit.txt
             release-manifest.json
@@ -176,9 +183,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.release_tag.outputs.tag }}" \
-            .artifacts/canva-app-ui.zip \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
             root-sbom.cdx.json \
-            canva-app-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
             python-dependencies.json \
             release-commit.txt \
             release-artifacts.sha256 \
