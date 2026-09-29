@@ -1,18 +1,26 @@
 # Canva Design Editor Application & Tooling
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, a **TypeScript Canva Design Editor application** (`canva-app/`), and a **physically materialized authenticated application build** recovered from that archive.
+This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, **two independent TypeScript Canva Design Editor applications**, and a **physically materialized authenticated application build** recovered from that archive.
 
-The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
+The two maintained Canva applications are intentionally separate:
+
+- **HoloForge** — `apps/holoforge-canva/`
+- **DepthPop** — `apps/depthpop-canva/`
+
+Each has its own `canva-app.json`, package metadata, Design Editor entrypoint, tests, production `dist/app.js`, and local HTML preview. They are not modes inside one shared Canva app.
+
+The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the two trusted Design Editor app paths. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
-## HoloForge + DepthPop Canva Design Studio
+## Two separate Canva apps
 
-The maintained Canva sidebar now exposes two explicit product surfaces: **HoloForge** for holographic creation/spatial review/verified Apply, and **DepthPop** for depth, focus, bokeh and edge-lift preview controls. The historical authenticated AETHER/ROARY application remains provenance-only and is excluded from the clean Canva distribution ZIP.
+HoloForge and DepthPop are built and distributed independently. The historical authenticated AETHER/ROARY application remains provenance-only and is excluded from both app packages.
 
+### HoloForge
 
 <p align="center">
-  <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
+  <img src="apps/holoforge-canva/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
 </p>
 
 **HoloForge** is the maintained Canva holographic design studio in this repository. Its slim sidebar workflow is organized around **CREATE → SPATIAL → VERIFY**: create editable holographic app elements, inspect renderer-neutral 2.5D spatial relationships, then review and explicitly apply supported changes through the existing verified execution boundary.
@@ -20,6 +28,13 @@ The maintained Canva sidebar now exposes two explicit product surfaces: **HoloFo
 ![HoloForge Canva Studio product interface preview](docs/images/holoforge-canva-studio-preview.svg)
 
 > **Product interface preview.** This is the approved visual direction for the maintained Canva sidebar, not a claim that every illustrated state is a pixel-for-pixel runtime capture. Runtime capabilities and limitations are documented in [docs/HOLOFORGE_CANVA.md](docs/HOLOFORGE_CANVA.md).
+
+### DepthPop
+
+DepthPop is a separate Canva Design Editor app under `apps/depthpop-canva/`. Its visible tool contract is traced to the maintained Drive source `roaryv246_v115_depthpop_modeldrawer_FINALFIX.html`: **DEPTHPOP**, **DEPTH POP**, the maintained description, Depth Strength / Depth Blur / Depth Fidelity controls, Fast / Balanced / Cinematic quality presets, and **EXECUTE DEPTHPOP**. It does not import the HoloForge UI or the historical AETHER shell.
+
+See [docs/CANVA_TWO_APP_ARCHITECTURE.md](docs/CANVA_TWO_APP_ARCHITECTURE.md) and [docs/DEPTHPOP_CANVA_PARITY.md](docs/DEPTHPOP_CANVA_PARITY.md).
+
 
 ## What is executable and inspectable today
 
