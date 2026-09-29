@@ -34,9 +34,7 @@ function clamp(value: number, min = 0, max = 100): number {
 export function normalizeDepthPopSettings(
   settings: Partial<DepthPopSettings> = {},
 ): DepthPopSettings {
-  const quality: DepthPopQuality = ["fast", "balanced", "max"].includes(
-    settings.quality ?? "",
-  )
+  const quality: DepthPopQuality = ["fast", "balanced", "max"].includes(settings.quality ?? "")
     ? (settings.quality as DepthPopQuality)
     : DEFAULT_DEPTHPOP_SETTINGS.quality;
 
@@ -49,9 +47,7 @@ export function normalizeDepthPopSettings(
   });
 }
 
-export function buildDepthPopPreviewModel(
-  settings: DepthPopSettings,
-): DepthPopPreviewModel {
+export function buildDepthPopPreviewModel(settings: DepthPopSettings): DepthPopPreviewModel {
   const normalized = normalizeDepthPopSettings(settings);
   const depthRatio = normalized.depth / 100;
   const bokehRatio = normalized.bokeh / 100;

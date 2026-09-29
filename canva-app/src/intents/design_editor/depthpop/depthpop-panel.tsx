@@ -46,11 +46,7 @@ function SliderControl({
   );
 }
 
-export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({
-  snapshot,
-  isReading,
-  onRefresh,
-}) => {
+export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReading, onRefresh }) => {
   const [settings, setSettings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
   const [previewOn, setPreviewOn] = useState(true);
   const preview = useMemo(() => buildDepthPopPreviewModel(settings), [settings]);
@@ -216,7 +212,8 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({
           APPLY DEPTHPOP
         </Button>
         <p className="dp-boundary-note">
-          The UI is production-built now. The apply action intentionally fails closed instead of routing to the historical AETHER/ROARY runtime.
+          The UI is production-built now. The apply action intentionally fails closed instead of
+          routing to the historical AETHER/ROARY runtime.
         </p>
       </div>
     </section>
