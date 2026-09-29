@@ -34,6 +34,29 @@ describe("DepthPop Drive-parity contract", () => {
     });
   });
 
+  it("normalizes omitted values and invalid quality back to the Drive defaults", () => {
+    expect(normalizeDepthPopSettings()).toEqual(DEFAULT_DEPTHPOP_SETTINGS);
+    expect(normalizeDepthPopSettings({ quality: "unsupported" as never })).toEqual(
+      DEFAULT_DEPTHPOP_SETTINGS,
+    );
+  });
+
+  it("clamps the opposite ends of every maintained Drive range", () => {
+    expect(
+      normalizeDepthPopSettings({
+        depthStrength: 0,
+        depthBlur: 500,
+        depthFidelity: 4,
+        quality: "balanced",
+      }),
+    ).toEqual({
+      depthStrength: 0.05,
+      depthBlur: 100,
+      depthFidelity: 1,
+      quality: "balanced",
+    });
+  });
+
   it("maps quality presets to the same hidden inference-step values", () => {
     expect(getDepthPopInferenceSteps("fast")).toBe(14);
     expect(getDepthPopInferenceSteps("balanced")).toBe(22);
