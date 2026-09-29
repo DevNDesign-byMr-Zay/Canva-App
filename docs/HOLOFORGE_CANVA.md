@@ -2,6 +2,14 @@
 
 HOLOFORGE is a Canva holographic design studio for creating holographic visual treatments, previewing designs spatially, and explicitly applying verified supported changes inside Canva's narrow sidebar interface.
 
+<p align="center">
+  <img src="../canva-app/src/assets/holoforge-logo.svg" width="180" alt="HoloForge holographic prism logo" />
+</p>
+
+![HoloForge Canva Studio product interface preview](images/holoforge-canva-studio-preview.svg)
+
+> **Product interface preview:** the image above documents the approved slim-sidebar visual direction. It is intentionally labeled as a preview rather than a runtime screenshot; the capability matrix below remains the source of truth for what HoloForge can execute today.
+
 ## User workflow
 
 ```text
