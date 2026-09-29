@@ -73,6 +73,16 @@ describe("HoloForge studio sidebar components", () => {
     { locale: "en", defaultLocale: "en", messages: {}, onError: () => {} },
     cache,
   );
+
+  intl.formatMessage = (descriptor, values) => {
+    let message = String(descriptor.defaultMessage ?? descriptor.id ?? "");
+    if (values) {
+      for (const [key, value] of Object.entries(values)) {
+        message = message.replace(`{${key}}`, String(value));
+      }
+    }
+    return message;
+  };
   const wrap = (children: React.ReactNode) => (
     <RawIntlProvider value={intl}>{children}</RawIntlProvider>
   );
