@@ -1,6 +1,21 @@
-# HoloForge Canva App
+# HoloForge + DepthPop Canva App
 
-This directory is the Canva Apps SDK surface for HoloForge. It is intentionally separate from the repository's Node-based archive verification tooling.
+This directory is the maintained Canva Apps SDK surface for **HoloForge** and **DepthPop**. It is intentionally separate from the repository's historical authenticated archive and Node-based archive verification tooling.
+
+The runtime opens a compact product switcher: HoloForge exposes CREATE → SPATIAL → VERIFY, while DepthPop exposes a dedicated depth/focus/bokeh interface. The old AETHER/ROARY HTML shell is not imported by this Canva UI.
+
+## Clean distribution package
+
+The repository intentionally keeps historical recovery material for provenance, but that material does **not** belong in the Canva app ZIP. After a production build, package the maintained UI only:
+
+```bash
+npm --prefix canva-app run build
+npm run package:canva-ui
+```
+
+The release workflow then zips `.artifacts/canva-ui/` as `canva-app-ui.zip`. The package contains the built HoloForge + DepthPop app, `canva-app.json`, this README, and a package note. It explicitly rejects `app/authenticated-v115/`, `legacy-html/`, `provenance/`, archive verifier code, SBOMs, and release metadata.
+
+DepthPop's production UI is present now, but its destructive/apply action remains fail-closed until an authenticated image-effect provider is configured. This prevents the legacy AETHER runtime from being used as a hidden execution path.
 
 ## Product contract
 
