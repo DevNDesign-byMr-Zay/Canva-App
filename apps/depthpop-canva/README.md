@@ -31,6 +31,10 @@ The raw Drive source's hidden Steps slider remains represented by the three Rend
 
 Execution remains fail-closed until the authenticated Canva-compatible image-effect provider is connected; the old ROARY/AETHER runtime is not imported.
 
+## Inspection formats
+
+The app project also carries a non-empty `ui.json` describing the visible product contract. Packaged builds include canonical `canva-app.json`, an identical `app.json` alias for inspection tooling, `ui.json`, and an app-specific root HTML entrypoint that opens the standalone preview.
+
 ## Verify
 
 ```bash
