@@ -42,16 +42,27 @@ export type AppProps = {
   trustedDesignId?: string;
   /** Optional current page ID returned by the same trusted review-target seam. */
   trustedPageId?: string;
+  /** Initial product when one compiled bundle is used for local review. */
+  initialProduct?: ProductSurface;
+  /** Locks a packaged bundle to one Canva product surface. */
+  lockedProduct?: ProductSurface | null;
 };
 
 type AppStatus = "idle" | "reading" | "applying" | "done" | "warning" | "error";
 
-export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProps) {
+export function App({
+  scenario = null,
+  trustedDesignId,
+  trustedPageId,
+  initialProduct = "holoforge",
+  lockedProduct = null,
+}: AppProps) {
   const intl = useIntl();
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
 
-  const [activeProduct, setActiveProduct] = useState<ProductSurface>("holoforge");
+  const [selectedProduct, setSelectedProduct] = useState<ProductSurface>(initialProduct);
+  const activeProduct = lockedProduct ?? selectedProduct;
   const [activeTab, setActiveTab] = useState<StudioTab>("create");
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
   const [status, setStatus] = useState<AppStatus>("idle");
@@ -339,7 +350,9 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
 
   return (
     <div className="canva-tool-shell">
-      <ProductSwitcher activeProduct={activeProduct} onSelectProduct={setActiveProduct} />
+      {!lockedProduct && (
+        <ProductSwitcher activeProduct={activeProduct} onSelectProduct={setSelectedProduct} />
+      )}
 
       {activeProduct === "depthpop" ? (
         <DepthPopPanel snapshot={snapshot} isReading={status === "reading"} onRefresh={refresh} />
