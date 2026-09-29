@@ -81,7 +81,7 @@ jobs:
           node --check .artifacts/canva-apps/depthpop/app.js
 
           for app in holoforge depthpop; do
-            for required in app.js canva-app.json README.md START-HERE.html UPLOAD-TO-CANVA.txt PACKAGE_MANIFEST.json preview/index.html preview/styles.css preview/preview.js; do
+            for required in app.js canva-app.json app.json ui.json README.md START-HERE.html UPLOAD-TO-CANVA.txt PACKAGE_MANIFEST.json preview/index.html preview/styles.css preview/preview.js; do
               test -s ".artifacts/canva-apps/$app/$required"
             done
             if find ".artifacts/canva-apps/$app" -type f -empty -print -quit | grep -q .; then
@@ -90,6 +90,11 @@ jobs:
             fi
           done
 
+          test -s .artifacts/canva-apps/holoforge/HOLOFORGE.html
+          test -s .artifacts/canva-apps/depthpop/DEPTHPOP.html
+          node -e "const fs=require('fs'); for (const app of ['holoforge','depthpop']) { for (const p of ['canva-app.json','app.json','ui.json','PACKAGE_MANIFEST.json']) JSON.parse(fs.readFileSync('.artifacts/canva-apps/'+app+'/'+p,'utf8')); }"
+          cmp .artifacts/canva-apps/holoforge/canva-app.json .artifacts/canva-apps/holoforge/app.json
+          cmp .artifacts/canva-apps/depthpop/canva-app.json .artifacts/canva-apps/depthpop/app.json
           ! grep -Eiq 'DEPTHPOP|DepthPop' .artifacts/canva-apps/holoforge/preview/index.html
           ! grep -Eiq 'HoloForge' .artifacts/canva-apps/depthpop/preview/index.html
 
