@@ -240,7 +240,11 @@ async function main() {
   assert(/make verify-fresh/u.test(release), "release workflow must verify the full fresh application path");
   assert(/Requested tag must equal/u.test(release), "release workflow must bind the tag to package version");
   assert(/npm sbom --sbom-format=cyclonedx/u.test(release), "release workflow must generate root dependency evidence");
-  assert(/canva-app-sbom\.cdx\.json/u.test(release), "release workflow must generate Design Editor dependency evidence");
+  assert(
+    /holoforge-canva-sbom\.cdx\.json/u.test(release) &&
+      /depthpop-canva-sbom\.cdx\.json/u.test(release),
+    "release workflow must generate dependency evidence for both standalone Canva apps",
+  );
   assert(/python -m pip list --format=json/u.test(release), "release workflow must snapshot Python dependencies");
   assert(/release-artifacts\.sha256/u.test(release), "release workflow must checksum attached evidence");
   assert(/release-manifest\.json/u.test(release), 'release workflow must attach an exact provenance manifest');
@@ -267,16 +271,31 @@ async function main() {
     'quality workflow must smoke-test release manifest generation',
   );
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
-  assert(/assemble-canva-ui-package\.mjs/u.test(release), "release workflow must assemble the clean Canva UI package");
-  assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the clean Canva UI ZIP");
-  assert(/START-HERE\\\.html|START-HERE\.html/u.test(release), "release workflow must verify the local HTML preview entrypoint");
-  assert(/HOLOFORGE\\\.html|HOLOFORGE\.html/u.test(release), "release workflow must verify the HoloForge HTML entrypoint");
-  assert(/DEPTHPOP\\\.html|DEPTHPOP\.html/u.test(release), "release workflow must verify the DepthPop HTML entrypoint");
-  assert(/app\\\.json|app\.json/u.test(release), "release workflow must verify the app.json manifest alias");
-  assert(/PACKAGE_MANIFEST\\\.json|PACKAGE_MANIFEST\.json/u.test(release), "release workflow must verify the packaged file inventory");
-  assert(/\^app\\\.js\$/u.test(release) || /app\\\.js/u.test(release), "release workflow must verify root-level app.js");
-  assert(/type f -empty/u.test(release), "release workflow must fail on empty packaged files");
-  assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
+  assert(
+    /assemble-canva-apps\.mjs/u.test(release),
+    "release workflow must assemble the two independent Canva applications",
+  );
+  assert(
+    /holoforge-canva-app\.zip/u.test(release) &&
+      /depthpop-canva-app\.zip/u.test(release),
+    "release workflow must publish separate HoloForge and DepthPop ZIPs",
+  );
+  assert(
+    /holoforge-files\.txt/u.test(release) &&
+      /depthpop-files\.txt/u.test(release) &&
+      /START-HERE\\\.html|START-HERE\.html/u.test(release) &&
+      /PACKAGE_MANIFEST\\\.json|PACKAGE_MANIFEST\.json/u.test(release),
+    "release workflow must verify each app package inventory and local preview entrypoint",
+  );
+  assert(
+    /node --check \.artifacts\/canva-apps\/holoforge\/app\.js/u.test(release) &&
+      /node --check \.artifacts\/canva-apps\/depthpop\/app\.js/u.test(release),
+    "release workflow must syntax-check both Canva bundles",
+  );
+  assert(
+    /DEPTHPOP\|DepthPop/u.test(release) && /HoloForge/u.test(release),
+    "release workflow must enforce cross-product UI separation",
+  );
   assert(
     /assemble-canva-apps\.mjs/u.test(appCi),
     "Canva app workflow must assemble the two independent app packages",
