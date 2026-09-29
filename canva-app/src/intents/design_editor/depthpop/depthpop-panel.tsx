@@ -1,11 +1,10 @@
-import { Alert, Button, Text, Title } from "@canva/app-ui-kit";
-import { FormattedMessage } from "react-intl";
+import { Alert, Button, Text } from "@canva/app-ui-kit";
 import React, { useMemo, useState } from "react";
 
 import type { CanvaDesignSnapshot } from "../canva-design";
 import {
   DEFAULT_DEPTHPOP_SETTINGS,
-  buildDepthPopPreviewModel,
+  buildDepthPopExecutionParameters,
   getDepthPopExecutionCapability,
   normalizeDepthPopSettings,
   type DepthPopQuality,
@@ -20,25 +19,35 @@ export type DepthPopPanelProps = {
 
 function SliderControl({
   label,
+  hint,
   value,
+  min,
+  max,
+  step,
+  displayValue,
   onChange,
 }: {
   label: string;
+  hint: string;
   value: number;
+  min: number;
+  max: number;
+  step: number;
+  displayValue: string;
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="dp-control-row">
+    <label className="dp-control-row" title={hint}>
       <span className="dp-control-label">
         <span>{label}</span>
-        <strong>{Math.round(value)}%</strong>
+        <strong>{displayValue}</strong>
       </span>
       <input
         className="dp-slider"
         type="range"
-        min={0}
-        max={100}
-        step={1}
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={(event) => onChange(Number(event.currentTarget.value))}
       />
@@ -46,13 +55,30 @@ function SliderControl({
   );
 }
 
+function DepthPopIcon() {
+  return (
+    <svg className="dp-drive-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 7h10v10H7V7Z" stroke="currentColor" strokeWidth="1.6" opacity=".35" />
+      <path d="M5 9h10v10H5V9Z" stroke="currentColor" strokeWidth="1.6" opacity=".6" />
+      <path d="M9 5h10v10H9V5Z" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z"
+        fill="currentColor"
+        opacity=".85"
+      />
+    </svg>
+  );
+}
+
 export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReading, onRefresh }) => {
   const [settings, setSettings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
-  const [previewOn, setPreviewOn] = useState(true);
-  const preview = useMemo(() => buildDepthPopPreviewModel(settings), [settings]);
   const execution = useMemo(() => getDepthPopExecutionCapability(), []);
+  const parameters = useMemo(() => buildDepthPopExecutionParameters(settings), [settings]);
 
-  const setNumber = (key: "depth" | "bokeh" | "focus" | "edgeLift", value: number) => {
+  const setSetting = (
+    key: "depthStrength" | "depthBlur" | "depthFidelity",
+    value: number,
+  ) => {
     setSettings((current) => normalizeDepthPopSettings({ ...current, [key]: value }));
   };
 
@@ -60,131 +86,64 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReadin
     setSettings((current) => normalizeDepthPopSettings({ ...current, quality }));
   };
 
-  const previewStyle = {
-    "--dp-bg-scale": String(previewOn ? preview.backgroundScale : 1),
-    "--dp-subject-scale": String(previewOn ? preview.subjectScale : 1),
-    "--dp-fg-scale": String(previewOn ? preview.foregroundScale : 1),
-    "--dp-bg-blur": `${previewOn ? preview.backgroundBlurPx : 0}px`,
-    "--dp-subject-lift": `${previewOn ? preview.subjectLiftPx : 0}px`,
-    "--dp-glow-opacity": String(previewOn ? preview.glowOpacity : 0),
-    "--dp-focus-x": `${preview.focusPositionPercent}%`,
-  } as React.CSSProperties;
-
   return (
     <section className="dp-shell" aria-labelledby="depthpop-title">
-      <header className="dp-hero">
-        <div className="dp-brand-row">
-          <div className="dp-brand-lockup">
-            <span className="dp-mark" aria-hidden="true" />
-            <div>
-              <div className="dp-kicker">SPATIAL IMAGE LAB</div>
-              <div id="depthpop-title">
-                <Title>DepthPop</Title>
-              </div>
-            </div>
-          </div>
-          <span className="dp-state-pill">CANVA</span>
-        </div>
-        <Text>
-          <FormattedMessage
-            defaultMessage="Shape perceived depth, focus and bokeh without exposing the legacy AETHER shell."
-            description="DepthPop product purpose statement."
-          />
-        </Text>
-      </header>
-
-      <div className="dp-preview-card">
-        <div className="dp-preview-topline">
-          <div>
-            <span className="dp-card-eyebrow">LIVE PREVIEW</span>
-            <strong>Depth field</strong>
-          </div>
-          <button
-            type="button"
-            className={`dp-preview-toggle ${previewOn ? "is-on" : ""}`}
-            aria-pressed={previewOn}
-            onClick={() => setPreviewOn((value) => !value)}
-          >
-            {previewOn ? "ON" : "OFF"}
-          </button>
-        </div>
-
-        <div className="dp-stage" style={previewStyle} aria-label="DepthPop preview visualization">
-          <div className="dp-stage-grid" />
-          <div className="dp-depth-plane dp-depth-plane-back" />
-          <div className="dp-depth-plane dp-depth-plane-subject">
-            <span className="dp-depth-orb" />
-            <span className="dp-depth-caption">SUBJECT</span>
-          </div>
-          <div className="dp-depth-plane dp-depth-plane-front" />
-          <span className="dp-focus-beam" aria-hidden="true" />
-        </div>
-
-        <div className="dp-metrics">
-          <span>DEPTH {Math.round(settings.depth)}</span>
-          <span>BOKEH {Math.round(settings.bokeh)}</span>
-          <span>FOCUS {Math.round(settings.focus)}</span>
-        </div>
+      <div className="dp-topline">
+        <span className="dp-heroicon">
+          <DepthPopIcon />
+        </span>
+        <span className="dp-canva-chip">CANVA</span>
       </div>
 
-      <div className="dp-card">
-        <div className="dp-card-header">
-          <div>
-            <span className="dp-card-eyebrow">01 · CANVAS</span>
-            <strong>Source context</strong>
-          </div>
-          <span className={`dp-state-pill ${snapshot ? "is-ready" : ""}`}>
-            {snapshot ? "READY" : "NOT READ"}
+      <div className="dp-title" id="depthpop-title">
+        DEPTHPOP
+      </div>
+      <div className="dp-chip">DEPTH POP</div>
+      <p className="dp-desc">
+        Turn depth into presence — subtle separation, cinematic focus, same scene.
+      </p>
+
+      <div className="dp-controls" aria-label="DepthPop controls">
+        <SliderControl
+          label="Depth Strength (subject pop)"
+          hint="How strong the depth separation feels."
+          value={settings.depthStrength}
+          min={0.05}
+          max={0.75}
+          step={0.01}
+          displayValue={settings.depthStrength.toFixed(2)}
+          onChange={(value) => setSetting("depthStrength", value)}
+        />
+
+        <SliderControl
+          label="Depth Blur (background softness)"
+          hint="Blurs the background based on depth. 0% subtle, 100% dramatic."
+          value={settings.depthBlur}
+          min={0}
+          max={100}
+          step={1}
+          displayValue={`${Math.round(settings.depthBlur)}%`}
+          onChange={(value) => setSetting("depthBlur", value)}
+        />
+
+        <SliderControl
+          label="Depth Fidelity (depth-map accuracy)"
+          hint="How tightly DepthPop follows the depth map. 0.25 is softer, 1.00 is locked in."
+          value={settings.depthFidelity}
+          min={0.05}
+          max={1}
+          step={0.01}
+          displayValue={settings.depthFidelity.toFixed(2)}
+          onChange={(value) => setSetting("depthFidelity", value)}
+        />
+
+        <div className="dp-control-row dp-quality-control">
+          <span className="dp-control-label">
+            <span>Render Quality</span>
+            <strong>steps {parameters.numInferenceSteps}</strong>
           </span>
-        </div>
-        <div className="dp-source-copy">
-          <Text>
-            {snapshot
-              ? `${snapshot.designTitle ?? "Current design"} · ${snapshot.elements.length} element${snapshot.elements.length === 1 ? "" : "s"}`
-              : "Read the current Canva page before preparing a DepthPop pass."}
-          </Text>
-        </div>
-        <Button variant="secondary" stretch loading={isReading} onClick={onRefresh}>
-          {snapshot ? "Refresh canvas" : "Read canvas"}
-        </Button>
-      </div>
-
-      <div className="dp-card">
-        <div className="dp-card-header">
-          <div>
-            <span className="dp-card-eyebrow">02 · DEPTH ENGINE</span>
-            <strong>Optical controls</strong>
-          </div>
-          <span className="dp-state-pill is-ready">PREVIEW</span>
-        </div>
-
-        <div className="dp-controls">
-          <SliderControl
-            label="Depth strength"
-            value={settings.depth}
-            onChange={(value) => setNumber("depth", value)}
-          />
-          <SliderControl
-            label="Bokeh"
-            value={settings.bokeh}
-            onChange={(value) => setNumber("bokeh", value)}
-          />
-          <SliderControl
-            label="Focus point"
-            value={settings.focus}
-            onChange={(value) => setNumber("focus", value)}
-          />
-          <SliderControl
-            label="Edge lift"
-            value={settings.edgeLift}
-            onChange={(value) => setNumber("edgeLift", value)}
-          />
-        </div>
-
-        <div className="dp-quality-block">
-          <span className="dp-card-eyebrow">QUALITY</span>
-          <div className="dp-quality-tabs" role="group" aria-label="DepthPop render quality">
-            {(["fast", "balanced", "max"] as const).map((quality) => (
+          <div className="dp-quality-row" role="group" aria-label="DepthPop render quality">
+            {(["fast", "balanced", "cinematic"] as const).map((quality) => (
               <button
                 key={quality}
                 type="button"
@@ -192,28 +151,35 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReadin
                 aria-pressed={settings.quality === quality}
                 onClick={() => setQuality(quality)}
               >
-                {quality.toUpperCase()}
+                {quality === "fast" ? "Fast" : quality === "balanced" ? "Balanced" : "Cinematic"}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="dp-card dp-execute-card">
-        <div className="dp-card-header">
-          <div>
-            <span className="dp-card-eyebrow">03 · OUTPUT</span>
-            <strong>DepthPop pass</strong>
-          </div>
-          <span className="dp-state-pill is-locked">LOCKED</span>
+      <div className="dp-canvas-status">
+        <div>
+          <span className="dp-status-label">CANVA SOURCE</span>
+          <strong>
+            {snapshot
+              ? `${snapshot.designTitle ?? "Current design"} · ${snapshot.elements.length} element${snapshot.elements.length === 1 ? "" : "s"}`
+              : "Current design not read"}
+          </strong>
         </div>
+        <Button variant="secondary" loading={isReading} onClick={onRefresh}>
+          {snapshot ? "Refresh" : "Read"}
+        </Button>
+      </div>
+
+      <div className="dp-actions">
         <Alert tone="info">{execution.reason}</Alert>
         <Button variant="primary" stretch disabled>
-          APPLY DEPTHPOP
+          EXECUTE DEPTHPOP
         </Button>
         <p className="dp-boundary-note">
-          The UI is production-built now. The apply action intentionally fails closed instead of
-          routing to the historical AETHER/ROARY runtime.
+          Visual controls and parameter mapping match the maintained Drive v115 DepthPop panel.
+          Execution remains fail-closed inside Canva until the authenticated provider seam exists.
         </p>
       </div>
     </section>
