@@ -108,12 +108,748 @@ jobs:
           unzip -Z1 .artifacts/depthpop-canva-app.zip > .artifacts/depthpop-files.txt
 
           for listing in .artifacts/holoforge-files.txt .artifacts/depthpop-files.txt; do
-            grep -Eq '^app\.js$' "$listing"
-            grep -Eq '^canva-app\.json$' "$listing"
-            grep -Eq '^START-HERE\.html$' "$listing"
-            grep -Eq '^preview/index\.html$' "$listing"
-            grep -Eq '^PACKAGE_MANIFEST\.json$' "$listing"
+            grep -Eq '^app\.js
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^canva-app\.json
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^app\.json
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^ui\.json
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^START-HERE\.html
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^preview/index\.html
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
+            grep -Eq '^PACKAGE_MANIFEST\.json
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ "$listing"
           done
+
+          grep -Eq '^HOLOFORGE\.html
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/holoforge-files.txt
+          grep -Eq '^DEPTHPOP\.html
+      - name: Retain HoloForge distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/holoforge-canva-app.zip
+
+      - name: Retain DepthPop distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-canva-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/depthpop-canva-app.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd apps/holoforge-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > holoforge-canva-sbom.cdx.json
+          (
+            cd apps/depthpop-canva
+            npm sbom --sbom-format=cyclonedx
+          ) > depthpop-canva-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-manifest.json \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            holoforge-canva-sbom.cdx.json
+            depthpop-canva-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/holoforge-canva-app.zip \
+            .artifacts/depthpop-canva-app.zip \
+            root-sbom.cdx.json \
+            holoforge-canva-sbom.cdx.json \
+            depthpop-canva-sbom.cdx.json \
+            python-dependencies.json \
+            release-commit.txt \
+            release-artifacts.sha256 \
+            release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/depthpop-files.txt
+          cmp .artifacts/canva-apps/holoforge/canva-app.json .artifacts/canva-apps/holoforge/app.json
+          cmp .artifacts/canva-apps/depthpop/canva-app.json .artifacts/canva-apps/depthpop/app.json
 
       - name: Retain HoloForge distribution
         uses: actions/upload-artifact@v7
