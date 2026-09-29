@@ -1,0 +1,445 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.hoisted(() => {
+  Object.assign(globalThis, {
+    canva_sdk: {
+      design: {
+        v2: {
+          designInteraction: {
+            selection: {},
+            overlay: {},
+            addPage: vi.fn(),
+          },
+        },
+      },
+    },
+  });
+});
+
+vi.mock("@canva/design", () => ({
+  getCurrentPageMetadata: vi.fn(),
+  getDesignMetadata: vi.fn(),
+  openDesign: vi.fn(),
+}));
+
+import {
+  canApplyScenario,
+  computeCanvaSnapshotFingerprint,
+  getReviewedElementBinding,
+} from "./canva-design";
+import {
+  computeOptimizationFingerprint,
+  computeScenarioFingerprint,
+  hasCanonicalProvenance,
+  type HoloForgeScenario,
+} from "./scenario-contract";
+
+const fingerprint = "a".repeat(64);
+
+function buildScenario(): HoloForgeScenario {
+  return {
+    contractVersion: 1,
+    scenarioId: "scenario-1",
+    source: {
+      designId: "design-1",
+      snapshotId: "snapshot-1",
+      pageIds: ["page-1"],
+      snapshotFingerprint: fingerprint,
+    },
+    intent: {
+      summary: "Improve hierarchy",
+      objectiveId: "hierarchy-v1",
+      objectiveDirection: "maximize",
+    },
+    constraints: {
+      hard: [{ id: "keep-element", elementId: "element-1" }],
+      soft: [{ id: "spacing", weight: 0.4 }],
+    },
+    candidate: {
+      changedElementIds: ["element-1"],
+      layout: { elements: { "element-1": { x: 40, y: 20 } } },
+      delta: { "element-1": { x: 20 } },
+    },
+    evidence: {
+      backend: "vaelon",
+      algorithm: "deterministic-candidate-v1",
+      seed: "seed-1",
+      status: "complete",
+      objectiveScore: 0.9,
+      baseline: {
+        backend: "classical-reference",
+        algorithm: "exact-reference-v1",
+        objectiveScore: 0.95,
+      },
+      objectiveGap: 0.05,
+      durationMs: 12,
+      hardConstraintsPassed: true,
+      warnings: [],
+    },
+    interpretation: {
+      producer: "auren",
+      label: "Hierarchy",
+      summary: "Improve hierarchy",
+      tradeoffs: [],
+    },
+    presentation: { advisoryOnly: true, autoApply: false, target: "web-dashboard" },
+    provenance: { scenarioFingerprint: "", optimizationFingerprint: "" },
+  };
+}
+
+async function signedScenario(): Promise<HoloForgeScenario> {
+  const scenario = buildScenario();
+  scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+  scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+  return scenario;
+}
+
+describe("canonical scenario provenance", () => {
+  it("accepts a correctly signed canonical scenario", async () => {
+    expect(await hasCanonicalProvenance(await signedScenario())).toBe(true);
+  });
+
+  it("rejects tampered evidence", async () => {
+    const scenario = await signedScenario();
+    scenario.evidence.objectiveScore = 0.1;
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+  });
+
+  it("rejects a tampered optimization input", async () => {
+    const scenario = await signedScenario();
+    scenario.constraints.soft = [{ id: "spacing", weight: 0.9 }];
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+  });
+
+  it("rejects missing or malformed fingerprints", async () => {
+    const scenario = buildScenario();
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+    scenario.provenance.scenarioFingerprint = "not-a-sha256";
+    scenario.provenance.optimizationFingerprint = "b".repeat(64);
+    expect(await hasCanonicalProvenance(scenario)).toBe(false);
+  });
+});
+
+describe("Canva snapshot fingerprint", () => {
+  const base = {
+    designId: "design-1",
+    pageId: "page-1",
+    pageDimensions: { width: 1200, height: 800 },
+    elements: [
+      {
+        id: "element-1",
+        type: "RECTANGLE",
+        top: 20,
+        left: 40,
+        width: 200,
+        height: 100,
+        rotation: 0,
+        locked: false,
+      },
+    ],
+  } as const;
+
+  it("is deterministic for equivalent snapshots", async () => {
+    const first = await computeCanvaSnapshotFingerprint(base);
+    const second = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: base.elements.map((element) => ({ ...element })),
+    });
+    expect(first).toBe(second);
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("binds identity, geometry, and element order into the fingerprint", async () => {
+    const original = await computeCanvaSnapshotFingerprint(base);
+    const identityChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      designId: "design-2",
+    });
+    const geometryChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: [{ ...base.elements[0], left: 41 }],
+    });
+    const orderChanged = await computeCanvaSnapshotFingerprint({
+      ...base,
+      elements: [
+        { ...base.elements[0], id: "element-2" },
+        { ...base.elements[0], id: "element-1", left: 10 },
+      ],
+    });
+
+    expect(identityChanged).not.toBe(original);
+    expect(geometryChanged).not.toBe(original);
+    expect(orderChanged).not.toBe(original);
+  });
+
+  it("normalizes an absent trusted design identity to null", async () => {
+    const withoutIdentity = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
+    const explicitNull = await computeCanvaSnapshotFingerprint({ ...base, designId: undefined });
+    expect(withoutIdentity).toBe(explicitNull);
+  });
+});
+
+describe("reviewed element binding", () => {
+  const elements = [
+    {
+      id: "element-1",
+      type: "RECTANGLE",
+      top: 20,
+      left: 40,
+      width: 200,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    },
+    {
+      id: "element-2",
+      type: "TEXT",
+      top: 60,
+      left: 80,
+      width: 300,
+      height: 50,
+      rotation: 0,
+      locked: false,
+    },
+  ];
+
+  async function buildSnapshot() {
+    const snapshot = {
+      designId: "design-1",
+      pageId: "page-1",
+      pageType: "absolute" as const,
+      pageDimensions: { width: 1200, height: 800 },
+      elements: elements.map((element) => ({ ...element })),
+      fingerprint: "",
+    };
+    snapshot.fingerprint = await computeCanvaSnapshotFingerprint(snapshot);
+    return snapshot;
+  }
+
+  async function scenarioForSnapshot(snapshot: Awaited<ReturnType<typeof buildSnapshot>>) {
+    const scenario = buildScenario();
+    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+    scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+    return scenario;
+  }
+
+  it("binds canonical changed-element keys to reviewed snapshot indexes", async () => {
+    const snapshot = await buildSnapshot();
+    const binding = getReviewedElementBinding(await signedScenario(), snapshot);
+    expect(binding).toBeNull();
+
+    const scenario = await scenarioForSnapshot(snapshot);
+    scenario.candidate.changedElementIds = ["element-1", "element-2"];
+    scenario.candidate.layout.elements["element-2"] = { x: 90 };
+    const reviewed = getReviewedElementBinding(scenario, snapshot);
+    expect(reviewed?.get("element-1")).toBe(0);
+    expect(reviewed?.get("element-2")).toBe(1);
+    expect(reviewed?.size).toBe(2);
+  });
+
+  it("returns a runtime read-only binding view", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+    const reviewed = getReviewedElementBinding(scenario, snapshot);
+
+    expect(reviewed).not.toBeNull();
+    expect(Object.isFrozen(reviewed)).toBe(true);
+    expect((reviewed as unknown as { set?: unknown }).set).toBeUndefined();
+    expect((reviewed as unknown as { delete?: unknown }).delete).toBeUndefined();
+  });
+
+  it("fails closed when reviewed snapshot contents drift behind the trusted fingerprint", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+
+    expect(await canApplyScenario(scenario, snapshot)).toBe(true);
+    snapshot.elements[0].left = 999;
+    expect(await canApplyScenario(scenario, snapshot)).toBe(false);
+  });
+
+  it("fails closed when a scenario asks for an element absent from the reviewed snapshot", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+    scenario.candidate.changedElementIds = ["element-3"];
+    scenario.candidate.layout.elements["element-3"] = { x: 90 };
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed when duplicate changed-element keys are supplied", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+    scenario.candidate.changedElementIds = ["element-1", "element-1"];
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed when the scenario fingerprint points at a different snapshot", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await signedScenario();
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed for inherited layout properties", async () => {
+    const snapshot = await buildSnapshot();
+    const scenario = await scenarioForSnapshot(snapshot);
+    scenario.candidate.changedElementIds = ["toString"];
+    expect(getReviewedElementBinding(scenario, snapshot)).toBeNull();
+  });
+
+  it("fails closed when the reviewed snapshot contains duplicate element identities", async () => {
+    const snapshot = await buildSnapshot();
+    const duplicateSnapshot = {
+      ...snapshot,
+      elements: [snapshot.elements[0], { ...snapshot.elements[1], id: snapshot.elements[0].id }],
+      fingerprint: "",
+    };
+    duplicateSnapshot.fingerprint = await computeCanvaSnapshotFingerprint(duplicateSnapshot);
+
+    const scenario = await scenarioForSnapshot(duplicateSnapshot);
+    scenario.candidate.changedElementIds = ["element-1"];
+    expect(getReviewedElementBinding(scenario, duplicateSnapshot)).toBeNull();
+  });
+});
+
+describe("readCurrentDesignSnapshot and applyScenario execution", () => {
+  it("readCurrentDesignSnapshot reads current design and snapshot successfully", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata, openDesign } = await import("@canva/design");
+    vi.mocked(getDesignMetadata).mockResolvedValueOnce({ title: "My Design" } as any);
+    vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce({
+      type: "absolute",
+      id: "page-1" as any,
+      dimensions: { width: 800, height: 600 },
+    });
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          id: "page-1" as any,
+          elements: {
+            toArray: () => [
+              {
+                type: "TEXT",
+                top: 10,
+                left: 20,
+                width: 100,
+                height: 50,
+                rotation: 0,
+                locked: false,
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    const snapshot = await readCurrentDesignSnapshot({ trustedDesignId: "design-1" });
+    expect(snapshot.designTitle).toBe("My Design");
+    expect(snapshot.designId).toBe("design-1");
+    expect(snapshot.pageId).toBe("page-1");
+    expect(snapshot.elements.length).toBe(1);
+    expect(snapshot.elements[0].id).toBe("element-1");
+  });
+
+  it("readCurrentDesignSnapshot rejects invalid page metadata before opening design", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata } = await import("@canva/design");
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    vi.mocked(getDesignMetadata).mockResolvedValue({ title: "My Design" } as any);
+
+    for (const metadata of [
+      { type: "fixed", id: "page-1", dimensions: { width: 800, height: 600 } },
+      { type: "absolute", id: "", dimensions: { width: 800, height: 600 } },
+      { type: "absolute", id: "page-1", dimensions: undefined },
+    ]) {
+      vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce(metadata as any);
+      await expect(readCurrentDesignSnapshot()).rejects.toThrow(
+        "HoloForge currently requires an absolute Canva page with stable dimensions.",
+      );
+    }
+  });
+
+  it("readCurrentDesignSnapshot throws if page ID changes in session", async () => {
+    const { getCurrentPageMetadata, getDesignMetadata, openDesign } = await import("@canva/design");
+    vi.mocked(getDesignMetadata).mockResolvedValueOnce({ title: "My Design" } as any);
+    vi.mocked(getCurrentPageMetadata).mockResolvedValueOnce({
+      type: "absolute",
+      id: "page-1" as any,
+      dimensions: { width: 800, height: 600 },
+    });
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          id: "page-2",
+        },
+      });
+    });
+
+    const { readCurrentDesignSnapshot } = await import("./canva-design");
+    await expect(readCurrentDesignSnapshot({ trustedDesignId: "design-1" })).rejects.toThrow(
+      "The current Canva page changed while HoloForge was reading it.",
+    );
+  });
+
+  it("applyScenario mutates live design and produces verification receipt", async () => {
+    const { openDesign } = await import("@canva/design");
+    const { readCurrentDesignSnapshot, applyScenario, computeCanvaSnapshotFingerprint } =
+      await import("./canva-design");
+
+    const snapshot = {
+      designId: "design-1",
+      pageId: "page-1",
+      pageType: "absolute" as const,
+      pageDimensions: { width: 1000, height: 1000 },
+      elements: [
+        {
+          id: "element-1",
+          type: "RECTANGLE" as const,
+          top: 10,
+          left: 10,
+          width: 100,
+          height: 100,
+          rotation: 0,
+          locked: false,
+        },
+      ],
+      fingerprint: "",
+    };
+    snapshot.fingerprint = await computeCanvaSnapshotFingerprint(snapshot);
+
+    const scenario = buildScenario();
+    scenario.source.snapshotFingerprint = snapshot.fingerprint;
+    scenario.provenance.optimizationFingerprint = await computeOptimizationFingerprint(scenario);
+    scenario.provenance.scenarioFingerprint = await computeScenarioFingerprint(scenario);
+
+    const liveElement = {
+      type: "RECTANGLE",
+      top: 10,
+      left: 10,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      locked: false,
+    };
+
+    vi.mocked(openDesign).mockImplementationOnce(async (opts, callback: any) => {
+      await callback({
+        page: {
+          type: "absolute",
+          locked: false,
+          id: "page-1" as any,
+          dimensions: { width: 1000, height: 1000 },
+          elements: {
+            toArray: () => [liveElement],
+          },
+        },
+        sync: vi.fn(async () => {}),
+      });
+    });
+
+    const receipt = await applyScenario(scenario, snapshot);
+    expect(receipt.scenarioId).toBe("scenario-1");
+    expect(receipt.changedElementIds).toEqual(["element-1"]);
+    expect(liveElement.left).toBe(40);
+  });
+});

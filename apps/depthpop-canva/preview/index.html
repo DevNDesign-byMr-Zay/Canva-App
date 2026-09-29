@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DepthPop · Canva sidebar preview</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main class="sidebar">
+  <section class="panel">
+    <div class="top"><span class="icon" aria-hidden="true"><i></i><i></i><i></i></span><b>CANVA</b></div>
+    <h1>DEPTHPOP</h1>
+    <div class="chip">DEPTH POP</div>
+    <p class="desc">Turn depth into presence — subtle separation, cinematic focus, same scene.</p>
+    <div class="controls">
+      <label title="How strong the depth separation feels."><span>Depth Strength (subject pop)</span><strong id="strength-v">0.32</strong><input id="strength" type="range" min=".05" max=".75" step=".01" value=".32"></label>
+      <label title="Blurs background based on depth. 0% subtle, 100% dramatic."><span>Depth Blur (background softness)</span><strong id="blur-v">35%</strong><input id="blur" type="range" min="0" max="100" step="1" value="35"></label>
+      <label title="How tightly DepthPop follows the depth map."><span>Depth Fidelity (depth-map accuracy)</span><strong id="fidelity-v">0.95</strong><input id="fidelity" type="range" min=".05" max="1" step=".01" value=".95"></label>
+      <div class="quality"><div class="qhead"><span>Render Quality</span><strong id="steps">steps 34</strong></div><div class="qbuttons"><button data-q="14">Fast</button><button data-q="22">Balanced</button><button class="active" data-q="34">Cinematic</button></div></div>
+    </div>
+    <div class="source"><div><small>CANVA SOURCE</small><strong>Current design not read</strong></div><button>Read</button></div>
+    <div class="actions"><button class="execute" disabled>EXECUTE DEPTHPOP</button><small>Execution stays locked until the authenticated Canva-compatible image-effect provider is connected.</small></div>
+  </section>
+</main>
+<script src="./preview.js"></script>
+</body></html>

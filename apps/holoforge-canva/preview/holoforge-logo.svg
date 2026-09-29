@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">HoloForge holographic prism emblem</title>
+  <desc id="desc">A transparent-background cyan, violet and magenta crystalline prism emblem inside a luminous circular ring.</desc>
+  <defs>
+    <linearGradient id="ring" x1="70" y1="70" x2="442" y2="442" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19F2FF"/>
+      <stop offset=".38" stop-color="#2787FF"/>
+      <stop offset=".68" stop-color="#7A55FF"/>
+      <stop offset="1" stop-color="#FF4FD8"/>
+    </linearGradient>
+    <linearGradient id="prism" x1="150" y1="88" x2="365" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#49F6FF"/>
+      <stop offset=".35" stop-color="#18A7FF"/>
+      <stop offset=".64" stop-color="#7D55FF"/>
+      <stop offset="1" stop-color="#FF48D0"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="160" y1="190" x2="352" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#243554"/>
+      <stop offset=".28" stop-color="#09101E"/>
+      <stop offset=".55" stop-color="#374866"/>
+      <stop offset=".75" stop-color="#090D18"/>
+      <stop offset="1" stop-color="#16203A"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="188" y1="108" x2="322" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DFFFFF" stop-opacity=".9"/>
+      <stop offset=".28" stop-color="#25E6FF" stop-opacity=".75"/>
+      <stop offset=".62" stop-color="#6A62FF" stop-opacity=".62"/>
+      <stop offset="1" stop-color="#FF62DA" stop-opacity=".82"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+  </defs>
+
+  <circle cx="256" cy="256" r="205" fill="none" stroke="#07111F" stroke-width="28" opacity=".95"/>
+  <circle cx="256" cy="256" r="205" fill="none" stroke="url(#ring)" stroke-width="13" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="186" fill="none" stroke="#7BEFFF" stroke-opacity=".2" stroke-width="2"/>
+
+  <path d="M256 68 354 229 256 283 158 229Z" fill="url(#glass)" stroke="#9BFAFF" stroke-width="5" filter="url(#glow)"/>
+  <path d="M256 68 256 283 158 229Z" fill="#20D7FF" fill-opacity=".32"/>
+  <path d="M256 68 354 229 256 283Z" fill="#FF57DB" fill-opacity=".27"/>
+  <path d="M256 80 313 221 256 256 199 221Z" fill="none" stroke="#EFFFFF" stroke-opacity=".7" stroke-width="2"/>
+  <path d="M256 94 224 213M256 94 291 215M185 225 256 150 330 226" fill="none" stroke="#FFFFFF" stroke-opacity=".33" stroke-width="2"/>
+
+  <path d="M154 235 210 219 256 283 302 219 358 235 327 310 256 420 185 310Z" fill="url(#metal)" stroke="#7C8FB0" stroke-width="4"/>
+  <path d="M171 246 216 236 246 284 200 327Z" fill="url(#prism)" opacity=".82"/>
+  <path d="M341 246 296 236 266 284 312 327Z" fill="url(#prism)" opacity=".82"/>
+  <path d="M198 319 256 405 314 319 278 336 256 374 234 336Z" fill="url(#prism)" stroke="#8EFBFF" stroke-width="3"/>
+  <path d="M205 247 244 292 221 314" fill="none" stroke="#27EFFF" stroke-width="7" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M307 247 268 292 291 314" fill="none" stroke="#FF4FD8" stroke-width="7" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M256 283 256 389" stroke="#F8FAFF" stroke-opacity=".6" stroke-width="2"/>
+  <path d="M160 229 115 266 182 285M352 229 397 266 330 285" fill="none" stroke="url(#ring)" stroke-width="5" filter="url(#soft)"/>
+</svg>
