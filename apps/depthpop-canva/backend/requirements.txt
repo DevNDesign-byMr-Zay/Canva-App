@@ -1,0 +1,7 @@
+fastapi>=0.116,<1
+uvicorn[standard]>=0.35,<1
+httpx>=0.28,<1
+PyJWT[crypto]>=2.10,<3
+Pillow>=11,<13
+numpy>=2,<3
+fal-client==1.0.3
