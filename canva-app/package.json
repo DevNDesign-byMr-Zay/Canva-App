@@ -12,7 +12,7 @@
     "build": "npx --yes @canva/cli@2.13.0 apps build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "format:check": "npx --yes prettier@3.6.2 --check \"src/**/*.{ts,tsx}\"",
+    "format:check": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\" && git diff -- src/intents/design_editor/depthpop/depthpop-model.ts src/intents/design_editor/depthpop/depthpop-panel.tsx && exit 1",
     "format": "npx --yes prettier@3.6.2 --write \"src/**/*.{ts,tsx}\"",
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit && npm run format:check"
