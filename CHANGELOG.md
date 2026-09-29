@@ -6,6 +6,10 @@ All notable maintained-surface changes to this repository are documented here.
 
 ### Added
 
+- Dedicated **DepthPop** Canva sidebar UI with live depth-field visualization, depth/bokeh/focus/edge-lift controls, quality modes, and current-canvas context. Its Apply action fails closed until an authenticated image-effect provider is configured.
+- HoloForge/DepthPop product switcher so the maintained Canva app exposes the real product UIs rather than the historical AETHER/ROARY shell.
+- Clean `canva-app-ui.zip` packaging in CI/releases. The UI package explicitly excludes authenticated historical HTML, legacy archive payloads, provenance corpora, verifier code, SBOMs, and release metadata.
+
 - A conventional root `ci.yml` exposing root Node tests, Python tests/lint/typecheck, and Design Editor typecheck/test/build.
 - Explicit Python verification-tool metadata plus exact lock-parity verification.
 - A coverage-scope boundary that keeps CI-only parity tooling outside application coverage while still running it as a mandatory gate.
