@@ -9,6 +9,7 @@ All notable maintained-surface changes to this repository are documented here.
 - Canva UI packaging now places the production `app.js` at the ZIP root instead of hiding it under `app/`, preventing users from mistaking the whole ZIP for Canva's JavaScript upload.
 - Added `START-HERE.html` plus a standalone `preview/index.html` UI preview for HoloForge and DepthPop, so the interface can be opened locally without Canva while the real app remains the compiled `app.js`.
 - CI now syntax-checks the generated `app.js` and verifies both HTML preview entrypoints before retaining or releasing the package.
+- Packaging now fails on empty files, malformed JSON, incomplete bundles, or missing UI assets; every ZIP includes `app.json`, canonical `canva-app.json`, dedicated `HOLOFORGE.html` / `DEPTHPOP.html` entrypoints, and a SHA-256 `PACKAGE_MANIFEST.json` inventory.
 
 
 ### Added
