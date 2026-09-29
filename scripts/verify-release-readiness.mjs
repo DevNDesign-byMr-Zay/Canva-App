@@ -18,6 +18,7 @@ const REQUIRED_FILES = Object.freeze([
   "canva-app/package-lock.json",
   "canva-app/vitest.config.ts",
   "canva-app/src/intents/design_editor/app.tsx",
+  "canva-app/src/intents/design_editor/index.tsx",
   "canva-app/src/intents/design_editor/navigation/product-switcher.tsx",
   "canva-app/src/intents/design_editor/depthpop/depthpop-panel.tsx",
   "canva-app/src/intents/design_editor/depthpop/depthpop-model.ts",
@@ -135,6 +136,8 @@ async function main() {
   assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");
   assert(/prettier@3\.6\.2/u.test(appPkg.scripts["format:check"] ?? ""), "Design Editor formatting must pin the reviewed Prettier version");
 
+  const appSource = await text("canva-app/src/intents/design_editor/app.tsx");
+  const appMount = await text("canva-app/src/intents/design_editor/index.tsx");
   const appCss = await text("canva-app/src/intents/design_editor/app.css");
   const depthPopPanel = await text("canva-app/src/intents/design_editor/depthpop/depthpop-panel.tsx");
   const depthPopModel = await text("canva-app/src/intents/design_editor/depthpop/depthpop-model.ts");
@@ -142,6 +145,13 @@ async function main() {
   const previewCss = await text("canva-app/preview/styles.css");
   const depthPopParity = await text("docs/DEPTHPOP_CANVA_PARITY.md");
 
+  assert(/lockedProduct/u.test(appSource), "Design Editor app must support a packaged product lock");
+  assert(
+    /__MRZAY_CANVA_PRODUCT__/u.test(appMount) &&
+      /holoforge/u.test(appMount) &&
+      /depthpop/u.test(appMount),
+    "Design Editor mount must honor HoloForge/DepthPop packaged product locks",
+  );
   assert(/max-width:\s*350px/u.test(appCss), "Canva app shell must stay within the 350px desktop sidebar envelope");
   assert(/padding:\s*16px/u.test(appCss), "Canva app shell must retain the 16px sidebar inset");
   assert(/width:\s*350px/u.test(previewCss), "HTML preview must use the 350px Canva sidebar width");
@@ -261,7 +271,9 @@ async function main() {
   );
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
   assert(/assemble-canva-ui-package\.mjs/u.test(release), "release workflow must assemble the clean Canva UI package");
-  assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the clean Canva UI ZIP");
+  assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the combined clean Canva UI ZIP");
+  assert(/holoforge-canva-app\.zip/u.test(release), "release workflow must publish the HoloForge app ZIP");
+  assert(/depthpop-canva-app\.zip/u.test(release), "release workflow must publish the DepthPop app ZIP");
   assert(/START-HERE\\\.html|START-HERE\.html/u.test(release), "release workflow must verify the local HTML preview entrypoint");
   assert(/HOLOFORGE\\\.html|HOLOFORGE\.html/u.test(release), "release workflow must verify the HoloForge HTML entrypoint");
   assert(/DEPTHPOP\\\.html|DEPTHPOP\.html/u.test(release), "release workflow must verify the DepthPop HTML entrypoint");
@@ -271,9 +283,12 @@ async function main() {
   assert(/type f -empty/u.test(release), "release workflow must fail on empty packaged files");
   assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
   assert(/assemble-canva-ui-package\.mjs/u.test(appCi), "HoloForge workflow must assemble the clean UI package");
-  assert(/app\.json/u.test(appCi) && /HOLOFORGE\.html/u.test(appCi) && /DEPTHPOP\.html/u.test(appCi), "HoloForge workflow must verify JSON and HTML UI entrypoints");
-  assert(/type f -empty/u.test(appCi), "HoloForge workflow must reject empty UI package files");
-  assert(/canva-app-ui-/u.test(appCi), "HoloForge workflow must retain the clean UI build artifact");
+  assert(/app\.json/u.test(appCi) && /HOLOFORGE\.html/u.test(appCi) && /DEPTHPOP\.html/u.test(appCi), "Canva app workflow must verify JSON and HTML UI entrypoints");
+  assert(/app\.html/u.test(appCi) && /ui\.json/u.test(appCi), "Canva app workflow must verify full product HTML and structured UI JSON");
+  assert(/holoforge-canva-app\.zip/u.test(appCi), "Canva app workflow must retain the HoloForge app ZIP");
+  assert(/depthpop-canva-app\.zip/u.test(appCi), "Canva app workflow must retain the DepthPop app ZIP");
+  assert(/type f -empty/u.test(appCi), "Canva app workflow must reject empty UI package files");
+  assert(/canva-app-ui-/u.test(appCi), "Canva app workflow must retain the clean UI build artifacts");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(
     /candidate is not published until the gated manual release workflow publishes it/iu.test(
