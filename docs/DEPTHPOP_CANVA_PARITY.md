@@ -6,9 +6,11 @@ DepthPop's Canva surface is intentionally derived from the maintained Drive buil
 
 The Canva app does **not** import the full historical ROARY/AETHER application. Instead, it preserves the current DepthPop product identity, visual language, visible controls, parameter ranges, and quality mapping inside Canva's Design Editor sidebar.
 
-## Sidebar geometry
+## Standalone Canva app geometry
 
-The Canva app uses one shared sidebar envelope for both HoloForge and DepthPop:
+DepthPop is its own Canva Design Editor app under `apps/depthpop-canva/`; it is not a mode inside HoloForge.
+
+Its Canva-side layout uses:
 
 - desktop outer app width: **350px maximum**;
 - app inset: **16px** on each side;
@@ -16,7 +18,7 @@ The Canva app uses one shared sidebar envelope for both HoloForge and DepthPop:
 - no horizontal scrolling;
 - mobile: full available width while retaining the 16px inset.
 
-This geometry is enforced in both the compiled React UI and the standalone HTML preview.
+This geometry is enforced in the standalone DepthPop React app and its own HTML preview.
 
 ## DepthPop visual parity
 
@@ -54,12 +56,12 @@ The Drive build can call the local ROARY image-tool routes. The Canva app does n
 
 ## Files that must stay synchronized
 
-- `src/intents/design_editor/depthpop/depthpop-model.ts`
-- `src/intents/design_editor/depthpop/depthpop-panel.tsx`
-- `src/intents/design_editor/app.css`
-- `src/assets/depthpop-logo.svg`
-- `preview/index.html`
-- `preview/styles.css`
-- `preview/preview.js`
+- `apps/depthpop-canva/src/intents/design_editor/depthpop/depthpop-model.ts`
+- `apps/depthpop-canva/src/intents/design_editor/depthpop/depthpop-panel.tsx`
+- `apps/depthpop-canva/src/intents/design_editor/app.css`
+- `apps/depthpop-canva/src/assets/depthpop-logo.svg`
+- `apps/depthpop-canva/preview/index.html`
+- `apps/depthpop-canva/preview/styles.css`
+- `apps/depthpop-canva/preview/preview.js`
 
-Release readiness checks the key labels, ranges, quality mappings, 350px sidebar envelope, 16px inset, and standalone preview parity so the production bundle and review HTML cannot drift apart unnoticed.
+The dedicated Canva-app workflow checks the key labels, ranges, quality mappings, 350px sidebar envelope, 16px inset, standalone build, and package separation so DepthPop cannot silently collapse back into a combined app.
