@@ -8,11 +8,13 @@ The runtime opens a compact product switcher: HoloForge exposes CREATE → SPATI
 
 Canva does **not** use an HTML entrypoint for the production app bundle. The Developer Portal expects the compiled JavaScript bundle, `app.js`, which Canva runs inside its own iframe. Uploading the ZIP itself as the JavaScript bundle can produce a syntax error because Canva would be trying to parse ZIP bytes as JavaScript.
 
-The clean package now makes the two paths explicit:
+The clean package now makes the production and inspection paths explicit:
 
-- **To preview the UI locally:** open `START-HERE.html` or `preview/index.html`.
+- **To preview both products locally:** open `START-HERE.html` or `preview/index.html`.
+- **To jump directly to a product preview:** open `HOLOFORGE.html` or `DEPTHPOP.html`.
+- **To inspect the manifest:** use `canva-app.json` (canonical) or `app.json` (complete alias for tools that expect that filename).
 - **To install/update the Canva app:** upload the root-level `app.js` in **Developer Portal → Inside Canva → Code upload → JavaScript bundle**.
-- Do **not** upload the ZIP, `START-HERE.html`, or `preview/index.html` as the Canva JavaScript bundle.
+- Do **not** upload the ZIP or any HTML file as the Canva JavaScript bundle.
 
 The local HTML preview is standalone and does not call Canva APIs. It mirrors the HoloForge and DepthPop interface for visual inspection. The real Canva UI remains the React/TypeScript app compiled into `app.js`.
 
@@ -25,7 +27,7 @@ npm --prefix canva-app run build
 npm run package:canva-ui
 ```
 
-The release workflow then zips `.artifacts/canva-ui/` as `canva-app-ui.zip`. The root of that ZIP contains `app.js`, `messages_en.json`, `canva-app.json`, `START-HERE.html`, `UPLOAD-TO-CANVA.txt`, this README, and a package note. The `preview/` directory contains the standalone HTML/CSS/JavaScript UI preview. It explicitly rejects `app/authenticated-v115/`, `legacy-html/`, `provenance/`, archive verifier code, SBOMs, and release metadata.
+The release workflow then zips `.artifacts/canva-ui/` as `canva-app-ui.zip`. The ZIP root contains the production `app.js`, both manifest names (`canva-app.json` and `app.json`), generated translations, `START-HERE.html`, dedicated `HOLOFORGE.html` / `DEPTHPOP.html` entrypoints, upload instructions, and `PACKAGE_MANIFEST.json` with byte counts plus SHA-256 hashes for every packaged file. The `preview/` directory contains the full standalone HTML/CSS/JavaScript UI preview. Packaging fails if any file is empty, required UI/JSON content is missing, the bundle is implausibly small, or historical/internal material leaks into the ZIP.
 
 DepthPop's production UI is present now, but its destructive/apply action remains fail-closed until an authenticated image-effect provider is configured. This prevents the legacy AETHER runtime from being used as a hidden execution path.
 
