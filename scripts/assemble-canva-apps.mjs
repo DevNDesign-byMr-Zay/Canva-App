@@ -74,9 +74,12 @@ for (const app of APPS) {
   await mkdir(out, { recursive: true });
   await cp(buildDir, out, { recursive: true });
   await cp(join(app.sourceDir, "canva-app.json"), join(out, "canva-app.json"));
+  await cp(join(app.sourceDir, "canva-app.json"), join(out, "app.json"));
+  await cp(join(app.sourceDir, "ui.json"), join(out, "ui.json"));
   await cp(join(app.sourceDir, "README.md"), join(out, "README.md"));
   await cp(previewDir, join(out, "preview"), { recursive: true });
   await writeFile(join(out, "START-HERE.html"), startHere(app.label), "utf8");
+  await writeFile(join(out, `${app.label.toUpperCase()}.html`), startHere(app.label), "utf8");
   await writeFile(
     join(out, "UPLOAD-TO-CANVA.txt"),
     `${app.label.toUpperCase()} — CANVA DEVELOPER PORTAL UPLOAD
@@ -98,8 +101,11 @@ Do not upload the ZIP or the HTML preview as the Canva JavaScript bundle.
   for (const required of [
     "app.js",
     "canva-app.json",
+    "app.json",
+    "ui.json",
     "README.md",
     "START-HERE.html",
+    `${app.label.toUpperCase()}.html`,
     "UPLOAD-TO-CANVA.txt",
     "preview/index.html",
     "preview/styles.css",
@@ -118,6 +124,14 @@ Do not upload the ZIP or the HTML preview as the Canva JavaScript bundle.
   }
 
   const manifest = JSON.parse(await readFile(join(out, "canva-app.json"), "utf8"));
+  const appAlias = JSON.parse(await readFile(join(out, "app.json"), "utf8"));
+  const uiContract = JSON.parse(await readFile(join(out, "ui.json"), "utf8"));
+  if (JSON.stringify(appAlias) !== JSON.stringify(manifest)) {
+    throw new Error(`${app.label} app.json must match canonical canva-app.json`);
+  }
+  if (uiContract?.product !== app.label || uiContract?.canvaBundle !== "dist/app.js") {
+    throw new Error(`${app.label} ui.json does not identify its own app contract`);
+  }
   if (manifest?.intent?.design_editor?.enrolled !== true) {
     throw new Error(`${app.label} must enroll the Canva Design Editor intent`);
   }
@@ -154,6 +168,9 @@ Do not upload the ZIP or the HTML preview as the Canva JavaScript bundle.
         app: app.id,
         product: app.label,
         canvaUpload: "app.js",
+        canonicalManifest: "canva-app.json",
+        manifestAlias: "app.json",
+        uiContract: "ui.json",
         preview: "START-HERE.html",
         files: inventory,
       },
