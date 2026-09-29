@@ -9,6 +9,11 @@ const intl = createIntl(
   { locale: "en", defaultLocale: "en", messages: {}, onError: () => {} },
   createIntlCache(),
 );
+Object.defineProperty(intl, "formatMessage", {
+  configurable: true,
+  value: (descriptor: { defaultMessage?: unknown; id?: string }) =>
+    String(descriptor.defaultMessage ?? descriptor.id ?? ""),
+});
 
 function children(node: React.ReactElement): React.ReactElement[] {
   return React.Children.toArray((node.props as { children?: React.ReactNode }).children).filter(
