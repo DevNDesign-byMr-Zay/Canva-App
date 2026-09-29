@@ -11,6 +11,7 @@ const REQUIRED_FILES = Object.freeze([
   "CHANGELOG.md",
   "README.md",
   "docs/RELEASE_READINESS.md",
+  "docs/DEPTHPOP_CANVA_PARITY.md",
   "backend/review-context-service.mjs",
   "backend/logging.mjs",
   "canva-app/package.json",
@@ -133,6 +134,33 @@ async function main() {
   assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
   assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");
   assert(/prettier@3\.6\.2/u.test(appPkg.scripts["format:check"] ?? ""), "Design Editor formatting must pin the reviewed Prettier version");
+
+  const appCss = await text("canva-app/src/intents/design_editor/app.css");
+  const depthPopPanel = await text("canva-app/src/intents/design_editor/depthpop/depthpop-panel.tsx");
+  const depthPopModel = await text("canva-app/src/intents/design_editor/depthpop/depthpop-model.ts");
+  const previewHtml = await text("canva-app/preview/index.html");
+  const previewCss = await text("canva-app/preview/styles.css");
+  const depthPopParity = await text("docs/DEPTHPOP_CANVA_PARITY.md");
+
+  assert(/max-width:\s*350px/u.test(appCss), "Canva app shell must stay within the 350px desktop sidebar envelope");
+  assert(/padding:\s*16px/u.test(appCss), "Canva app shell must retain the 16px sidebar inset");
+  assert(/width:\s*350px/u.test(previewCss), "HTML preview must use the 350px Canva sidebar width");
+  assert(/\.sidebar-inner[\s\S]*padding:\s*16px/u.test(previewCss), "HTML preview must retain the 16px Canva inset");
+  for (const copy of [
+    "Depth Strength (subject pop)",
+    "Depth Blur (background softness)",
+    "Depth Fidelity (depth-map accuracy)",
+    "Render Quality",
+    "EXECUTE DEPTHPOP",
+  ]) {
+    assert(depthPopPanel.includes(copy), `DepthPop production panel missing Drive-parity copy: ${copy}`);
+    assert(previewHtml.includes(copy), `DepthPop HTML preview missing Drive-parity copy: ${copy}`);
+  }
+  assert(/depthStrength:\s*0\.32/u.test(depthPopModel), "DepthPop strength default must match Drive v115");
+  assert(/depthBlur:\s*35/u.test(depthPopModel), "DepthPop blur default must match Drive v115");
+  assert(/depthFidelity:\s*0\.95/u.test(depthPopModel), "DepthPop fidelity default must match Drive v115");
+  assert(/fast:\s*14/u.test(depthPopModel) && /balanced:\s*22/u.test(depthPopModel) && /cinematic:\s*34/u.test(depthPopModel), "DepthPop quality-to-step mapping must match Drive v115");
+  assert(/roaryv246_v115_depthpop_modeldrawer_FINALFIX\.html/u.test(depthPopParity), "DepthPop parity source must remain documented");
 
   assert(/## Unreleased/u.test(changelog), "changelog must contain current unreleased state");
   assert(
