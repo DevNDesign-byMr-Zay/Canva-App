@@ -64,10 +64,27 @@ jobs:
           set -euo pipefail
           node ../scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
           node --check ../.artifacts/canva-ui/app.js
-          test -f ../.artifacts/canva-ui/START-HERE.html
-          test -f ../.artifacts/canva-ui/preview/index.html
+          test -s ../.artifacts/canva-ui/app.js
+          test -s ../.artifacts/canva-ui/app.json
+          test -s ../.artifacts/canva-ui/canva-app.json
+          test -s ../.artifacts/canva-ui/messages_en.json
+          test -s ../.artifacts/canva-ui/START-HERE.html
+          test -s ../.artifacts/canva-ui/HOLOFORGE.html
+          test -s ../.artifacts/canva-ui/DEPTHPOP.html
+          test -s ../.artifacts/canva-ui/preview/index.html
+          test -s ../.artifacts/canva-ui/PACKAGE_MANIFEST.json
+          node -e "JSON.parse(require('fs').readFileSync('../.artifacts/canva-ui/app.json','utf8')); JSON.parse(require('fs').readFileSync('../.artifacts/canva-ui/canva-app.json','utf8')); JSON.parse(require('fs').readFileSync('../.artifacts/canva-ui/messages_en.json','utf8')); JSON.parse(require('fs').readFileSync('../.artifacts/canva-ui/PACKAGE_MANIFEST.json','utf8'));"
           grep -q "HoloForge" ../.artifacts/canva-ui/preview/index.html
           grep -q "DepthPop" ../.artifacts/canva-ui/preview/index.html
+          find ../.artifacts/canva-ui -type f -empty -print -quit | grep -q '^
+      - name: Retain Canva UI package
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: .artifacts/canva-app-ui.zip
+
           (cd ../.artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
       - name: Retain Canva UI package
         uses: actions/upload-artifact@v7
