@@ -1,0 +1,345 @@
+.dp-app-frame {
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  color: var(--ui-kit-color-content-fg);
+  font-family: var(--ui-kit-font-family, system-ui, -apple-system, sans-serif);
+}
+
+.dp-shell {
+  width: 100%;
+  min-width: 0;
+  max-height: min(680px, calc(100vh - 108px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 14px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #fff;
+  border: 1px solid rgb(168 85 247 / 26%);
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 120% at 22% 0, rgb(168 85 247 / 22%), rgb(17 17 20 / 72%) 56%, rgb(0 0 0 / 84%) 100%);
+  box-shadow:
+    0 30px 90px rgb(0 0 0 / 48%),
+    inset 0 0 0 1px rgb(255 255 255 / 6%);
+  backdrop-filter: blur(24px) saturate(1.12);
+  -webkit-backdrop-filter: blur(24px) saturate(1.12);
+  scrollbar-width: none;
+}
+
+.dp-shell::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.dp-topline {
+  position: relative;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.dp-heroicon {
+  grid-column: 2;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  margin-top: -2px;
+  color: rgb(255 255 255 / 94%);
+}
+
+.dp-drive-icon {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 8px 18px rgb(168 85 247 / 34%));
+}
+
+.dp-canva-chip {
+  grid-column: 3;
+  justify-self: end;
+  padding: 5px 7px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  color: rgb(255 255 255 / 58%);
+  background: rgb(0 0 0 / 24%);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.dp-title {
+  margin-top: 4px;
+  margin-bottom: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: .26em;
+  line-height: 1.1;
+}
+
+.dp-chip {
+  width: fit-content;
+  margin: 8px auto 10px;
+  padding: 6px 12px;
+  border: 1px solid rgb(168 85 247 / 22%);
+  border-radius: 999px;
+  color: rgb(255 255 255 / 90%);
+  background: rgb(168 85 247 / 18%);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.dp-desc {
+  margin: 0 8px 10px;
+  color: rgb(255 255 255 / 82%);
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.32;
+}
+
+.dp-controls {
+  display: grid;
+  gap: 0;
+  margin: 0 4px 12px;
+  padding: 12px 12px 10px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 18px;
+  background: rgb(0 0 0 / 16%);
+}
+
+.dp-control-row {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.dp-control-row:last-child { margin-bottom: 0; }
+
+.dp-control-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 11px;
+  font-weight: 620;
+  line-height: 1.25;
+}
+
+.dp-control-label > span {
+  min-width: 0;
+}
+
+.dp-control-label strong {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+
+.dp-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: #a855f7;
+}
+
+.dp-quality-control {
+  margin-top: 10px;
+}
+
+.dp-quality-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dp-quality-row button {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 7px;
+  cursor: pointer;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  color: rgb(255 255 255 / 92%);
+  background: rgb(10 10 12 / 55%);
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: .02em;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    transform .12s ease,
+    border-color .12s ease,
+    box-shadow .12s ease,
+    color .12s ease;
+}
+
+.dp-quality-row button:hover {
+  border-color: rgb(168 85 247 / 55%);
+  color: #fff;
+  box-shadow:
+    0 0 0 2px rgb(168 85 247 / 14%),
+    0 10px 24px rgb(168 85 247 / 12%);
+  transform: translateY(-1px);
+}
+
+.dp-quality-row button.is-active {
+  border-color: rgb(168 85 247 / 85%);
+  color: #fff;
+  box-shadow:
+    0 0 0 2px rgb(168 85 247 / 20%),
+    0 14px 34px rgb(168 85 247 / 14%);
+}
+
+.dp-canvas-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 4px 10px;
+  padding: 9px 10px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 14px;
+  background: rgb(0 0 0 / 18%);
+}
+
+.dp-canvas-status > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dp-status-label {
+  color: rgb(255 255 255 / 44%);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.dp-canvas-status strong {
+  overflow: hidden;
+  color: rgb(255 255 255 / 74%);
+  font-size: 9px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dp-source-btn {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  cursor: pointer;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 10px;
+  color: rgb(255 255 255 / 86%);
+  background: rgb(255 255 255 / 6%);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.dp-source-btn:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.dp-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding: 0 4px 4px;
+}
+
+.dp-provider-note {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid rgb(168 85 247 / 16%);
+  border-radius: 12px;
+  color: rgb(255 255 255 / 60%);
+  background: rgb(168 85 247 / 6%);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.dp-exec {
+  position: relative;
+  width: 100%;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid rgb(168 85 247 / 48%);
+  border-radius: 14px;
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgb(168 85 247 / 15%), rgb(168 85 247 / 55%), rgb(168 85 247 / 22%)),
+    rgb(18 12 25 / 92%);
+  box-shadow: 0 0 20px rgb(168 85 247 / 18%);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.dp-exec:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.dp-boundary-note {
+  margin: 0 2px;
+  color: rgb(255 255 255 / 42%);
+  font-size: 8px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* HoloForge shares the exact same Canva sidebar envelope. Its existing internal
+   Create / Spatial / Verify UI remains intact, but cannot exceed the sidebar width. */
+.hf-shell {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.hf-creation-types-grid,
+.hf-material-presets-grid,
+.hf-tabs-list,
+.hf-snapshot-meta,
+.hf-capability-badge-row {
+  min-width: 0;
+}
+
+@media (max-width: 349px) {
+  .dp-app-frame {
+    max-width: none;
+    padding: 16px;
+  }
+
+  .canva-product-copy small { display: none; }
+  .canva-product-tab { justify-content: center; }
+  .dp-shell { border-radius: 22px; }
+  .dp-quality-row { gap: 5px; }
+  .dp-quality-row button { padding-inline: 5px; font-size: 9.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-app-frame *,
+  .dp-app-frame *::before,
+  .dp-app-frame *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

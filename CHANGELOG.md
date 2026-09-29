@@ -10,14 +10,14 @@ All notable maintained-surface changes to this repository are documented here.
 - Added `START-HERE.html` plus a standalone `preview/index.html` UI preview for HoloForge and DepthPop, so the interface can be opened locally without Canva while the real app remains the compiled `app.js`.
 - CI now syntax-checks the generated `app.js` and verifies both HTML preview entrypoints before retaining or releasing the package.
 - Packaging now fails on empty files, malformed JSON, incomplete bundles, or missing UI assets; every ZIP includes `app.json`, canonical `canva-app.json`, dedicated `HOLOFORGE.html` / `DEPTHPOP.html` entrypoints, and a SHA-256 `PACKAGE_MANIFEST.json` inventory.
-- HoloForge and DepthPop now share the real Canva sidebar envelope: 350px maximum desktop width, 16px internal margins, mobile full-width behavior, and no horizontal scrolling. The standalone HTML preview uses the same dimensions instead of a desktop mock device.
+- HoloForge and DepthPop now use separate Canva projects while each preserves the real Canva sidebar envelope: 350px maximum desktop width, 16px internal margins, mobile full-width behavior, and no horizontal scrolling.
 
 
 ### Added
 
-- Rebuilt **DepthPop** from the maintained Drive v115 surface: black/purple glass panel, layered-square tool icon, exact title/chip/description, Depth Strength (0.05–0.75), Depth Blur (0–100%), Depth Fidelity (0.05–1.00), and Fast/Balanced/Cinematic quality mapped to 14/22/34 steps. Execution remains fail-closed until an authenticated image-effect provider is configured.
-- HoloForge/DepthPop product switcher so the maintained Canva app exposes the real product UIs rather than the historical AETHER/ROARY shell.
-- Clean `canva-app-ui.zip` packaging in CI/releases. The UI package explicitly excludes authenticated historical HTML, legacy archive payloads, provenance corpora, verifier code, SBOMs, and release metadata.
+- Rebuilt **DepthPop** from the maintained Drive v115 surface: black/purple glass panel, layered-square tool icon, exact title/chip/description, Depth Strength (0.05–0.75), Depth Blur (0–100%), Depth Fidelity (0.05–1.00), and Fast/Balanced/Cinematic quality mapped to 14/22/34 steps. Drive source SHA-256 `657d7e38654c4b72a075e5972c75625857a1e1a04dd493fa710f0abd6aa6c4c6`. Execution remains fail-closed until an authenticated image-effect provider is configured.
+- Split HoloForge and DepthPop into independent Canva Design Editor projects with separate manifests, entrypoints, tests, production bundles, HTML previews, and ZIP artifacts.
+- Added a two-app packaging pipeline that produces `holoforge-canva-app.zip` and `depthpop-canva-app.zip` independently and rejects cross-product UI/source leakage.
 
 - A conventional root `ci.yml` exposing root Node tests, Python tests/lint/typecheck, and Design Editor typecheck/test/build.
 - Explicit Python verification-tool metadata plus exact lock-parity verification.

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="title desc">
+  <title id="title">DepthPop</title>
+  <desc id="desc">Layered square depth icon matching the maintained ROARY v115 DepthPop tool</desc>
+  <path d="M7 7h10v10H7V7Z" fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity=".35"/>
+  <path d="M5 9h10v10H5V9Z" fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity=".6"/>
+  <path d="M9 5h10v10H9V5Z" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <path d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z" fill="#A855F7" opacity=".92"/>
+</svg>

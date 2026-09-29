@@ -1,3 +1,6 @@
+> **MIGRATION SOURCE ONLY — DO NOT DISTRIBUTE THIS DIRECTORY AS A CANVA APP.**  
+> The maintained products are now two separate projects: `apps/holoforge-canva/` and `apps/depthpop-canva/`. This older combined workspace is retained temporarily for migration/provenance and is excluded from the two-app packaging pipeline.
+
 # HoloForge + DepthPop Canva App
 
 This directory is the maintained Canva Apps SDK surface for **HoloForge** and **DepthPop**. It is intentionally separate from the repository's historical authenticated archive and Node-based archive verification tooling.

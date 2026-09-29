@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "product": "DepthPop",
+  "surface": "canva-design-editor-sidebar",
+  "source": {
+    "driveFile": "roaryv246_v115_depthpop_modeldrawer_FINALFIX.html",
+    "driveFileId": "1PW8b9KIYNAtGKG4IL3_zCsnP4Vbvquo3",
+    "sha256": "657d7e38654c4b72a075e5972c75625857a1e1a04dd493fa710f0abd6aa6c4c6"
+  },
+  "layout": {
+    "desktopMaxWidthPx": 350,
+    "insetPx": 16,
+    "mobile": "full-available-width",
+    "horizontalOverflow": false
+  },
+  "copy": {
+    "title": "DEPTHPOP",
+    "chip": "DEPTH POP",
+    "description": "Turn depth into presence — subtle separation, cinematic focus, same scene.",
+    "execute": "EXECUTE DEPTHPOP"
+  },
+  "controls": [
+    {
+      "id": "depthStrength",
+      "label": "Depth Strength (subject pop)",
+      "default": 0.32,
+      "min": 0.05,
+      "max": 0.75,
+      "step": 0.01
+    },
+    {
+      "id": "depthBlur",
+      "label": "Depth Blur (background softness)",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%"
+    },
+    {
+      "id": "depthFidelity",
+      "label": "Depth Fidelity (depth-map accuracy)",
+      "default": 0.95,
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01
+    }
+  ],
+  "renderQuality": [
+    {
+      "id": "fast",
+      "label": "Fast",
+      "inferenceSteps": 14
+    },
+    {
+      "id": "balanced",
+      "label": "Balanced",
+      "inferenceSteps": 22
+    },
+    {
+      "id": "cinematic",
+      "label": "Cinematic",
+      "inferenceSteps": 34,
+      "default": true
+    }
+  ],
+  "execution": {
+    "enabled": false,
+    "reason": "authenticated Canva-compatible image-effect provider required"
+  },
+  "branding": {
+    "logo": "src/assets/depthpop-logo.svg"
+  },
+  "preview": "preview/index.html",
+  "canvaBundle": "dist/app.js"
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "product": "HoloForge",
+  "surface": "canva-design-editor-sidebar",
+  "layout": {
+    "desktopMaxWidthPx": 350,
+    "insetPx": 16,
+    "mobile": "full-available-width",
+    "horizontalOverflow": false
+  },
+  "navigation": [
+    "CREATE",
+    "SPATIAL",
+    "VERIFY"
+  ],
+  "create": {
+    "creationTypes": [
+      "Holo Text",
+      "Holo Logo",
+      "Holo Graphic",
+      "Glass",
+      "Chrome",
+      "Light FX"
+    ],
+    "materialPresets": [
+      "Iridescent Chrome",
+      "Aurora Glass",
+      "Prism Foil",
+      "Liquid Metal",
+      "Spectral Pearl",
+      "Neon Haze",
+      "Crystal Frost",
+      "Holo Gold",
+      "Holo Gunmetal"
+    ],
+    "actions": [
+      "Preview Hologram",
+      "Forge into Canva"
+    ]
+  },
+  "spatial": {
+    "mode": "2.5D source/candidate review",
+    "writes": false
+  },
+  "verify": {
+    "flow": [
+      "Capture state",
+      "Review candidate",
+      "Explicit Apply",
+      "Post-state verification",
+      "Proof"
+    ],
+    "autoApply": false
+  },
+  "branding": {
+    "logo": "src/assets/holoforge-logo.svg"
+  },
+  "preview": "preview/index.html",
+  "canvaBundle": "dist/app.js"
+}
