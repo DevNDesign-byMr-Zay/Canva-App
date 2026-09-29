@@ -183,8 +183,15 @@ async function main() {
   assert(/createJsonLogger/u.test(backendSource) && /timestamp/u.test(loggingSource) && /level/u.test(loggingSource), "backend must use a structured JSON logger");
   assert(/npm run typecheck/u.test(ci), "Design Editor CI must type-check");
   assert(/npm run build/u.test(ci), "Design Editor CI must build");
-  assert(/npm test/u.test(appCi), "HoloForge app workflow must run tests");
-  assert(/npm run test:coverage/u.test(appCi), "HoloForge app workflow must enforce Design Editor coverage");
+  assert(
+    /apps\/holoforge-canva test/u.test(appCi) && /apps\/depthpop-canva test/u.test(appCi),
+    "Canva app workflow must test HoloForge and DepthPop independently",
+  );
+  assert(
+    /apps\/holoforge-canva run test:coverage/u.test(appCi) &&
+      /apps\/depthpop-canva run test:coverage/u.test(appCi),
+    "Canva app workflow must enforce coverage for both standalone apps",
+  );
   assert(
     /coverage xml -o coverage\.xml/u.test(ci) &&
       /NODE_V8_COVERAGE:\s*coverage\/v8/u.test(ci) &&
@@ -270,10 +277,19 @@ async function main() {
   assert(/\^app\\\.js\$/u.test(release) || /app\\\.js/u.test(release), "release workflow must verify root-level app.js");
   assert(/type f -empty/u.test(release), "release workflow must fail on empty packaged files");
   assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
-  assert(/assemble-canva-ui-package\.mjs/u.test(appCi), "HoloForge workflow must assemble the clean UI package");
-  assert(/app\.json/u.test(appCi) && /HOLOFORGE\.html/u.test(appCi) && /DEPTHPOP\.html/u.test(appCi), "HoloForge workflow must verify JSON and HTML UI entrypoints");
-  assert(/type f -empty/u.test(appCi), "HoloForge workflow must reject empty UI package files");
-  assert(/canva-app-ui-/u.test(appCi), "HoloForge workflow must retain the clean UI build artifact");
+  assert(
+    /assemble-canva-apps\.mjs/u.test(appCi),
+    "Canva app workflow must assemble the two independent app packages",
+  );
+  assert(
+    /holoforge-canva-app\.zip/u.test(appCi) && /depthpop-canva-app\.zip/u.test(appCi),
+    "Canva app workflow must create separate HoloForge and DepthPop ZIPs",
+  );
+  assert(/type f -empty/u.test(appCi), "Canva app workflow must reject empty package files");
+  assert(
+    /holoforge-canva-/u.test(appCi) && /depthpop-canva-/u.test(appCi),
+    "Canva app workflow must retain both independent build artifacts",
+  );
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(
     /candidate is not published until the gated manual release workflow publishes it/iu.test(
