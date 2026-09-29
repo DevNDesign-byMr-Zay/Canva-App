@@ -2,21 +2,22 @@
 
 This directory is the maintained Canva Apps SDK surface for **HoloForge** and **DepthPop**. It is intentionally separate from the repository's historical authenticated archive and Node-based archive verification tooling.
 
-The runtime opens a compact product switcher inside a Canva-width sidebar: HoloForge exposes CREATE → SPATIAL → VERIFY, while DepthPop reproduces the maintained Drive v115 control surface (Depth Strength, Depth Blur, Depth Fidelity, and Fast/Balanced/Cinematic quality). The old AETHER/ROARY shell is not imported by this Canva UI.
+The shared development build can open a compact product switcher inside a Canva-width sidebar: HoloForge exposes CREATE → SPATIAL → VERIFY, while DepthPop reproduces the maintained Drive v115 control surface (Depth Strength, Depth Blur, Depth Fidelity, and Fast/Balanced/Cinematic quality). Release packaging also produces **two separate product-locked Canva app ZIPs** so HoloForge and DepthPop can be installed and reviewed independently. The old AETHER/ROARY shell is not imported by this Canva UI.
 
 ## Open the package correctly
 
 Canva does **not** use an HTML entrypoint for the production app bundle. The Developer Portal expects the compiled JavaScript bundle, `app.js`, which Canva runs inside its own iframe. Uploading the ZIP itself as the JavaScript bundle can produce a syntax error because Canva would be trying to parse ZIP bytes as JavaScript.
 
-The clean package now makes the production and inspection paths explicit:
+The clean packages make the production and inspection paths explicit:
 
-- **To preview both products locally:** open `START-HERE.html` or `preview/index.html`.
-- **To jump directly to a product preview:** open `HOLOFORGE.html` or `DEPTHPOP.html`.
-- **To inspect the manifest:** use `canva-app.json` (canonical) or `app.json` (complete alias for tools that expect that filename).
-- **To install/update the Canva app:** upload the root-level `app.js` in **Developer Portal → Inside Canva → Code upload → JavaScript bundle**.
-- Do **not** upload the ZIP or any HTML file as the Canva JavaScript bundle.
+- **HoloForge install package:** `holoforge-canva-app.zip`.
+- **DepthPop install package:** `depthpop-canva-app.zip`.
+- Each product ZIP contains a product-locked root `app.js`, complete `app.json` + `canva-app.json`, generated translations/assets, a structured `ui.json`, and full `app.html` / `index.html` UI documents.
+- **Combined review package:** `canva-app-ui.zip`, with `START-HERE.html`, the shared preview, and both complete product directories under `products/`.
+- **To install either Canva app:** extract that product ZIP and upload its root-level `app.js` in **Developer Portal → Inside Canva → Code upload → JavaScript bundle**.
+- Do **not** upload the ZIP, JSON, or HTML file as Canva's JavaScript bundle.
 
-The local HTML preview is standalone and does not call Canva APIs. It mirrors the HoloForge and DepthPop interface for visual inspection. The real Canva UI remains the React/TypeScript app compiled into `app.js`.
+The HTML files are full standalone visual UIs, not redirect placeholders. They do not call Canva APIs. The production UI remains the React/TypeScript application compiled into the corresponding product-locked `app.js`.
 
 ## Clean distribution package
 
@@ -27,7 +28,13 @@ npm --prefix canva-app run build
 npm run package:canva-ui
 ```
 
-The release workflow then zips `.artifacts/canva-ui/` as `canva-app-ui.zip`. The ZIP root contains the production `app.js`, both manifest names (`canva-app.json` and `app.json`), generated translations, `START-HERE.html`, dedicated `HOLOFORGE.html` / `DEPTHPOP.html` entrypoints, upload instructions, and `PACKAGE_MANIFEST.json` with byte counts plus SHA-256 hashes for every packaged file. The `preview/` directory contains the full standalone HTML/CSS/JavaScript UI preview. Packaging fails if any file is empty, required UI/JSON content is missing, the bundle is implausibly small, or historical/internal material leaks into the ZIP.
+The release workflow creates three verified distributions:
+
+- `canva-app-ui.zip` — combined review package with both products and the shared preview.
+- `holoforge-canva-app.zip` — complete HoloForge-only package with a product-locked `app.js`.
+- `depthpop-canva-app.zip` — complete DepthPop-only package with a product-locked `app.js`.
+
+Every product ZIP contains `app.js`, `app.json`, `canva-app.json`, `messages_en.json`, `app.html`, `index.html`, `ui.json`, generated companion/static assets, instructions, and a SHA-256 `PACKAGE_MANIFEST.json`. Packaging and CI fail if any file is empty, any required UI/JSON/HTML entrypoint is missing, JSON cannot be parsed, a JavaScript bundle is implausibly small, or historical/internal material leaks into the distribution.
 
 DepthPop's production UI now uses the same visible control contract and black/purple glass direction as `roaryv246_v115_depthpop_modeldrawer_FINALFIX.html` in Drive. Both products are constrained to a 350px maximum Canva sidebar envelope with a 16px inset and no horizontal scrolling. See `../docs/DEPTHPOP_CANVA_PARITY.md` for the exact parity contract. DepthPop's execution action remains fail-closed until an authenticated image-effect provider is configured, so visual/parameter parity does not turn the legacy localhost ROARY runtime into a hidden Canva write path.
 
