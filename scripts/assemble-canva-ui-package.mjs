@@ -40,20 +40,70 @@ async function listFiles(directory, base = directory) {
   return files;
 }
 
-function productEntry(title, product) {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="refresh" content="0; url=./preview/index.html?product=${product}" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${title} Canva UI Preview</title>
-  </head>
-  <body>
-    <p>Opening ${title}… <a href="./preview/index.html?product=${product}">Open ${title}</a>.</p>
-  </body>
-</html>
-`;
+function buildProductHtml(previewHtml, product, assetPrefix = "./") {
+  const config = {
+    holoforge: { title: "HoloForge", viewId: "holoforge-view", otherViewId: "depthpop-view" },
+    depthpop: { title: "DepthPop", viewId: "depthpop-view", otherViewId: "holoforge-view" },
+  }[product];
+
+  if (!config) throw new Error(`Unknown Canva product: ${product}`);
+
+  let html = previewHtml
+    .replace('<html lang="en">', `<html lang="en" data-product-lock="${product}">`)
+    .replace(/<title>[\s\S]*?<\/title>/u, `<title>${config.title} Canva App UI</title>`)
+    .replace(/\s*<nav class="product-switcher"[\s\S]*?<\/nav>\s*/u, "\n");
+
+  const otherView = new RegExp(
+    `\\s*<section class="product-view(?: is-active)?" id="${config.otherViewId}">[\\s\\S]*?<\\/section>\\s*`,
+    "u",
+  );
+  html = html.replace(otherView, "\n");
+
+  if (product === "depthpop") {
+    html = html.replace(
+      '<section class="product-view" id="depthpop-view">',
+      '<section class="product-view is-active" id="depthpop-view">',
+    );
+  }
+
+  return html
+    .replace('href="./styles.css"', `href="${assetPrefix}styles.css"`)
+    .replaceAll('src="./assets/', `src="${assetPrefix}assets/`)
+    .replace('src="./preview.js"', `src="${assetPrefix}preview.js"`);
+}
+
+function productUiDefinition(product) {
+  if (product === "holoforge") {
+    return {
+      schemaVersion: 1,
+      product: "HoloForge",
+      surface: "Canva Design Editor sidebar",
+      entrypoints: { production: "app.js", manifest: "app.json", html: "app.html" },
+      workflow: ["CREATE", "SPATIAL", "VERIFY"],
+      controls: [
+        "creation type",
+        "holographic material presets",
+        "material tuning",
+        "spatial preview",
+        "verified explicit apply",
+      ],
+    };
+  }
+
+  return {
+    schemaVersion: 1,
+    product: "DepthPop",
+    surface: "Canva Design Editor sidebar",
+    entrypoints: { production: "app.js", manifest: "app.json", html: "app.html" },
+    controls: [
+      "Depth Strength (subject pop)",
+      "Depth Blur (background softness)",
+      "Depth Fidelity (depth-map accuracy)",
+      "Render Quality: Fast / Balanced / Cinematic",
+      "EXECUTE DEPTHPOP",
+    ],
+    execution: "fail-closed until authenticated Canva-compatible provider exists",
+  };
 }
 
 async function sha256(path) {
@@ -112,8 +162,6 @@ const startHere = `<!doctype html>
 </html>
 `;
 await writeFile(join(outputDir, "START-HERE.html"), startHere, "utf8");
-await writeFile(join(outputDir, "HOLOFORGE.html"), productEntry("HoloForge", "holoforge"), "utf8");
-await writeFile(join(outputDir, "DEPTHPOP.html"), productEntry("DepthPop", "depthpop"), "utf8");
 
 const uploadNote = `CANVA DEVELOPER PORTAL UPLOAD
 
@@ -154,6 +202,11 @@ PREVIEW
 - preview/styles.css
 - preview/preview.js
 - preview/assets/*.svg
+
+SEPARATE COMPLETE APP PACKAGES
+- products/holoforge/    -> HoloForge-locked app.js + app.json + full HTML UI + assets
+- products/depthpop/     -> DepthPop-locked app.js + app.json + full HTML UI + assets
+- each product package includes app.html, index.html, ui.json and its own PACKAGE_MANIFEST.json
 
 Historical AETHER/ROARY application material, archive reconstruction payloads, provenance corpora, SBOM evidence, and internal verifier code are intentionally excluded.
 `;
@@ -246,6 +299,171 @@ if (!/\.sidebar-inner\s*\{[^}]*padding:\s*16px/su.test(previewCss)) {
 }
 if (/AETHER|R\.O\.A\.R\.Y Studio/u.test(previewHtml)) {
   throw new Error("Legacy AETHER/ROARY UI text leaked into the local preview.");
+}
+
+// Root HTML files are full product UIs, not redirect stubs.
+const holoforgeHtml = buildProductHtml(previewHtml, "holoforge", "./preview/");
+const depthpopHtml = buildProductHtml(previewHtml, "depthpop", "./preview/");
+await writeFile(join(outputDir, "HOLOFORGE.html"), holoforgeHtml, "utf8");
+await writeFile(join(outputDir, "DEPTHPOP.html"), depthpopHtml, "utf8");
+if (holoforgeHtml.length < 4_000 || depthpopHtml.length < 3_000) {
+  throw new Error("Product HTML entrypoints are unexpectedly small or incomplete.");
+}
+
+const productSpecs = Object.freeze([
+  { id: "holoforge", title: "HoloForge", htmlName: "HOLOFORGE.html" },
+  { id: "depthpop", title: "DepthPop", htmlName: "DEPTHPOP.html" },
+]);
+
+for (const product of productSpecs) {
+  const productDir = join(outputDir, "products", product.id);
+  await mkdir(productDir, { recursive: true });
+
+  // Copy the complete Canva build so emitted assets and translation files stay beside app.js.
+  await cp(buildDir, productDir, { recursive: true });
+
+  const lockedBundle =
+    `globalThis.__MRZAY_CANVA_PRODUCT__ = "${product.id}";\n${appJs}`;
+  await writeFile(join(productDir, "app.js"), lockedBundle, "utf8");
+
+  await cp(join(outputDir, "canva-app.json"), join(productDir, "canva-app.json"));
+  await cp(join(outputDir, "app.json"), join(productDir, "app.json"));
+
+  const standaloneHtml = buildProductHtml(previewHtml, product.id, "./");
+  await writeFile(join(productDir, "app.html"), standaloneHtml, "utf8");
+  await writeFile(join(productDir, "index.html"), standaloneHtml, "utf8");
+  await writeFile(join(productDir, product.htmlName), standaloneHtml, "utf8");
+  await writeFile(
+    join(productDir, "ui.json"),
+    JSON.stringify(productUiDefinition(product.id), null, 2) + "\n",
+    "utf8",
+  );
+
+  await cp(join(outputDir, "preview", "styles.css"), join(productDir, "styles.css"));
+  await cp(join(outputDir, "preview", "preview.js"), join(productDir, "preview.js"));
+  await mkdir(join(productDir, "assets"), { recursive: true });
+  await cp(
+    join(outputDir, "preview", "assets", "holoforge-logo.svg"),
+    join(productDir, "assets", "holoforge-logo.svg"),
+  );
+  await cp(
+    join(outputDir, "preview", "assets", "depthpop-logo.svg"),
+    join(productDir, "assets", "depthpop-logo.svg"),
+  );
+
+  const productReadme = `# ${product.title} Canva App Package
+
+This folder is a complete, product-locked Canva distribution.
+
+- Upload \`app.js\` in Canva Developer Portal as the JavaScript bundle.
+- \`app.json\` and \`canva-app.json\` are complete, valid Canva manifests.
+- \`app.html\`, \`index.html\`, and \`${product.htmlName}\` contain the full standalone ${product.title} UI for visual inspection.
+- \`ui.json\` is a structured inventory of the visible UI surface.
+- Generated companion files and static assets are included beside the bundle.
+- \`PACKAGE_MANIFEST.json\` records byte sizes and SHA-256 hashes.
+
+The JavaScript bundle is explicitly locked to ${product.title}; it does not show the cross-product switcher.
+`;
+  await writeFile(join(productDir, "README.md"), productReadme, "utf8");
+
+  const productUploadNote = `CANVA DEVELOPER PORTAL UPLOAD — ${product.title}
+
+Upload app.js as the JavaScript bundle.
+Do not upload the ZIP, JSON, or HTML files as JavaScript.
+Open app.html or index.html locally to inspect the complete ${product.title} UI.
+`;
+  await writeFile(join(productDir, "UPLOAD-TO-CANVA.txt"), productUploadNote, "utf8");
+
+  const productFilesBeforeManifest = await listFiles(productDir);
+  for (const required of [
+    "app.js",
+    "app.json",
+    "canva-app.json",
+    "messages_en.json",
+    "app.html",
+    "index.html",
+    product.htmlName,
+    "ui.json",
+    "README.md",
+    "UPLOAD-TO-CANVA.txt",
+    "styles.css",
+    "preview.js",
+    "assets/holoforge-logo.svg",
+    "assets/depthpop-logo.svg",
+  ]) {
+    if (!productFilesBeforeManifest.includes(required)) {
+      throw new Error(`${product.title} package is missing required file: ${required}`);
+    }
+  }
+
+  for (const file of productFilesBeforeManifest) {
+    const info = await stat(join(productDir, file));
+    if (info.size <= 0) {
+      throw new Error(`${product.title} package contains an empty file: ${file}`);
+    }
+  }
+
+  JSON.parse(await readFile(join(productDir, "app.json"), "utf8"));
+  JSON.parse(await readFile(join(productDir, "canva-app.json"), "utf8"));
+  JSON.parse(await readFile(join(productDir, "messages_en.json"), "utf8"));
+  JSON.parse(await readFile(join(productDir, "ui.json"), "utf8"));
+
+  const productBundleText = await readFile(join(productDir, "app.js"), "utf8");
+  if (!productBundleText.startsWith(`globalThis.__MRZAY_CANVA_PRODUCT__ = "${product.id}";`)) {
+    throw new Error(`${product.title} bundle is not product-locked.`);
+  }
+  if (productBundleText.trim().length < 10_000) {
+    throw new Error(`${product.title} app.js is unexpectedly small or incomplete.`);
+  }
+
+  const productInventory = [];
+  for (const file of productFilesBeforeManifest) {
+    const filePath = join(productDir, file);
+    const info = await stat(filePath);
+    productInventory.push({
+      path: file,
+      bytes: info.size,
+      sha256: await sha256(filePath),
+    });
+  }
+
+  await writeFile(
+    join(productDir, "PACKAGE_MANIFEST.json"),
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        package: `${product.title} Canva App`,
+        product: product.id,
+        productLocked: true,
+        entrypoints: {
+          canvaBundle: "app.js",
+          canvaManifest: "canva-app.json",
+          manifestAlias: "app.json",
+          html: "app.html",
+          htmlIndex: "index.html",
+          uiDefinition: "ui.json",
+        },
+        files: productInventory,
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
+}
+
+files = await listFiles(outputDir);
+for (const file of files) {
+  const lower = file.toLowerCase();
+  for (const forbidden of FORBIDDEN_PATH_PARTS) {
+    if (lower.includes(forbidden.toLowerCase())) {
+      throw new Error(`Forbidden historical/internal path leaked into Canva UI package: ${file}`);
+    }
+  }
+  const info = await stat(join(outputDir, file));
+  if (info.size <= 0) {
+    throw new Error(`Canva UI package contains an empty file after product packaging: ${file}`);
+  }
 }
 
 const inventory = [];
