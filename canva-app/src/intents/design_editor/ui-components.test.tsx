@@ -1,7 +1,6 @@
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { createIntl, createIntlCache, RawIntlProvider } from "react-intl";
-import { AppUiProvider } from "@canva/app-ui-kit";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@canva/design", () => ({
@@ -32,12 +31,14 @@ if (typeof globalThis.window === "undefined") {
 }
 
 describe("HoloForge studio sidebar components", () => {
+  let AppUiProvider: typeof import("@canva/app-ui-kit").AppUiProvider;
   let StudioTabs: typeof import("./navigation/studio-tabs").StudioTabs;
   let CreatePanel: typeof import("./create/create-panel").CreatePanel;
   let SpatialPanel: typeof import("./spatial/spatial-panel").SpatialPanel;
   let VerifyPanel: typeof import("./verify/verify-panel").VerifyPanel;
 
   beforeAll(async () => {
+    AppUiProvider = (await import("@canva/app-ui-kit")).AppUiProvider;
     StudioTabs = (await import("./navigation/studio-tabs")).StudioTabs;
     CreatePanel = (await import("./create/create-panel")).CreatePanel;
     SpatialPanel = (await import("./spatial/spatial-panel")).SpatialPanel;
@@ -45,7 +46,10 @@ describe("HoloForge studio sidebar components", () => {
   });
 
   const cache = createIntlCache();
-  const intl = createIntl({ locale: "en", defaultLocale: "en", messages: {}, onError: () => {} }, cache);
+  const intl = createIntl(
+    { locale: "en", defaultLocale: "en", messages: {}, onError: () => {} },
+    cache,
+  );
   const wrap = (children: React.ReactNode) => (
     <AppUiProvider>
       <RawIntlProvider value={intl}>{children}</RawIntlProvider>
@@ -53,7 +57,9 @@ describe("HoloForge studio sidebar components", () => {
   );
 
   it("renders compact Create Spatial Verify navigation", () => {
-    const html = renderToString(wrap(<StudioTabs activeTab="create" onSelectTab={vi.fn()} />));
+    const html = renderToString(
+      wrap(<StudioTabs activeTab="create" onSelectTab={vi.fn()} />),
+    );
     expect(html).toContain("CREATE");
     expect(html).toContain("SPATIAL");
     expect(html).toContain("VERIFY");
