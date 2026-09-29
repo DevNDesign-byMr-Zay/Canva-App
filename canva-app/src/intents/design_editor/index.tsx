@@ -12,10 +12,10 @@ import { resolveReviewContextForMount } from "./review-context-mount";
 const runtime = globalThis as typeof globalThis & {
   __MRZAY_CANVA_PRODUCT__?: ProductSurface;
 };
-const configuredProduct =
-  runtime.__MRZAY_CANVA_PRODUCT__ === "holoforge" ||
-  runtime.__MRZAY_CANVA_PRODUCT__ === "depthpop"
-    ? runtime.__MRZAY_CANVA_PRODUCT__
+const packagedProduct = runtime.__MRZAY_CANVA_PRODUCT__;
+const configuredProduct: ProductSurface | null =
+  packagedProduct === "holoforge" || packagedProduct === "depthpop"
+    ? packagedProduct
     : null;
 
 async function render() {
