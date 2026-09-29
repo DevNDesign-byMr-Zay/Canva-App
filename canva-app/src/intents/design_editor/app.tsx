@@ -23,9 +23,11 @@ import { snapshotScenarioForPresentation } from "./scenario-contract";
 import { buildSpatialPreviewModel, type SpatialPreviewModel } from "./spatial-preview";
 
 import { StudioTabs, type StudioTab } from "./navigation/studio-tabs";
+import { ProductSwitcher, type ProductSurface } from "./navigation/product-switcher";
 import { CreatePanel } from "./create/create-panel";
 import { SpatialPanel } from "./spatial/spatial-panel";
 import { VerifyPanel } from "./verify/verify-panel";
+import { DepthPopPanel } from "./depthpop/depthpop-panel";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
 import { executeHolographicEffectPlan } from "./holographic/effect-executor";
 import { canvaAppOwnedEffectAdapter } from "./holographic/app-owned-effect-adapter";
@@ -49,6 +51,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
 
+  const [activeProduct, setActiveProduct] = useState<ProductSurface>("holoforge");
   const [activeTab, setActiveTab] = useState<StudioTab>("create");
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
   const [status, setStatus] = useState<AppStatus>("idle");
@@ -335,7 +338,17 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
-    <div className="hf-shell">
+    <div className="canva-tool-shell">
+      <ProductSwitcher activeProduct={activeProduct} onSelectProduct={setActiveProduct} />
+
+      {activeProduct === "depthpop" ? (
+        <DepthPopPanel
+          snapshot={snapshot}
+          isReading={status === "reading"}
+          onRefresh={refresh}
+        />
+      ) : (
+        <div className="hf-shell">
       <header className="hf-hero">
         <div className="hf-brand-row">
           <div className="hf-brand-lockup">
@@ -405,6 +418,8 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
           onRefresh={refresh}
           onApply={apply}
         />
+      )}
+        </div>
       )}
     </div>
   );
