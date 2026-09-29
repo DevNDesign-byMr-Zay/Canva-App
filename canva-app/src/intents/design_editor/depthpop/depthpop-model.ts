@@ -1,32 +1,31 @@
-export type DepthPopQuality = "fast" | "balanced" | "max";
+export type DepthPopQuality = "fast" | "balanced" | "cinematic";
 
 export type DepthPopSettings = Readonly<{
-  depth: number;
-  bokeh: number;
-  focus: number;
-  edgeLift: number;
+  depthStrength: number;
+  depthBlur: number;
+  depthFidelity: number;
   quality: DepthPopQuality;
 }>;
 
-export type DepthPopPreviewModel = Readonly<{
-  foregroundScale: number;
-  subjectScale: number;
-  backgroundScale: number;
-  backgroundBlurPx: number;
-  subjectLiftPx: number;
-  glowOpacity: number;
-  focusPositionPercent: number;
-}>;
-
-export const DEFAULT_DEPTHPOP_SETTINGS: DepthPopSettings = Object.freeze({
-  depth: 62,
-  bokeh: 38,
-  focus: 42,
-  edgeLift: 28,
-  quality: "balanced",
+export const DEPTHPOP_QUALITY_STEPS: Readonly<Record<DepthPopQuality, number>> = Object.freeze({
+  fast: 14,
+  balanced: 22,
+  cinematic: 34,
 });
 
-function clamp(value: number, min = 0, max = 100): number {
+/**
+ * Parity contract taken from the maintained ROARY v115 DepthPop panel in Drive.
+ * The visible controls intentionally keep the same ranges and defaults instead
+ * of inventing a separate Canva-specific effect vocabulary.
+ */
+export const DEFAULT_DEPTHPOP_SETTINGS: DepthPopSettings = Object.freeze({
+  depthStrength: 0.32,
+  depthBlur: 35,
+  depthFidelity: 0.95,
+  quality: "cinematic",
+});
+
+function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
 }
@@ -34,33 +33,46 @@ function clamp(value: number, min = 0, max = 100): number {
 export function normalizeDepthPopSettings(
   settings: Partial<DepthPopSettings> = {},
 ): DepthPopSettings {
-  const quality: DepthPopQuality = ["fast", "balanced", "max"].includes(settings.quality ?? "")
+  const quality: DepthPopQuality = ["fast", "balanced", "cinematic"].includes(
+    settings.quality ?? "",
+  )
     ? (settings.quality as DepthPopQuality)
     : DEFAULT_DEPTHPOP_SETTINGS.quality;
 
   return Object.freeze({
-    depth: clamp(settings.depth ?? DEFAULT_DEPTHPOP_SETTINGS.depth),
-    bokeh: clamp(settings.bokeh ?? DEFAULT_DEPTHPOP_SETTINGS.bokeh),
-    focus: clamp(settings.focus ?? DEFAULT_DEPTHPOP_SETTINGS.focus),
-    edgeLift: clamp(settings.edgeLift ?? DEFAULT_DEPTHPOP_SETTINGS.edgeLift),
+    depthStrength: Number(
+      clamp(settings.depthStrength ?? DEFAULT_DEPTHPOP_SETTINGS.depthStrength, 0.05, 0.75).toFixed(
+        2,
+      ),
+    ),
+    depthBlur: Math.round(clamp(settings.depthBlur ?? DEFAULT_DEPTHPOP_SETTINGS.depthBlur, 0, 100)),
+    depthFidelity: Number(
+      clamp(settings.depthFidelity ?? DEFAULT_DEPTHPOP_SETTINGS.depthFidelity, 0.05, 1).toFixed(2),
+    ),
     quality,
   });
 }
 
-export function buildDepthPopPreviewModel(settings: DepthPopSettings): DepthPopPreviewModel {
-  const normalized = normalizeDepthPopSettings(settings);
-  const depthRatio = normalized.depth / 100;
-  const bokehRatio = normalized.bokeh / 100;
-  const edgeRatio = normalized.edgeLift / 100;
+export function getDepthPopInferenceSteps(quality: DepthPopQuality): number {
+  return DEPTHPOP_QUALITY_STEPS[quality];
+}
 
+export type DepthPopExecutionParameters = Readonly<{
+  strength: number;
+  bokehPercent: number;
+  depthFidelity: number;
+  numInferenceSteps: number;
+}>;
+
+export function buildDepthPopExecutionParameters(
+  settings: DepthPopSettings,
+): DepthPopExecutionParameters {
+  const normalized = normalizeDepthPopSettings(settings);
   return Object.freeze({
-    foregroundScale: Number((1.03 + depthRatio * 0.1).toFixed(3)),
-    subjectScale: Number((1 + depthRatio * 0.055).toFixed(3)),
-    backgroundScale: Number((0.985 - depthRatio * 0.025).toFixed(3)),
-    backgroundBlurPx: Number((1.5 + bokehRatio * 10.5).toFixed(2)),
-    subjectLiftPx: Number((3 + depthRatio * 14).toFixed(2)),
-    glowOpacity: Number((0.08 + edgeRatio * 0.34).toFixed(3)),
-    focusPositionPercent: normalized.focus,
+    strength: normalized.depthStrength,
+    bokehPercent: normalized.depthBlur,
+    depthFidelity: normalized.depthFidelity,
+    numInferenceSteps: getDepthPopInferenceSteps(normalized.quality),
   });
 }
 
@@ -71,6 +83,6 @@ export function getDepthPopExecutionCapability(): Readonly<{
   return Object.freeze({
     available: false,
     reason:
-      "DepthPop processing stays preview-only until an authenticated image-effect provider is configured for the Canva app.",
+      "DepthPop matches the maintained ROARY control contract, but Canva execution stays locked until an authenticated image-effect provider is configured.",
   });
 }

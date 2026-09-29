@@ -2,43 +2,51 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_DEPTHPOP_SETTINGS,
-  buildDepthPopPreviewModel,
+  buildDepthPopExecutionParameters,
   getDepthPopExecutionCapability,
+  getDepthPopInferenceSteps,
   normalizeDepthPopSettings,
 } from "./depthpop-model";
 
-describe("DepthPop preview model", () => {
-  it("normalizes controls to the supported range", () => {
+describe("DepthPop Drive-parity contract", () => {
+  it("normalizes controls to the maintained Drive ranges", () => {
     expect(
       normalizeDepthPopSettings({
-        depth: 140,
-        bokeh: -2,
-        focus: Number.NaN,
-        edgeLift: 55,
-        quality: "max",
+        depthStrength: 2,
+        depthBlur: -2,
+        depthFidelity: Number.NaN,
+        quality: "fast",
       }),
     ).toEqual({
-      depth: 100,
-      bokeh: 0,
-      focus: 0,
-      edgeLift: 55,
-      quality: "max",
+      depthStrength: 0.75,
+      depthBlur: 0,
+      depthFidelity: 0.05,
+      quality: "fast",
     });
   });
 
-  it("falls back to defaults for omitted controls and invalid quality", () => {
-    expect(normalizeDepthPopSettings({ quality: "unsupported" as never })).toEqual(
-      DEFAULT_DEPTHPOP_SETTINGS,
-    );
+  it("uses the v115 visible defaults", () => {
+    expect(DEFAULT_DEPTHPOP_SETTINGS).toEqual({
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      quality: "cinematic",
+    });
   });
 
-  it("builds deterministic preview geometry", () => {
-    const first = buildDepthPopPreviewModel(DEFAULT_DEPTHPOP_SETTINGS);
-    const second = buildDepthPopPreviewModel(DEFAULT_DEPTHPOP_SETTINGS);
-    expect(first).toEqual(second);
-    expect(first.foregroundScale).toBeGreaterThan(first.subjectScale);
-    expect(first.subjectScale).toBeGreaterThan(first.backgroundScale);
-    expect(first.backgroundBlurPx).toBeGreaterThan(0);
+  it("maps quality presets to the same hidden inference-step values", () => {
+    expect(getDepthPopInferenceSteps("fast")).toBe(14);
+    expect(getDepthPopInferenceSteps("balanced")).toBe(22);
+    expect(getDepthPopInferenceSteps("cinematic")).toBe(34);
+  });
+
+  it("builds the provider parameter contract without inventing Canva-only controls", () => {
+    expect(buildDepthPopExecutionParameters(DEFAULT_DEPTHPOP_SETTINGS)).toEqual({
+      strength: 0.32,
+      bokehPercent: 35,
+      depthFidelity: 0.95,
+      numInferenceSteps: 34,
+    });
   });
 
   it("fails closed until an authenticated processing provider exists", () => {

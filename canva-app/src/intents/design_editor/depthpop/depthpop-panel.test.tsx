@@ -33,7 +33,6 @@ vi.mock("@canva/app-ui-kit", async () => {
     Alert: element("div", "Alert"),
     Button: element("button", "Button"),
     Text: element("span", "Text"),
-    Title: element("h3", "Title"),
   };
 });
 
@@ -52,18 +51,24 @@ function render(node: React.ReactNode): string {
 }
 
 describe("DepthPop Canva UI", () => {
-  it("renders the dedicated DepthPop product surface instead of legacy AETHER chrome", () => {
+  it("matches the maintained Drive v115 DepthPop labels and quality presets", () => {
     const html = render(<DepthPopPanel snapshot={null} isReading={false} onRefresh={vi.fn()} />);
-    expect(html).toContain("DepthPop");
-    expect(html).toContain("Depth strength");
-    expect(html).toContain("Bokeh");
-    expect(html).toContain("Focus point");
-    expect(html).toContain("APPLY DEPTHPOP");
-    expect(html).not.toContain("Message AETHER");
-    expect(html).not.toContain("R.O.A.R.Y Studio");
+    expect(html).toContain("DEPTHPOP");
+    expect(html).toContain("DEPTH POP");
+    expect(html).toContain("Turn depth into presence");
+    expect(html).toContain("Depth Strength (subject pop)");
+    expect(html).toContain("Depth Blur (background softness)");
+    expect(html).toContain("Depth Fidelity (depth-map accuracy)");
+    expect(html).toContain("Render Quality");
+    expect(html).toContain("Fast");
+    expect(html).toContain("Balanced");
+    expect(html).toContain("Cinematic");
+    expect(html).toContain("EXECUTE DEPTHPOP");
+    expect(html).not.toContain("Focus point");
+    expect(html).not.toContain("Edge lift");
   });
 
-  it("surfaces current Canva snapshot context when available", () => {
+  it("surfaces current Canva snapshot context compactly", () => {
     const html = render(
       <DepthPopPanel
         snapshot={{
@@ -92,6 +97,6 @@ describe("DepthPop Canva UI", () => {
     );
     expect(html).toContain("Campaign cover");
     expect(html).toContain("1 element");
-    expect(html).toContain("Refresh canvas");
+    expect(html).toContain("Refresh");
   });
 });

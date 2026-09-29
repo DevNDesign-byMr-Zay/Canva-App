@@ -2,7 +2,7 @@
 
 This directory is the maintained Canva Apps SDK surface for **HoloForge** and **DepthPop**. It is intentionally separate from the repository's historical authenticated archive and Node-based archive verification tooling.
 
-The runtime opens a compact product switcher: HoloForge exposes CREATE → SPATIAL → VERIFY, while DepthPop exposes a dedicated depth/focus/bokeh interface. The old AETHER/ROARY HTML shell is not imported by this Canva UI.
+The runtime opens a compact product switcher inside a Canva-width sidebar: HoloForge exposes CREATE → SPATIAL → VERIFY, while DepthPop reproduces the maintained Drive v115 control surface (Depth Strength, Depth Blur, Depth Fidelity, and Fast/Balanced/Cinematic quality). The old AETHER/ROARY shell is not imported by this Canva UI.
 
 ## Open the package correctly
 
@@ -29,7 +29,7 @@ npm run package:canva-ui
 
 The release workflow then zips `.artifacts/canva-ui/` as `canva-app-ui.zip`. The ZIP root contains the production `app.js`, both manifest names (`canva-app.json` and `app.json`), generated translations, `START-HERE.html`, dedicated `HOLOFORGE.html` / `DEPTHPOP.html` entrypoints, upload instructions, and `PACKAGE_MANIFEST.json` with byte counts plus SHA-256 hashes for every packaged file. The `preview/` directory contains the full standalone HTML/CSS/JavaScript UI preview. Packaging fails if any file is empty, required UI/JSON content is missing, the bundle is implausibly small, or historical/internal material leaks into the ZIP.
 
-DepthPop's production UI is present now, but its destructive/apply action remains fail-closed until an authenticated image-effect provider is configured. This prevents the legacy AETHER runtime from being used as a hidden execution path.
+DepthPop's production UI now uses the same visible control contract and black/purple glass direction as `roaryv246_v115_depthpop_modeldrawer_FINALFIX.html` in Drive. Both products are constrained to a 350px maximum Canva sidebar envelope with a 16px inset and no horizontal scrolling. See `../docs/DEPTHPOP_CANVA_PARITY.md` for the exact parity contract. DepthPop's execution action remains fail-closed until an authenticated image-effect provider is configured, so visual/parameter parity does not turn the legacy localhost ROARY runtime into a hidden Canva write path.
 
 ## Product contract
 

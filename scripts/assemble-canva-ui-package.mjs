@@ -82,6 +82,10 @@ await cp(join(root, "canva-app", "canva-app.json"), join(outputDir, "canva-app.j
 // conventional filename. canva-app.json remains the canonical Canva manifest.
 await cp(join(root, "canva-app", "canva-app.json"), join(outputDir, "app.json"));
 await cp(join(root, "canva-app", "README.md"), join(outputDir, "README.md"));
+await cp(
+  join(root, "docs", "DEPTHPOP_CANVA_PARITY.md"),
+  join(outputDir, "DEPTHPOP_PARITY.md"),
+);
 
 await cp(previewDir, join(outputDir, "preview"), { recursive: true });
 await mkdir(join(outputDir, "preview", "assets"), { recursive: true });
@@ -143,6 +147,7 @@ ROOT FILES
 - DEPTHPOP.html          -> local HTML entrypoint focused on DepthPop
 - UPLOAD-TO-CANVA.txt    -> upload instructions
 - PACKAGE_MANIFEST.json  -> file inventory, byte counts and SHA-256 hashes
+- DEPTHPOP_PARITY.md      -> Drive v115 control + Canva sidebar parity contract
 
 PREVIEW
 - preview/index.html     -> full local browser preview for HoloForge + DepthPop
@@ -180,6 +185,7 @@ for (const required of [
   "HOLOFORGE.html",
   "DEPTHPOP.html",
   "UPLOAD-TO-CANVA.txt",
+  "DEPTHPOP_PARITY.md",
   "preview/index.html",
   "preview/styles.css",
   "preview/preview.js",
@@ -218,6 +224,25 @@ if (appJs.trim().length < 10_000) {
 }
 if (!previewHtml.includes("HoloForge") || !previewHtml.includes("DepthPop")) {
   throw new Error("Local preview must visibly include both HoloForge and DepthPop.");
+}
+for (const requiredDepthPopCopy of [
+  "Depth Strength (subject pop)",
+  "Depth Blur (background softness)",
+  "Depth Fidelity (depth-map accuracy)",
+  "Render Quality",
+  "Cinematic",
+  "EXECUTE DEPTHPOP",
+]) {
+  if (!previewHtml.includes(requiredDepthPopCopy)) {
+    throw new Error(`DepthPop preview drifted from Drive v115: missing ${requiredDepthPopCopy}`);
+  }
+}
+const previewCss = await readFile(join(outputDir, "preview", "styles.css"), "utf8");
+if (!/\.canva-sidebar\s*\{[^}]*width:\s*350px/su.test(previewCss)) {
+  throw new Error("Preview must use the 350px Canva desktop sidebar envelope.");
+}
+if (!/\.sidebar-inner\s*\{[^}]*padding:\s*16px/su.test(previewCss)) {
+  throw new Error("Preview must retain the 16px Canva iframe inset.");
 }
 if (/AETHER|R\.O\.A\.R\.Y Studio/u.test(previewHtml)) {
   throw new Error("Legacy AETHER/ROARY UI text leaked into the local preview.");
