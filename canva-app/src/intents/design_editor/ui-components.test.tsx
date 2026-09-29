@@ -281,7 +281,10 @@ describe("HoloForge studio sidebar components", () => {
 
   it("routes StudioTabs callbacks", () => {
     const onSelectTab = vi.fn();
-    const tree = StudioTabs({ activeTab: "create", onSelectTab });
+    const tree = StudioTabs({
+      activeTab: "create",
+      onSelectTab,
+    }) as React.ReactElement;
     const list = elementChildren(tree)[0];
     for (const button of elementChildren(list)) {
       const props = button.props as { onClick?: () => void };
@@ -297,7 +300,7 @@ describe("HoloForge studio sidebar components", () => {
     const typeTree = CreationTypes({
       selectedType: "holo_graphic",
       onSelectType,
-    });
+    }) as React.ReactElement;
     const typeButtons = elementChildren(typeTree);
     (typeButtons[0].props as { onClick?: () => void }).onClick?.();
     (typeButtons[4].props as { onClick?: () => void }).onClick?.();
@@ -308,7 +311,7 @@ describe("HoloForge studio sidebar components", () => {
     const presetTree = MaterialPresets({
       selectedPresetId: "iridescent-chrome",
       onSelectPreset,
-    });
+    }) as React.ReactElement;
     const presetButtons = elementChildren(presetTree);
     (presetButtons[0].props as { onClick?: () => void }).onClick?.();
     (presetButtons[8].props as { onClick?: () => void }).onClick?.();
@@ -388,7 +391,7 @@ describe("HoloForge studio sidebar components", () => {
       selectedElementId: "element-1",
       onSelectElement,
       viewMode: "holo",
-    });
+    }) as React.ReactElement;
     const viewport = elementChildren(tree)[0];
     const layers = elementChildren(viewport);
     const firstProps = layers[0].props as {
