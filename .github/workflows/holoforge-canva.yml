@@ -96,12 +96,50 @@ jobs:
             exit 1
           fi
 
+          for product in holoforge depthpop
+          do
+            product_dir="../.artifacts/canva-ui/products/$product"
+            for required in \
+              app.js \
+              app.json \
+              canva-app.json \
+              messages_en.json \
+              app.html \
+              index.html \
+              ui.json \
+              README.md \
+              UPLOAD-TO-CANVA.txt \
+              PACKAGE_MANIFEST.json \
+              styles.css \
+              preview.js \
+              assets/holoforge-logo.svg \
+              assets/depthpop-logo.svg
+            do
+              test -s "$product_dir/$required"
+            done
+            node -e "const fs=require('fs'); const d=process.argv[1]; for (const p of ['app.json','canva-app.json','messages_en.json','ui.json','PACKAGE_MANIFEST.json']) JSON.parse(fs.readFileSync(d+'/'+p,'utf8'));" "$product_dir"
+          done
+
+          grep -q 'globalThis.__MRZAY_CANVA_PRODUCT__ = "holoforge";' ../.artifacts/canva-ui/products/holoforge/app.js
+          grep -q 'globalThis.__MRZAY_CANVA_PRODUCT__ = "depthpop";' ../.artifacts/canva-ui/products/depthpop/app.js
+          grep -q "HoloForge" ../.artifacts/canva-ui/products/holoforge/app.html
+          grep -q "DepthPop" ../.artifacts/canva-ui/products/depthpop/app.html
+
           (cd ../.artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
+          (cd ../.artifacts/canva-ui/products/holoforge && zip -qr ../../../holoforge-canva-app.zip .)
+          (cd ../.artifacts/canva-ui/products/depthpop && zip -qr ../../../depthpop-canva-app.zip .)
+
           unzip -t ../.artifacts/canva-app-ui.zip
-      - name: Retain Canva UI package
+          unzip -t ../.artifacts/holoforge-canva-app.zip
+          unzip -t ../.artifacts/depthpop-canva-app.zip
+
+      - name: Retain Canva UI packages
         uses: actions/upload-artifact@v7
         with:
           name: canva-app-ui-${{ github.sha }}
           if-no-files-found: error
           retention-days: 14
-          path: .artifacts/canva-app-ui.zip
+          path: |
+            .artifacts/canva-app-ui.zip
+            .artifacts/holoforge-canva-app.zip
+            .artifacts/depthpop-canva-app.zip
