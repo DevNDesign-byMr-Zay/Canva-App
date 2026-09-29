@@ -21,7 +21,8 @@
     "verify:release": "node scripts/verify-release-readiness.mjs",
     "verify:syntax": "node scripts/verify-maintained-js-syntax.mjs",
     "lint": "npm run verify:syntax",
-    "format:check": "npm --prefix canva-app run format:check"
+    "format:check": "npm --prefix canva-app run format:check",
+    "package:canva-ui": "node scripts/assemble-canva-ui-package.mjs"
   },
   "engines": {
     "node": ">=22"
