@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HoloForge + DepthPop Canva UI Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="preview-shell">
+      <header class="preview-topbar">
+        <div>
+          <p class="eyebrow">MR. ZAY · CANVA APP</p>
+          <h1>HoloForge + DepthPop</h1>
+          <p class="subhead">
+            Local HTML preview of the maintained Canva UI. This file is for visual review only;
+            upload <strong>app.js</strong> to Canva.
+          </p>
+        </div>
+        <div class="status-pill">LOCAL PREVIEW</div>
+      </header>
+
+      <section class="device">
+        <aside class="rail" aria-label="Product selector">
+          <button class="product-tab is-active" data-product="holoforge" type="button">
+            <img src="./assets/holoforge-logo.svg" alt="" />
+            <span>HoloForge</span>
+          </button>
+          <button class="product-tab" data-product="depthpop" type="button">
+            <img src="./assets/depthpop-logo.svg" alt="" />
+            <span>DepthPop</span>
+          </button>
+        </aside>
+
+        <div class="panel">
+          <section class="product-view is-active" id="holoforge-view">
+            <header class="product-hero holo-hero">
+              <div class="brand-row">
+                <img class="brand-logo" src="./assets/holoforge-logo.svg" alt="" />
+                <div>
+                  <p class="eyebrow">HOLOGRAPHIC DESIGN STUDIO</p>
+                  <h2>HoloForge</h2>
+                </div>
+                <span class="mini-pill">CANVA</span>
+              </div>
+              <p>Create holographic materials, preview spatial depth, then verify supported Canva changes.</p>
+            </header>
+
+            <div class="segmented" role="tablist" aria-label="HoloForge workflow">
+              <button class="segment is-active" data-hf-tab="create" type="button">CREATE</button>
+              <button class="segment" data-hf-tab="spatial" type="button">SPATIAL</button>
+              <button class="segment" data-hf-tab="verify" type="button">VERIFY</button>
+            </div>
+
+            <div class="hf-pane is-active" data-hf-pane="create">
+              <article class="card">
+                <div class="card-head">
+                  <div>
+                    <p class="eyebrow">01 · MATERIAL</p>
+                    <h3>Forge surface</h3>
+                  </div>
+                  <span class="mini-pill ready">READY</span>
+                </div>
+                <div class="material-grid">
+                  <button class="material is-active" type="button">Iridescent Chrome</button>
+                  <button class="material" type="button">Aurora Glass</button>
+                  <button class="material" type="button">Prism Foil</button>
+                  <button class="material" type="button">Liquid Metal</button>
+                  <button class="material" type="button">Spectral Pearl</button>
+                  <button class="material" type="button">Holo Gunmetal</button>
+                </div>
+              </article>
+
+              <article class="card">
+                <p class="eyebrow">02 · TUNE</p>
+                <label class="control"><span>Reflection <strong id="reflection-value">68%</strong></span><input id="reflection" type="range" min="0" max="100" value="68" /></label>
+                <label class="control"><span>Glow <strong id="glow-value">44%</strong></span><input id="glow" type="range" min="0" max="100" value="44" /></label>
+                <label class="control"><span>Transparency <strong id="transparency-value">12%</strong></span><input id="transparency" type="range" min="0" max="100" value="12" /></label>
+              </article>
+
+              <article class="preview-stage">
+                <div class="holo-orb" id="holo-orb"></div>
+                <div class="preview-meta"><span>LIVE MATERIAL PREVIEW</span><span id="material-name">Iridescent Chrome</span></div>
+              </article>
+            </div>
+
+            <div class="hf-pane" data-hf-pane="spatial">
+              <article class="card">
+                <p class="eyebrow">SPATIAL · 2.5D</p>
+                <h3>Source / candidate depth</h3>
+                <div class="spatial-stage">
+                  <div class="plane plane-back"></div>
+                  <div class="plane plane-mid"></div>
+                  <div class="plane plane-front"></div>
+                </div>
+                <div class="metric-row"><span>Source Z <strong>0</strong></span><span>Candidate Z <strong>1</strong></span><span>Preview only</span></div>
+              </article>
+            </div>
+
+            <div class="hf-pane" data-hf-pane="verify">
+              <article class="card">
+                <p class="eyebrow">VERIFY · EXPLICIT APPLY</p>
+                <h3>Evidence-backed review</h3>
+                <div class="proof-list">
+                  <div><span>Design snapshot</span><strong>Ready</strong></div>
+                  <div><span>Scenario provenance</span><strong>Verified</strong></div>
+                  <div><span>Post-state proof</span><strong>Required</strong></div>
+                </div>
+                <button class="primary" type="button">APPLY VERIFIED CHANGE</button>
+              </article>
+            </div>
+          </section>
+
+          <section class="product-view" id="depthpop-view">
+            <header class="product-hero depth-hero">
+              <div class="brand-row">
+                <img class="brand-logo" src="./assets/depthpop-logo.svg" alt="" />
+                <div>
+                  <p class="eyebrow">SPATIAL IMAGE LAB</p>
+                  <h2>DepthPop</h2>
+                </div>
+                <span class="mini-pill">CANVA</span>
+              </div>
+              <p>Shape perceived depth, focus and bokeh through a dedicated Canva-side interface.</p>
+            </header>
+
+            <article class="preview-stage depth-stage">
+              <div class="depth-grid"></div>
+              <div class="depth-plane depth-back"></div>
+              <div class="depth-plane depth-subject"><span class="depth-orb"></span><span>SUBJECT</span></div>
+              <div class="depth-plane depth-front"></div>
+              <div class="focus-line"></div>
+              <div class="preview-meta"><span>LIVE DEPTH FIELD</span><span id="depth-summary">62 / 38 / 42</span></div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">01 · DEPTH ENGINE</p>
+              <label class="control"><span>Depth strength <strong id="depth-value">62%</strong></span><input id="depth" type="range" min="0" max="100" value="62" /></label>
+              <label class="control"><span>Bokeh <strong id="bokeh-value">38%</strong></span><input id="bokeh" type="range" min="0" max="100" value="38" /></label>
+              <label class="control"><span>Focus point <strong id="focus-value">42%</strong></span><input id="focus" type="range" min="0" max="100" value="42" /></label>
+              <label class="control"><span>Edge lift <strong id="edge-value">28%</strong></span><input id="edge" type="range" min="0" max="100" value="28" /></label>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div><p class="eyebrow">02 · OUTPUT</p><h3>DepthPop pass</h3></div>
+                <span class="mini-pill locked">LOCKED</span>
+              </div>
+              <div class="quality-row">
+                <button type="button">FAST</button>
+                <button class="is-active" type="button">BALANCED</button>
+                <button type="button">MAX</button>
+              </div>
+              <p class="note">The production UI is built. Apply remains fail-closed until an authenticated image-effect provider is connected.</p>
+              <button class="primary" type="button" disabled>APPLY DEPTHPOP</button>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <footer class="preview-footer">
+        <strong>Canva upload:</strong> use <code>app.js</code> from the ZIP root. Do not upload the ZIP or this HTML file as the app bundle.
+      </footer>
+    </main>
+    <script src="./preview.js"></script>
+  </body>
+</html>
