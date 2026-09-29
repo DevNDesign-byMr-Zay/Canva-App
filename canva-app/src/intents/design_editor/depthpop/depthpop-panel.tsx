@@ -69,19 +69,12 @@ function DepthPopIcon() {
   );
 }
 
-export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({
-  snapshot,
-  isReading,
-  onRefresh,
-}) => {
+export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({ snapshot, isReading, onRefresh }) => {
   const [settings, setSettings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
   const execution = useMemo(() => getDepthPopExecutionCapability(), []);
   const parameters = useMemo(() => buildDepthPopExecutionParameters(settings), [settings]);
 
-  const setSetting = (
-    key: "depthStrength" | "depthBlur" | "depthFidelity",
-    value: number,
-  ) => {
+  const setSetting = (key: "depthStrength" | "depthBlur" | "depthFidelity", value: number) => {
     setSettings((current) => normalizeDepthPopSettings({ ...current, [key]: value }));
   };
 
@@ -154,11 +147,7 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({
                 aria-pressed={settings.quality === quality}
                 onClick={() => setQuality(quality)}
               >
-                {quality === "fast"
-                  ? "Fast"
-                  : quality === "balanced"
-                    ? "Balanced"
-                    : "Cinematic"}
+                {quality === "fast" ? "Fast" : quality === "balanced" ? "Balanced" : "Cinematic"}
               </button>
             ))}
           </div>
@@ -174,12 +163,7 @@ export const DepthPopPanel: React.FC<DepthPopPanelProps> = ({
               : "Current design not read"}
           </strong>
         </div>
-        <button
-          className="dp-source-btn"
-          type="button"
-          disabled={isReading}
-          onClick={onRefresh}
-        >
+        <button className="dp-source-btn" type="button" disabled={isReading} onClick={onRefresh}>
           {isReading ? "Reading…" : snapshot ? "Refresh" : "Read"}
         </button>
       </div>
