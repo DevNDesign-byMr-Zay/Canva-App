@@ -17,6 +17,10 @@ const REQUIRED_FILES = Object.freeze([
   "canva-app/package-lock.json",
   "canva-app/vitest.config.ts",
   "canva-app/src/intents/design_editor/app.tsx",
+  "canva-app/src/intents/design_editor/navigation/product-switcher.tsx",
+  "canva-app/src/intents/design_editor/depthpop/depthpop-panel.tsx",
+  "canva-app/src/intents/design_editor/depthpop/depthpop-model.ts",
+  "canva-app/src/assets/depthpop-logo.svg",
   "canva-app/src/intents/design_editor/scenario-contract.ts",
   "canva-app/src/intents/design_editor/spatial-scenario-view.ts",
   "canva-app/src/intents/design_editor/spatial-preview.ts",
@@ -32,6 +36,7 @@ const REQUIRED_FILES = Object.freeze([
   ".github/CODEOWNERS",
   ".github/pull_request_template.md",
   "scripts/create-release-manifest.mjs",
+  "scripts/assemble-canva-ui-package.mjs",
   "scripts/verify-maintained-js-syntax.mjs",
   "Makefile",
 ]);
@@ -77,6 +82,10 @@ async function main() {
   );
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
+  assert(
+    pkg.scripts?.["package:canva-ui"] === "node scripts/assemble-canva-ui-package.mjs",
+    "root clean Canva UI packaging script is required",
+  );
   assert(/--test-coverage-lines=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% line coverage");
   assert(/--test-coverage-branches=80/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 80% branch coverage");
   assert(/--test-coverage-functions=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% function coverage");
@@ -223,6 +232,11 @@ async function main() {
     'quality workflow must smoke-test release manifest generation',
   );
   assert(/gh release create/u.test(release), "release workflow must publish through GitHub Releases");
+  assert(/assemble-canva-ui-package\.mjs/u.test(release), "release workflow must assemble the clean Canva UI package");
+  assert(/canva-app-ui\.zip/u.test(release), "release workflow must publish the clean Canva UI ZIP");
+  assert(/authenticated-v115\|legacy-html\|provenance\|archive_verifier/u.test(release), "release workflow must reject historical/internal paths from the Canva UI ZIP");
+  assert(/assemble-canva-ui-package\.mjs/u.test(appCi), "HoloForge workflow must assemble the clean UI package");
+  assert(/canva-app-ui-/u.test(appCi), "HoloForge workflow must retain the clean UI build artifact");
   assert(/explicit-user-Apply/iu.test(changelog), "explicit Apply authority boundary must remain documented");
   assert(
     /candidate is not published until the gated manual release workflow publishes it/iu.test(

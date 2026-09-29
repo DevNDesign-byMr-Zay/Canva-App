@@ -23,9 +23,11 @@ import { snapshotScenarioForPresentation } from "./scenario-contract";
 import { buildSpatialPreviewModel, type SpatialPreviewModel } from "./spatial-preview";
 
 import { StudioTabs, type StudioTab } from "./navigation/studio-tabs";
+import { ProductSwitcher, type ProductSurface } from "./navigation/product-switcher";
 import { CreatePanel } from "./create/create-panel";
 import { SpatialPanel } from "./spatial/spatial-panel";
 import { VerifyPanel } from "./verify/verify-panel";
+import { DepthPopPanel } from "./depthpop/depthpop-panel";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
 import { executeHolographicEffectPlan } from "./holographic/effect-executor";
 import { canvaAppOwnedEffectAdapter } from "./holographic/app-owned-effect-adapter";
@@ -49,6 +51,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const isSupported = useFeatureSupport();
   const designEditingSupported = isSupported(openDesign);
 
+  const [activeProduct, setActiveProduct] = useState<ProductSurface>("holoforge");
   const [activeTab, setActiveTab] = useState<StudioTab>("create");
   const [snapshot, setSnapshot] = useState<CanvaDesignSnapshot | null>(null);
   const [status, setStatus] = useState<AppStatus>("idle");
@@ -335,76 +338,84 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
   const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
-    <div className="hf-shell">
-      <header className="hf-hero">
-        <div className="hf-brand-row">
-          <div className="hf-brand-lockup">
-            <span className="hf-mark" aria-hidden="true" />
-            <div>
-              <div className="hf-kicker">HOLOGRAPHIC DESIGN STUDIO</div>
-              <div className="hf-title-wrap">
-                <Title>
-                  <FormattedMessage
-                    defaultMessage="HoloForge"
-                    description="Name of the HoloForge Canva app."
-                  />
-                </Title>
+    <div className="canva-tool-shell">
+      <ProductSwitcher activeProduct={activeProduct} onSelectProduct={setActiveProduct} />
+
+      {activeProduct === "depthpop" ? (
+        <DepthPopPanel snapshot={snapshot} isReading={status === "reading"} onRefresh={refresh} />
+      ) : (
+        <div className="hf-shell">
+          <header className="hf-hero">
+            <div className="hf-brand-row">
+              <div className="hf-brand-lockup">
+                <span className="hf-mark" aria-hidden="true" />
+                <div>
+                  <div className="hf-kicker">HOLOGRAPHIC DESIGN STUDIO</div>
+                  <div className="hf-title-wrap">
+                    <Title>
+                      <FormattedMessage
+                        defaultMessage="HoloForge"
+                        description="Name of the HoloForge Canva app."
+                      />
+                    </Title>
+                  </div>
+                </div>
               </div>
+              <span className="hf-trust-pill">CANVA</span>
             </div>
-          </div>
-          <span className="hf-trust-pill">CANVA</span>
-        </div>
-        <div className="hf-hero-copy">
-          <Text>
-            <FormattedMessage
-              defaultMessage="Create holographic materials, preview them spatially, then apply supported changes with verification."
-              description="Short purpose statement for HoloForge."
+            <div className="hf-hero-copy">
+              <Text>
+                <FormattedMessage
+                  defaultMessage="Create holographic materials, preview them spatially, then apply supported changes with verification."
+                  description="Short purpose statement for HoloForge."
+                />
+              </Text>
+            </div>
+          </header>
+
+          <StudioTabs activeTab={activeTab} onSelectTab={setActiveTab} />
+
+          {!designEditingSupported && (
+            <Alert tone="warn">
+              <FormattedMessage
+                defaultMessage="Design editing isn't supported in this Canva context. Holographic preview remains available, but Forge and Verify writes stay locked."
+                description="Capability warning when Canva does not support design editing."
+              />
+            </Alert>
+          )}
+          {message && <Alert tone={messageTone}>{message}</Alert>}
+
+          {activeTab === "create" && (
+            <CreatePanel
+              onPreviewHologram={previewHologram}
+              onForgeIntoCanva={forgeIntoCanva}
+              isForging={isForging}
             />
-          </Text>
+          )}
+          {activeTab === "spatial" && (
+            <SpatialPanel
+              spatialModel={spatialModel}
+              effectPlan={effectPlan}
+              selectedElementId={selectedSpatialElementId}
+              onSelectElement={setSelectedSpatialElementId}
+            />
+          )}
+          {activeTab === "verify" && (
+            <VerifyPanel
+              snapshot={snapshot}
+              reviewScenario={reviewScenario}
+              review={review}
+              scenarioVerified={scenarioVerified}
+              readyToApply={readyToApply}
+              isReading={status === "reading"}
+              isApplying={status === "applying"}
+              receipt={receipt}
+              attestation={attestation}
+              onRefresh={refresh}
+              onApply={apply}
+            />
+          )}
         </div>
-      </header>
-
-      <StudioTabs activeTab={activeTab} onSelectTab={setActiveTab} />
-
-      {!designEditingSupported && (
-        <Alert tone="warn">
-          <FormattedMessage
-            defaultMessage="Design editing isn't supported in this Canva context. Holographic preview remains available, but Forge and Verify writes stay locked."
-            description="Capability warning when Canva does not support design editing."
-          />
-        </Alert>
-      )}
-      {message && <Alert tone={messageTone}>{message}</Alert>}
-
-      {activeTab === "create" && (
-        <CreatePanel
-          onPreviewHologram={previewHologram}
-          onForgeIntoCanva={forgeIntoCanva}
-          isForging={isForging}
-        />
-      )}
-      {activeTab === "spatial" && (
-        <SpatialPanel
-          spatialModel={spatialModel}
-          effectPlan={effectPlan}
-          selectedElementId={selectedSpatialElementId}
-          onSelectElement={setSelectedSpatialElementId}
-        />
-      )}
-      {activeTab === "verify" && (
-        <VerifyPanel
-          snapshot={snapshot}
-          reviewScenario={reviewScenario}
-          review={review}
-          scenarioVerified={scenarioVerified}
-          readyToApply={readyToApply}
-          isReading={status === "reading"}
-          isApplying={status === "applying"}
-          receipt={receipt}
-          attestation={attestation}
-          onRefresh={refresh}
-          onApply={apply}
-        />
       )}
     </div>
   );

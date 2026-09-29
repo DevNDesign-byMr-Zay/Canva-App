@@ -6,7 +6,10 @@ The maintained project is a **Canva Design Editor application/tooling** reposito
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
-## HoloForge Canva Design Studio
+## HoloForge + DepthPop Canva Design Studio
+
+The maintained Canva sidebar now exposes two explicit product surfaces: **HoloForge** for holographic creation/spatial review/verified Apply, and **DepthPop** for depth, focus, bokeh and edge-lift preview controls. The historical authenticated AETHER/ROARY application remains provenance-only and is excluded from the clean Canva distribution ZIP.
+
 
 <p align="center">
   <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
