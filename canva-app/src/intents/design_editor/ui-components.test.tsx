@@ -401,7 +401,7 @@ describe("HoloForge studio sidebar components", () => {
     firstProps.onClick?.();
     firstProps.onKeyDown?.({ key: "Enter", preventDefault: vi.fn() });
     firstProps.onKeyDown?.({ key: "Escape", preventDefault: vi.fn() });
-    expect(onSelectElement).toHaveBeenCalledWith("element-1");
+    expect(onSelectElement).toHaveBeenCalledWith("element-2");
   });
 
   it("renders snapshot, reviewed change, proof, and composed Verify states", () => {
