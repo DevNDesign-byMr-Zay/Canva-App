@@ -1,25 +1,91 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HoloForge · Canva sidebar preview</title>
-<link rel="stylesheet" href="./styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HoloForge Canva Sidebar Preview</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<main class="sidebar">
-  <header class="hero">
-    <div class="brand"><img src="./holoforge-logo.svg" alt=""><div><small>HOLOGRAPHIC DESIGN STUDIO</small><h1>HoloForge</h1></div><b>CANVA</b></div>
-    <p>Create holographic materials, preview them spatially, then apply supported changes with verification.</p>
-  </header>
-  <nav class="tabs" aria-label="HoloForge studio"><button class="active" data-tab="create">CREATE</button><button data-tab="spatial">SPATIAL</button><button data-tab="verify">VERIFY</button></nav>
-  <section class="pane active" data-pane="create">
-    <article class="card"><small>01 · CREATION TYPE</small><div class="grid"><button class="selected">Holo Graphic</button><button>Holo Text</button><button>Glass</button><button>Chrome</button><button>Prism</button><button>Liquid Metal</button></div></article>
-    <article class="card"><div class="head"><small>02 · MATERIAL</small><span>PRESETS</span></div><div class="grid"><button class="selected">Iridescent Chrome</button><button>Aurora Glass</button><button>Prism Foil</button><button>Liquid Metal</button><button>Spectral Pearl</button><button>Holo Gunmetal</button></div></article>
-    <article class="card controls"><label>Color Shift <input type="range" value="58"></label><label>Depth <input type="range" value="64"></label><label>Reflection <input type="range" value="72"></label><label>Glow <input type="range" value="42"></label></article>
-    <div class="actions"><button>Preview Hologram</button><button class="primary">Forge into Canva</button></div>
-  </section>
-  <section class="pane" data-pane="spatial"><article class="card"><small>SPATIAL · 2.5D PREVIEW</small><div class="stage"><i class="p back"></i><i class="p mid"></i><i class="p front"></i></div><p>Source and holographic candidate remain reviewable before Apply.</p></article></section>
-  <section class="pane" data-pane="verify"><article class="card"><small>VERIFY · EXPLICIT APPLY</small><div class="proof"><span>Design snapshot <b>READY</b></span><span>Scenario evidence <b>VERIFIED</b></span><span>Post-state proof <b>REQUIRED</b></span></div><button class="primary full">APPLY VERIFIED CHANGE</button></article></section>
-</main>
-<script src="./preview.js"></script>
-</body></html>
+  <main class="preview-page">
+    <section class="canva-sidebar" aria-label="HoloForge Canva app sidebar preview">
+      <div class="sidebar-inner">
+        <header class="hf-hero">
+          <div class="hf-brand-row">
+            <div class="hf-lockup">
+              <img src="./holoforge-logo.svg" alt="" />
+              <div>
+                <p class="micro">HOLOGRAPHIC DESIGN STUDIO</p>
+                <h1>HoloForge</h1>
+              </div>
+            </div>
+            <span class="canva-chip">CANVA</span>
+          </div>
+          <p>Create holographic materials, preview them spatially, then apply supported changes with verification.</p>
+        </header>
+
+        <div class="hf-tabs" role="tablist" aria-label="HoloForge workflow">
+          <button class="hf-tab is-active" data-hf-tab="create" type="button">CREATE</button>
+          <button class="hf-tab" data-hf-tab="spatial" type="button">SPATIAL</button>
+          <button class="hf-tab" data-hf-tab="verify" type="button">VERIFY</button>
+        </div>
+
+        <div class="hf-pane is-active" data-hf-pane="create">
+          <article class="hf-card">
+            <div class="card-head">
+              <div><p class="micro">01 · MATERIAL</p><h2>Forge surface</h2></div>
+              <span class="ready-pill">READY</span>
+            </div>
+            <div class="material-grid">
+              <button class="material is-active" type="button">Iridescent Chrome</button>
+              <button class="material" type="button">Aurora Glass</button>
+              <button class="material" type="button">Prism Foil</button>
+              <button class="material" type="button">Liquid Metal</button>
+              <button class="material" type="button">Spectral Pearl</button>
+              <button class="material" type="button">Holo Gunmetal</button>
+            </div>
+          </article>
+
+          <article class="hf-card">
+            <p class="micro">02 · TUNE</p>
+            <label class="hf-control"><span>Reflection <strong id="reflection-value">68%</strong></span><input id="reflection" type="range" min="0" max="100" value="68" /></label>
+            <label class="hf-control"><span>Glow <strong id="glow-value">44%</strong></span><input id="glow" type="range" min="0" max="100" value="44" /></label>
+            <label class="hf-control"><span>Transparency <strong id="transparency-value">12%</strong></span><input id="transparency" type="range" min="0" max="100" value="12" /></label>
+          </article>
+
+          <article class="hf-material-preview">
+            <div class="holo-orb" id="holo-orb"></div>
+            <div><p class="micro">LIVE MATERIAL PREVIEW</p><strong id="material-name">Iridescent Chrome</strong></div>
+          </article>
+        </div>
+
+        <div class="hf-pane" data-hf-pane="spatial">
+          <article class="hf-card">
+            <p class="micro">SPATIAL · 2.5D</p>
+            <h2>Source / candidate depth</h2>
+            <div class="spatial-stage">
+              <div class="plane plane-back"></div>
+              <div class="plane plane-mid"></div>
+              <div class="plane plane-front"></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="hf-pane" data-hf-pane="verify">
+          <article class="hf-card">
+            <p class="micro">VERIFY · EXPLICIT APPLY</p>
+            <h2>Evidence-backed review</h2>
+            <div class="proof-list">
+              <div><span>Design snapshot</span><strong>Ready</strong></div>
+              <div><span>Scenario provenance</span><strong>Verified</strong></div>
+              <div><span>Post-state proof</span><strong>Required</strong></div>
+            </div>
+            <button class="hf-primary" type="button">APPLY VERIFIED CHANGE</button>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="./preview.js"></script>
+</body>
+</html>
