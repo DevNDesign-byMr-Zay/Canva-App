@@ -6,7 +6,17 @@ import type { DesignEditorIntent } from "@canva/intents/design";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app";
+import type { ProductSurface } from "./navigation/product-switcher";
 import { resolveReviewContextForMount } from "./review-context-mount";
+
+const runtime = globalThis as typeof globalThis & {
+  __MRZAY_CANVA_PRODUCT__?: ProductSurface;
+};
+const configuredProduct =
+  runtime.__MRZAY_CANVA_PRODUCT__ === "holoforge" ||
+  runtime.__MRZAY_CANVA_PRODUCT__ === "depthpop"
+    ? runtime.__MRZAY_CANVA_PRODUCT__
+    : null;
 
 async function render() {
   const rootElement = document.getElementById("root");
@@ -26,6 +36,8 @@ async function render() {
           scenario={trustedContext?.scenario ?? null}
           trustedDesignId={trustedContext?.trustedDesignId}
           trustedPageId={trustedContext?.trustedPageId}
+          initialProduct={configuredProduct ?? "holoforge"}
+          lockedProduct={configuredProduct}
         />
       </AppUiProvider>
     </AppI18nProvider>,
