@@ -29,8 +29,7 @@ vi.mock("@canva/app-ui-kit", async () => {
         Object.fromEntries(
           Object.entries(props).filter(
             ([key]) =>
-              !["variant", "tone", "stretch", "loading"].includes(key) &&
-              !key.startsWith("on"),
+              !["variant", "tone", "stretch", "loading"].includes(key) && !key.startsWith("on"),
           ),
         ),
         children,
@@ -49,9 +48,7 @@ vi.mock("@canva/app-ui-kit", async () => {
 });
 
 function elementChildren(node: React.ReactElement): React.ReactElement[] {
-  const children = React.Children.toArray(
-    (node.props as { children?: React.ReactNode }).children,
-  );
+  const children = React.Children.toArray((node.props as { children?: React.ReactNode }).children);
   return children.filter(React.isValidElement) as React.ReactElement[];
 }
 
@@ -270,9 +267,7 @@ describe("HoloForge studio sidebar components", () => {
 
   it("renders every studio navigation state", () => {
     for (const activeTab of ["create", "spatial", "verify"] as const) {
-      const html = renderToString(
-        wrap(<StudioTabs activeTab={activeTab} onSelectTab={vi.fn()} />),
-      );
+      const html = renderToString(wrap(<StudioTabs activeTab={activeTab} onSelectTab={vi.fn()} />));
       expect(html).toContain("CREATE");
       expect(html).toContain("SPATIAL");
       expect(html).toContain("VERIFY");
@@ -329,11 +324,7 @@ describe("HoloForge studio sidebar components", () => {
     );
     const create = renderToString(
       wrap(
-        <CreatePanel
-          onPreviewHologram={vi.fn()}
-          onForgeIntoCanva={vi.fn()}
-          isForging={false}
-        />,
+        <CreatePanel onPreviewHologram={vi.fn()} onForgeIntoCanva={vi.fn()} isForging={false} />,
       ),
     );
     expect(controls).toContain("Color Shift");
