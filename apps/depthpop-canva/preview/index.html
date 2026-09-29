@@ -1,26 +1,53 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DepthPop · Canva sidebar preview</title>
-<link rel="stylesheet" href="./styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DepthPop Canva Sidebar Preview</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<main class="sidebar">
-  <section class="panel">
-    <div class="top"><span class="icon" aria-hidden="true"><i></i><i></i><i></i></span><b>CANVA</b></div>
-    <h1>DEPTHPOP</h1>
-    <div class="chip">DEPTH POP</div>
-    <p class="desc">Turn depth into presence — subtle separation, cinematic focus, same scene.</p>
-    <div class="controls">
-      <label title="How strong the depth separation feels."><span>Depth Strength (subject pop)</span><strong id="strength-v">0.32</strong><input id="strength" type="range" min=".05" max=".75" step=".01" value=".32"></label>
-      <label title="Blurs background based on depth. 0% subtle, 100% dramatic."><span>Depth Blur (background softness)</span><strong id="blur-v">35%</strong><input id="blur" type="range" min="0" max="100" step="1" value="35"></label>
-      <label title="How tightly DepthPop follows the depth map."><span>Depth Fidelity (depth-map accuracy)</span><strong id="fidelity-v">0.95</strong><input id="fidelity" type="range" min=".05" max="1" step=".01" value=".95"></label>
-      <div class="quality"><div class="qhead"><span>Render Quality</span><strong id="steps">steps 34</strong></div><div class="qbuttons"><button data-q="14">Fast</button><button data-q="22">Balanced</button><button class="active" data-q="34">Cinematic</button></div></div>
-    </div>
-    <div class="source"><div><small>CANVA SOURCE</small><strong>Current design not read</strong></div><button>Read</button></div>
-    <div class="actions"><button class="execute" disabled>EXECUTE DEPTHPOP</button><small>Execution stays locked until the authenticated Canva-compatible image-effect provider is connected.</small></div>
-  </section>
-</main>
-<script src="./preview.js"></script>
-</body></html>
+  <main class="preview-page">
+    <section class="canva-sidebar" aria-label="DepthPop Canva app sidebar preview">
+      <div class="sidebar-inner">
+        <div class="dp-shell">
+          <div class="dp-topline">
+            <span class="dp-heroicon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 7h10v10H7V7Z" stroke="currentColor" stroke-width="1.6" opacity=".35"></path>
+                <path d="M5 9h10v10H5V9Z" stroke="currentColor" stroke-width="1.6" opacity=".6"></path>
+                <path d="M9 5h10v10H9V5Z" stroke="currentColor" stroke-width="1.6"></path>
+                <path d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z" fill="currentColor" opacity=".85"></path>
+              </svg>
+            </span>
+            <span class="canva-chip">CANVA</span>
+          </div>
+          <div class="dp-title">DEPTHPOP</div>
+          <div class="dp-chip">DEPTH POP</div>
+          <p class="dp-desc">Turn depth into presence — subtle separation, cinematic focus, same scene.</p>
+          <div class="dp-controls" aria-label="DepthPop controls">
+            <label class="dp-control"><span>Depth Strength (subject pop)<strong id="depth-strength-value">0.32</strong></span><input id="depth-strength" type="range" min="0.05" max="0.75" step="0.01" value="0.32" /></label>
+            <label class="dp-control"><span>Depth Blur (background softness)<strong id="depth-blur-value">35%</strong></span><input id="depth-blur" type="range" min="0" max="100" step="1" value="35" /></label>
+            <label class="dp-control"><span>Depth Fidelity (depth-map accuracy)<strong id="depth-fidelity-value">0.95</strong></span><input id="depth-fidelity" type="range" min="0.05" max="1" step="0.01" value="0.95" /></label>
+            <div class="dp-control dp-quality-control">
+              <span>Render Quality<strong id="quality-steps">steps 34</strong></span>
+              <div class="quality-row">
+                <button data-quality="fast" data-steps="14" type="button">Fast</button>
+                <button data-quality="balanced" data-steps="22" type="button">Balanced</button>
+                <button class="is-active" data-quality="cinematic" data-steps="34" type="button">Cinematic</button>
+              </div>
+            </div>
+          </div>
+          <div class="source-row"><div><small>CANVA SOURCE</small><strong>Current design not read</strong></div><button type="button">Read</button></div>
+          <div class="dp-actions">
+            <p class="provider-note">DepthPop matches the maintained ROARY control contract, but Canva execution stays locked until an authenticated image-effect provider is configured.</p>
+            <button class="execute" type="button" disabled>EXECUTE DEPTHPOP</button>
+            <p class="boundary">Drive v115 control parity · Canva-safe execution boundary</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="./preview.js"></script>
+</body>
+</html>
