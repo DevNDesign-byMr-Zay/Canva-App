@@ -70,6 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
+          node --check .artifacts/canva-ui/app.js
           (cd .artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
           unzip -Z1 .artifacts/canva-app-ui.zip > .artifacts/canva-app-ui-files.txt
           if grep -Eiq '(^|/)(authenticated-v115|legacy-html|provenance|archive_verifier)(/|$)|sbom|release-manifest' .artifacts/canva-app-ui-files.txt; then
@@ -77,8 +78,322 @@ jobs:
             cat .artifacts/canva-app-ui-files.txt >&2
             exit 1
           fi
-          grep -Eq '(^|/)canva-app\.json$' .artifacts/canva-app-ui-files.txt
-          grep -Eq '(^|/)PACKAGE_CONTENTS\.txt$' .artifacts/canva-app-ui-files.txt
+          grep -Eq '^app\.js
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          grep -Eq '^canva-app\.json
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          grep -Eq '^START-HERE\.html
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          grep -Eq '^UPLOAD-TO-CANVA\.txt
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          grep -Eq '^preview/index\.html
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          grep -Eq '^PACKAGE_CONTENTS\.txt
+      - name: Retain clean Canva UI distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: canva-app-ui-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: .artifacts/canva-app-ui.zip
+
+      - name: Build release evidence bundle
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node scripts/create-release-manifest.mjs "${{ steps.release_tag.outputs.tag }}" "$GITHUB_SHA" release-manifest.json
+          npm sbom --sbom-format=cyclonedx > root-sbom.cdx.json
+          (
+            cd canva-app
+            npm sbom --sbom-format=cyclonedx
+          ) > canva-app-sbom.cdx.json
+          python -m pip list --format=json > python-dependencies.json
+          printf '%s\n' "$GITHUB_SHA" > release-commit.txt
+          sha256sum root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-manifest.json .artifacts/canva-app-ui.zip > release-artifacts.sha256
+
+      - name: Verify release evidence checksums
+        run: sha256sum --check release-artifacts.sha256
+
+      - name: Retain release evidence before publication
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-${{ steps.release_tag.outputs.tag }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            root-sbom.cdx.json
+            canva-app-sbom.cdx.json
+            python-dependencies.json
+            release-commit.txt
+            release-manifest.json
+            release-artifacts.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_tag.outputs.tag }}" \
+            .artifacts/canva-app-ui.zip root-sbom.cdx.json canva-app-sbom.cdx.json python-dependencies.json release-commit.txt release-artifacts.sha256 release-manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.release_tag.outputs.tag }}" \
+            --generate-notes
+ .artifacts/canva-app-ui-files.txt
+          if grep -Eq '^app/' .artifacts/canva-app-ui-files.txt; then
+            echo "app.js must remain at the ZIP root, not under app/" >&2
+            exit 1
+          fi
 
       - name: Retain clean Canva UI distribution
         uses: actions/upload-artifact@v7
