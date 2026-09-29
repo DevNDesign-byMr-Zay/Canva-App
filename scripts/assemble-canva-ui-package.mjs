@@ -235,8 +235,6 @@ for (const required of [
   "canva-app.json",
   "messages_en.json",
   "START-HERE.html",
-  "HOLOFORGE.html",
-  "DEPTHPOP.html",
   "UPLOAD-TO-CANVA.txt",
   "DEPTHPOP_PARITY.md",
   "preview/index.html",
