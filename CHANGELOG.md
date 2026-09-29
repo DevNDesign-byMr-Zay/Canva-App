@@ -4,6 +4,13 @@ All notable maintained-surface changes to this repository are documented here.
 
 ## Unreleased — pre-rescore detector hardening
 
+### Fixed
+
+- Canva UI packaging now places the production `app.js` at the ZIP root instead of hiding it under `app/`, preventing users from mistaking the whole ZIP for Canva's JavaScript upload.
+- Added `START-HERE.html` plus a standalone `preview/index.html` UI preview for HoloForge and DepthPop, so the interface can be opened locally without Canva while the real app remains the compiled `app.js`.
+- CI now syntax-checks the generated `app.js` and verifies both HTML preview entrypoints before retaining or releasing the package.
+
+
 ### Added
 
 - Dedicated **DepthPop** Canva sidebar UI with live depth-field visualization, depth/bokeh/focus/edge-lift controls, quality modes, and current-canvas context. Its Apply action fails closed until an authenticated image-effect provider is configured.
