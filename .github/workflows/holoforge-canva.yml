@@ -14,6 +14,8 @@ on:
     paths:
       - "canva-app/**"
       - ".github/workflows/holoforge-canva.yml"
+      - "scripts/assemble-canva-ui-package.mjs"
+      - "package.json"
 
 permissions:
   contents: read
@@ -60,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node ../scripts/assemble-canva-ui-package.mjs ../.artifacts/canva-ui
+          node ../scripts/assemble-canva-ui-package.mjs .artifacts/canva-ui
           (cd ../.artifacts/canva-ui && zip -qr ../canva-app-ui.zip .)
       - name: Retain Canva UI package
         uses: actions/upload-artifact@v7
