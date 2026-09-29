@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  MATERIAL_PRESETS,
-  type HolographicMaterialPreset,
-} from "../holographic/material-contract";
+import { MATERIAL_PRESETS, type HolographicMaterialPreset } from "../holographic/material-contract";
 
 export type MaterialPresetsProps = {
   selectedPresetId: string;

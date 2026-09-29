@@ -280,7 +280,8 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
         setMessage(
           intl.formatMessage({
             defaultMessage: "Design editing isn't supported in this Canva context.",
-            description: "Error shown when a HoloForge effect cannot be forged in the current context.",
+            description:
+              "Error shown when a HoloForge effect cannot be forged in the current context.",
           }),
         );
         return;
@@ -298,7 +299,8 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
             {
               defaultMessage:
                 "Forged {preset} into Canva as an editable HoloForge app element. Preview-only properties: {previewOnly}.",
-              description: "Confirmation after creating a real HoloForge app-owned element in Canva.",
+              description:
+                "Confirmation after creating a real HoloForge app-owned element in Canva.",
             },
             {
               preset: plan.presetName,
@@ -330,8 +332,7 @@ export function App({ scenario = null, trustedDesignId, trustedPageId }: AppProp
     [designEditingSupported, intl, trustedDesignId],
   );
 
-  const messageTone =
-    status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
+  const messageTone = status === "error" ? "critical" : status === "warning" ? "warn" : "positive";
 
   return (
     <div className="hf-shell">

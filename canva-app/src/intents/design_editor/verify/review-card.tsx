@@ -62,7 +62,10 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
           <div className="hf-card-eyebrow">02 · Scenario review</div>
           <div id="review-title">
             <Title>
-              <FormattedMessage defaultMessage="Review changes" description="Scenario review heading." />
+              <FormattedMessage
+                defaultMessage="Review changes"
+                description="Scenario review heading."
+              />
             </Title>
           </div>
         </div>
@@ -86,9 +89,13 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
                   <span className="hf-field-pill">{changedFields.join(" · ")}</span>
                 </div>
                 <div className="hf-change-values">
-                  <span>{before.left}×{before.top} · {before.width}×{before.height}</span>
+                  <span>
+                    {before.left}×{before.top} · {before.width}×{before.height}
+                  </span>
                   <span className="hf-arrow">↓</span>
-                  <span>{after.left}×{after.top} · {after.width}×{after.height}</span>
+                  <span>
+                    {after.left}×{after.top} · {after.width}×{after.height}
+                  </span>
                 </div>
               </article>
             ))}
@@ -117,7 +124,9 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
         </Button>
         {!readyToApply && (
           <div className="hf-lock-note">
-            <Text>Apply stays locked until provenance and the current Canva snapshot are verified.</Text>
+            <Text>
+              Apply stays locked until provenance and the current Canva snapshot are verified.
+            </Text>
           </div>
         )}
       </div>

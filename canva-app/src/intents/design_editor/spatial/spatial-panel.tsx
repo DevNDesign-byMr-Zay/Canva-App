@@ -36,7 +36,10 @@ export const SpatialPanel: React.FC<SpatialPanelProps> = ({
     >
       <div className="hf-section-header">
         <span className="hf-section-kicker">
-          <FormattedMessage defaultMessage="2.5D SCENE PREVIEW" description="Scene preview kicker" />
+          <FormattedMessage
+            defaultMessage="2.5D SCENE PREVIEW"
+            description="Scene preview kicker"
+          />
         </span>
         <div className="hf-sub-tab-group" role="radiogroup" aria-label="Compare View">
           <button
@@ -155,12 +158,8 @@ export const SpatialPanel: React.FC<SpatialPanelProps> = ({
           />
 
           <div className="hf-capability-badge-row">
-            <span className="hf-cap-pill is-native">
-              {getPropertyCapability("rotation").tier}
-            </span>
-            <span className="hf-cap-pill is-preview">
-              {getPropertyCapability("depth").tier}
-            </span>
+            <span className="hf-cap-pill is-native">{getPropertyCapability("rotation").tier}</span>
+            <span className="hf-cap-pill is-preview">{getPropertyCapability("depth").tier}</span>
           </div>
         </div>
       )}

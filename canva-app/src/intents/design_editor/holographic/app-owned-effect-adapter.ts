@@ -37,13 +37,17 @@ function clamp(value: number, min = 0, max = 100): number {
 }
 
 function escapeXml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&apos;",
-  })[char] ?? char);
+  return value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&apos;",
+      })[char] ?? char,
+  );
 }
 
 export function renderHolographicSvg(data: HolographicAppElementData): string {

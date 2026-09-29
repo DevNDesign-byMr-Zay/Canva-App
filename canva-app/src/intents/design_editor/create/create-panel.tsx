@@ -29,9 +29,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [selectedPreset, setSelectedPreset] = useState<HolographicMaterialPreset>(
     MATERIAL_PRESETS[0],
   );
-  const [parameters, setParameters] = useState<MaterialParameters>(
-    MATERIAL_PRESETS[0].parameters,
-  );
+  const [parameters, setParameters] = useState<MaterialParameters>(MATERIAL_PRESETS[0].parameters);
   const [activeTabSection, setActiveTabSection] = useState<"presets" | "custom">("presets");
   const [previewPlan, setPreviewPlan] = useState<HolographicEffectPlan | null>(null);
 
@@ -72,7 +70,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     <div className="hf-create-panel" id="panel-create" role="tabpanel" aria-labelledby="tab-create">
       <div className="hf-section">
         <span className="hf-section-kicker">
-          <FormattedMessage defaultMessage="01 · CREATION TYPE" description="Creation type section kicker" />
+          <FormattedMessage
+            defaultMessage="01 · CREATION TYPE"
+            description="Creation type section kicker"
+          />
         </span>
         <CreationTypes selectedType={creationType} onSelectType={setCreationType} />
       </div>
@@ -80,7 +81,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       <div className="hf-section">
         <div className="hf-section-header">
           <span className="hf-section-kicker">
-            <FormattedMessage defaultMessage="02 · MATERIAL" description="Material presets section kicker" />
+            <FormattedMessage
+              defaultMessage="02 · MATERIAL"
+              description="Material presets section kicker"
+            />
           </span>
           <div className="hf-sub-tab-group">
             <button

@@ -165,7 +165,10 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
 
             <div className="hf-control-row">
               <label htmlFor="ctrl-transparency" className="hf-control-label">
-                <FormattedMessage defaultMessage="Transparency" description="Transparency control label" />
+                <FormattedMessage
+                  defaultMessage="Transparency"
+                  description="Transparency control label"
+                />
                 <span className="hf-control-value">{parameters.transparency}%</span>
               </label>
               <input

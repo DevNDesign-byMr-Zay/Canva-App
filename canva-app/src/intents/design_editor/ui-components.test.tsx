@@ -57,9 +57,7 @@ describe("HoloForge studio sidebar components", () => {
   );
 
   it("renders compact Create Spatial Verify navigation", () => {
-    const html = renderToString(
-      wrap(<StudioTabs activeTab="create" onSelectTab={vi.fn()} />),
-    );
+    const html = renderToString(wrap(<StudioTabs activeTab="create" onSelectTab={vi.fn()} />));
     expect(html).toContain("CREATE");
     expect(html).toContain("SPATIAL");
     expect(html).toContain("VERIFY");
@@ -68,11 +66,7 @@ describe("HoloForge studio sidebar components", () => {
   it("renders the forgeable material studio in the narrow Create panel", () => {
     const html = renderToString(
       wrap(
-        <CreatePanel
-          onPreviewHologram={vi.fn()}
-          onForgeIntoCanva={vi.fn()}
-          isForging={false}
-        />,
+        <CreatePanel onPreviewHologram={vi.fn()} onForgeIntoCanva={vi.fn()} isForging={false} />,
       ),
     );
     expect(html).toContain("01 · CREATION TYPE");

@@ -16,11 +16,16 @@ export const ProofCard: React.FC<ProofCardProps> = ({ receipt, attestation }) =>
         <div className="hf-card-eyebrow">03 · Verified result</div>
         <div id="proof-title">
           <Title>
-            <FormattedMessage defaultMessage="Apply proof sealed" description="Verified result heading." />
+            <FormattedMessage
+              defaultMessage="Apply proof sealed"
+              description="Verified result heading."
+            />
           </Title>
         </div>
       </div>
-      <span className="hf-proof-seal" aria-hidden="true">✓</span>
+      <span className="hf-proof-seal" aria-hidden="true">
+        ✓
+      </span>
     </div>
 
     <div className="hf-card-copy">
@@ -36,7 +41,9 @@ export const ProofCard: React.FC<ProofCardProps> = ({ receipt, attestation }) =>
     <div className="hf-proof-list">
       <div className="hf-proof-row">
         <span className="hf-proof-label">Reviewed target</span>
-        <span className="hf-proof-value">{attestation.designId} · {attestation.pageId}</span>
+        <span className="hf-proof-value">
+          {attestation.designId} · {attestation.pageId}
+        </span>
       </div>
       <div className="hf-proof-row">
         <span className="hf-proof-label">Source</span>
@@ -45,13 +52,15 @@ export const ProofCard: React.FC<ProofCardProps> = ({ receipt, attestation }) =>
       <div className="hf-proof-row">
         <span className="hf-proof-label">Expected → result</span>
         <span className="hf-proof-value">
-          {`${receipt.expectedFingerprint.slice(0, 12)}…`} → {`${receipt.resultingFingerprint.slice(0, 12)}…`}
+          {`${receipt.expectedFingerprint.slice(0, 12)}…`} →{" "}
+          {`${receipt.resultingFingerprint.slice(0, 12)}…`}
         </span>
       </div>
       <div className="hf-proof-row">
         <span className="hf-proof-label">Sealed evidence</span>
         <span className="hf-proof-value">
-          {`${receipt.receiptFingerprint.slice(0, 12)}…`} · {`${attestation.attestationFingerprint.slice(0, 12)}…`}
+          {`${receipt.receiptFingerprint.slice(0, 12)}…`} ·{" "}
+          {`${attestation.attestationFingerprint.slice(0, 12)}…`}
         </span>
       </div>
     </div>

@@ -27,11 +27,17 @@ export const SnapshotCard: React.FC<SnapshotCardProps> = ({
       <div className="hf-card-header">
         <div>
           <div className="hf-card-eyebrow">
-            <FormattedMessage defaultMessage="01 · Current design" description="Snapshot workflow step." />
+            <FormattedMessage
+              defaultMessage="01 · Current design"
+              description="Snapshot workflow step."
+            />
           </div>
           <div id="snapshot-title">
             <Title>
-              <FormattedMessage defaultMessage="Capture state" description="Heading for reading current Canva state." />
+              <FormattedMessage
+                defaultMessage="Capture state"
+                description="Heading for reading current Canva state."
+              />
             </Title>
           </div>
         </div>

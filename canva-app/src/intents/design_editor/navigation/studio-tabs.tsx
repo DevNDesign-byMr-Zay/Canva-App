@@ -21,7 +21,10 @@ export const StudioTabs: React.FC<StudioTabsProps> = ({ activeTab, onSelectTab }
           className={`hf-tab-btn ${activeTab === "create" ? "is-active" : ""}`}
           onClick={() => onSelectTab("create")}
         >
-          <FormattedMessage defaultMessage="CREATE" description="Create tab title in HoloForge navigation." />
+          <FormattedMessage
+            defaultMessage="CREATE"
+            description="Create tab title in HoloForge navigation."
+          />
         </button>
 
         <button
@@ -33,7 +36,10 @@ export const StudioTabs: React.FC<StudioTabsProps> = ({ activeTab, onSelectTab }
           className={`hf-tab-btn ${activeTab === "spatial" ? "is-active" : ""}`}
           onClick={() => onSelectTab("spatial")}
         >
-          <FormattedMessage defaultMessage="SPATIAL" description="Spatial tab title in HoloForge navigation." />
+          <FormattedMessage
+            defaultMessage="SPATIAL"
+            description="Spatial tab title in HoloForge navigation."
+          />
         </button>
 
         <button
@@ -45,7 +51,10 @@ export const StudioTabs: React.FC<StudioTabsProps> = ({ activeTab, onSelectTab }
           className={`hf-tab-btn ${activeTab === "verify" ? "is-active" : ""}`}
           onClick={() => onSelectTab("verify")}
         >
-          <FormattedMessage defaultMessage="VERIFY" description="Verify tab title in HoloForge navigation." />
+          <FormattedMessage
+            defaultMessage="VERIFY"
+            description="Verify tab title in HoloForge navigation."
+          />
         </button>
       </div>
     </nav>

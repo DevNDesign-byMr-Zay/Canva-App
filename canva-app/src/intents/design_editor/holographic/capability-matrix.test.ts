@@ -14,14 +14,7 @@ describe("capability-matrix", () => {
   });
 
   it("classifies app-owned holographic properties", () => {
-    for (const property of [
-      "colorShift",
-      "reflection",
-      "glow",
-      "grain",
-      "angle",
-      "transparency",
-    ]) {
+    for (const property of ["colorShift", "reflection", "glow", "grain", "angle", "transparency"]) {
       expect(getPropertyCapability(property).tier).toBe("APP_OWNED_EFFECT");
       expect(getPropertyCapability(property).canvaSupported).toBe(true);
     }
