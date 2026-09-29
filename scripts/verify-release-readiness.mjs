@@ -84,8 +84,8 @@ async function main() {
   assert(typeof pkg.scripts?.["app:verify"] === "string", "root app:verify script is required");
   assert(typeof pkg.scripts?.["verify:release"] === "string", "root verify:release script is required");
   assert(
-    pkg.scripts?.["package:canva-ui"] === "node scripts/assemble-canva-ui-package.mjs",
-    "root clean Canva UI packaging script is required",
+    pkg.scripts?.["package:canva-ui"] === "node scripts/assemble-canva-apps.mjs",
+    "root two-app Canva packaging script is required",
   );
   assert(/--test-coverage-lines=90/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 90% line coverage");
   assert(/--test-coverage-branches=80/u.test(pkg.scripts?.test ?? ""), "root runtime tests must enforce 80% branch coverage");
