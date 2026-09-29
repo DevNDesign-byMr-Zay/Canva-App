@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-const addElement = vi.fn(async () => undefined);
+const mocks = vi.hoisted(() => ({
+  addElement: vi.fn(async () => undefined),
+}));
 
 vi.mock("@canva/design", () => ({
-  initAppElement: () => ({ addElement }),
+  initAppElement: () => ({ addElement: mocks.addElement }),
 }));
 
 import { createEffectPlan } from "./effect-plan";
@@ -67,6 +69,6 @@ describe("app-owned holographic effect adapter", () => {
     const data = appElementDataFromPlan(plan, preset.family);
 
     await canvaAppOwnedEffectAdapter.addEffect(data);
-    expect(addElement).toHaveBeenCalledWith({ data });
+    expect(mocks.addElement).toHaveBeenCalledWith({ data });
   });
 });
