@@ -12,6 +12,27 @@ const REQUIRED_FILES = Object.freeze([
   "README.md",
   "docs/RELEASE_READINESS.md",
   "docs/DEPTHPOP_CANVA_PARITY.md",
+  "docs/CANVA_TWO_APP_ARCHITECTURE.md",
+  "apps/holoforge-canva/package.json",
+  "apps/holoforge-canva/package-lock.json",
+  "apps/holoforge-canva/canva-app.json",
+  "apps/holoforge-canva/ui.json",
+  "apps/holoforge-canva/vitest.config.ts",
+  "apps/holoforge-canva/src/index.tsx",
+  "apps/holoforge-canva/src/intents/design_editor/app.tsx",
+  "apps/holoforge-canva/src/intents/design_editor/app.css",
+  "apps/holoforge-canva/preview/index.html",
+  "apps/depthpop-canva/package.json",
+  "apps/depthpop-canva/package-lock.json",
+  "apps/depthpop-canva/canva-app.json",
+  "apps/depthpop-canva/ui.json",
+  "apps/depthpop-canva/vitest.config.ts",
+  "apps/depthpop-canva/src/index.tsx",
+  "apps/depthpop-canva/src/intents/design_editor/app.tsx",
+  "apps/depthpop-canva/src/intents/design_editor/app.css",
+  "apps/depthpop-canva/src/intents/design_editor/depthpop/depthpop-panel.tsx",
+  "apps/depthpop-canva/src/intents/design_editor/depthpop/depthpop-model.ts",
+  "apps/depthpop-canva/preview/index.html",
   "backend/review-context-service.mjs",
   "backend/logging.mjs",
   "canva-app/package.json",
@@ -38,6 +59,7 @@ const REQUIRED_FILES = Object.freeze([
   ".github/pull_request_template.md",
   "scripts/create-release-manifest.mjs",
   "scripts/assemble-canva-ui-package.mjs",
+  "scripts/assemble-canva-apps.mjs",
   "scripts/verify-maintained-js-syntax.mjs",
   "Makefile",
 ]);
@@ -58,10 +80,44 @@ async function main() {
   const root = new URL("../", import.meta.url);
   await Promise.all(REQUIRED_FILES.map((path) => access(new URL(path, root))));
 
-  const [pkg, appPkg, appVitestConfig, changelog, ci, conventionalCi, appCi, codeql, release, readme, envExample, classification, makefile] = await Promise.all([
+  const [
+    pkg,
+    appPkg,
+    appVitestConfig,
+    holoPkg,
+    depthPkg,
+    holoManifest,
+    depthManifest,
+    holoUi,
+    depthUi,
+    holoAppSource,
+    depthAppSource,
+    holoPreview,
+    depthPreview,
+    changelog,
+    ci,
+    conventionalCi,
+    appCi,
+    codeql,
+    release,
+    readme,
+    envExample,
+    classification,
+    makefile,
+  ] = await Promise.all([
     json("package.json"),
     json("canva-app/package.json"),
     text("canva-app/vitest.config.ts"),
+    json("apps/holoforge-canva/package.json"),
+    json("apps/depthpop-canva/package.json"),
+    json("apps/holoforge-canva/canva-app.json"),
+    json("apps/depthpop-canva/canva-app.json"),
+    json("apps/holoforge-canva/ui.json"),
+    json("apps/depthpop-canva/ui.json"),
+    text("apps/holoforge-canva/src/intents/design_editor/app.tsx"),
+    text("apps/depthpop-canva/src/intents/design_editor/app.tsx"),
+    text("apps/holoforge-canva/preview/index.html"),
+    text("apps/depthpop-canva/preview/index.html"),
     text("CHANGELOG.md"),
     text(".github/workflows/verify-legacy.yml"),
     text(".github/workflows/ci.yml"),
@@ -134,6 +190,45 @@ async function main() {
   assert(appPkg.scripts.start === "npx --yes @canva/cli@2.13.0 apps start", "Design Editor start must pin the reviewed Canva CLI version");
   assert(appPkg.scripts["start:preview"] === "npx --yes @canva/cli@2.13.0 apps start --preview", "Design Editor preview must pin the reviewed Canva CLI version");
   assert(/prettier@3\.6\.2/u.test(appPkg.scripts["format:check"] ?? ""), "Design Editor formatting must pin the reviewed Prettier version");
+
+  assert(holoPkg.name === "holoforge-canva-app", "HoloForge must remain an independent package");
+  assert(depthPkg.name === "depthpop-canva-app", "DepthPop must remain an independent package");
+  for (const activePkg of [holoPkg, depthPkg]) {
+    for (const name of ["typecheck", "test", "build", "test:coverage"]) {
+      assert(typeof activePkg.scripts?.[name] === "string", `standalone Canva app script missing: ${name}`);
+    }
+    assert(
+      activePkg.scripts.build === "npx --yes @canva/cli@2.13.0 apps build",
+      "standalone Canva apps must pin the reviewed Canva CLI build",
+    );
+  }
+  assert(
+    holoManifest?.intent?.design_editor?.enrolled === true &&
+      depthManifest?.intent?.design_editor?.enrolled === true,
+    "both standalone Canva apps must enroll the Design Editor intent",
+  );
+  const holoPermissions = new Set((holoManifest.runtime?.permissions ?? []).map((entry) => entry.name));
+  const depthPermissions = new Set((depthManifest.runtime?.permissions ?? []).map((entry) => entry.name));
+  assert(
+    holoPermissions.has("canva:design:content:read") &&
+      holoPermissions.has("canva:design:content:write"),
+    "HoloForge requires reviewed design read/write permissions",
+  );
+  assert(
+    depthPermissions.size === 1 && depthPermissions.has("canva:design:content:read"),
+    "DepthPop standalone app must request only its current read permission",
+  );
+  assert(holoUi.product === "HoloForge", "HoloForge ui.json must identify HoloForge");
+  assert(depthUi.product === "DepthPop", "DepthPop ui.json must identify DepthPop");
+  assert(holoUi.canvaBundle === "dist/app.js" && depthUi.canvaBundle === "dist/app.js", "standalone UI contracts must identify the Canva app.js bundle");
+  assert(!/DepthPop|DEPTHPOP/u.test(holoAppSource), "HoloForge runtime source must not contain DepthPop");
+  assert(!/HoloForge/u.test(depthAppSource), "DepthPop runtime source must not contain HoloForge");
+  assert(/HoloForge/u.test(holoPreview) && !/DepthPop|DEPTHPOP/u.test(holoPreview), "HoloForge preview must be product-specific");
+  assert(/DEPTHPOP/u.test(depthPreview) && !/HoloForge/u.test(depthPreview), "DepthPop preview must be product-specific");
+  assert(
+    depthUi.source?.sha256 === "657d7e38654c4b72a075e5972c75625857a1e1a04dd493fa710f0abd6aa6c4c6",
+    "DepthPop ui.json must remain anchored to the verified Drive source",
+  );
 
   const appCss = await text("canva-app/src/intents/design_editor/app.css");
   const depthPopPanel = await text("canva-app/src/intents/design_editor/depthpop/depthpop-panel.tsx");
