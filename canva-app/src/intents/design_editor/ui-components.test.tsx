@@ -447,6 +447,27 @@ describe("HoloForge studio sidebar components", () => {
     expect(verifyHtml).toContain("Verified result");
   });
 
+  it("keeps a real candidate locked until the Canva snapshot is captured", () => {
+    const html = renderToString(
+      wrap(
+        <ReviewCard
+          reviewScenario={scenario}
+          review={[]}
+          hasSnapshot={false}
+          scenarioVerified={false}
+          readyToApply={false}
+          isApplying={false}
+          isReading={false}
+          onApply={vi.fn()}
+        />,
+      ),
+    );
+
+    expect(html).toContain("scenario-1");
+    expect(html).toContain("Capture the current design");
+    expect(html).toContain("Apply stays locked");
+  });
+
   it("renders empty verification states without enabling hidden writes", () => {
     const html = renderToString(
       wrap(
