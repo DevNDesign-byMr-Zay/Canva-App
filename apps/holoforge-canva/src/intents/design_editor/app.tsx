@@ -90,10 +90,23 @@ function SpatialPreview({
     <div className="hf-spatial-panel">
       <div className="hf-stage">
         <div
-          className={"hf-hologram preset-" + plan.presetId}
-          style={{
-            transform: `rotateX(${66 - p.depth * 0.12}deg) rotateZ(${-18 + p.angle / 36}deg)`,
-          }}
+          className={
+            "hf-hologram preset-" +
+            plan.presetId +
+            " creation-" +
+            plan.creationType +
+            " motion-" +
+            p.motionMode
+          }
+          style={
+            {
+              "--hf-rx": `${66 - p.depth * 0.12}deg`,
+              "--hf-rz": `${-18 + p.angle / 36}deg`,
+              "--hf-glow-size": `${10 + p.glow * 0.32}px`,
+              "--hf-reflect-opacity": String(0.16 + p.reflection * 0.006),
+              "--hf-material-opacity": String(0.32 + (100 - p.transparency) * 0.0052),
+            } as React.CSSProperties
+          }
         >
           <span className="hf-holo-plane hf-holo-plane-back" />
           <span className="hf-holo-plane hf-holo-plane-mid" />
@@ -105,6 +118,10 @@ function SpatialPreview({
                 alt="Current HoloForge source"
               />
             )}
+            {plan.creationType === "holo_text" && (
+              <b className="hf-spatial-text">{plan.sourceText || "HOLOFORGE"}</b>
+            )}
+            {plan.creationType === "light_fx" && <i className="hf-spatial-light-ring" />}
           </span>
           <span className="hf-holo-scan" />
         </div>
