@@ -1,7 +1,7 @@
 export type CapabilityTier =
   | "NATIVE_CANVA_EDIT"
   | "APP_OWNED_EFFECT"
-  | "GENERATED_ASSET"
+  | "DERIVED_IMAGE"
   | "PREVIEW_ONLY";
 
 export type PropertyCapability = {
@@ -96,9 +96,10 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
   },
   rasterOverlay: {
     property: "rasterOverlay",
-    tier: "GENERATED_ASSET",
-    canvaSupported: false,
-    description: "High-resolution generated asset layer inserted into design as an element.",
+    tier: "DERIVED_IMAGE",
+    canvaSupported: true,
+    description:
+      "A source-bound raster treatment rendered by HoloForge, uploaded with parentRef, and inserted as a derived Canva image asset.",
   },
 };
 
