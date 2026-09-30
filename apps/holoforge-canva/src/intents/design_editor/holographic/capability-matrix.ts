@@ -46,9 +46,10 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
   },
   depth: {
     property: "depth",
-    tier: "PREVIEW_ONLY",
-    canvaSupported: false,
-    description: "2.5D spatial scene layer depth for holographic preview only.",
+    tier: "APP_OWNED_EFFECT",
+    canvaSupported: true,
+    description:
+      "Static depth styling is persisted by HoloForge and drives layered offset or depth-preserving raster treatment; motion remains preview-only.",
   },
   colorShift: {
     property: "colorShift",
