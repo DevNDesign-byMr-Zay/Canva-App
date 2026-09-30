@@ -1,3 +1,4 @@
+import type { ImageRef } from "@canva/asset";
 import { getPropertyCapability, type CapabilityTier } from "./capability-matrix";
 import {
   getPresetById,
@@ -20,6 +21,9 @@ export type HolographicEffectPlan = {
   presetId: string;
   presetName: string;
   targetElementId?: string;
+  sourceImageRef?: ImageRef;
+  sourceKind?: "selected" | "uploaded";
+  sourceText?: string;
   parameters: HolographicMaterialPreset["parameters"];
   layers: EffectPlanLayer[];
   nativeTransform?: { x?: number; y?: number; rotation?: number };
@@ -31,6 +35,9 @@ export function createEffectPlan(options: {
   presetId: string;
   customParameters?: Partial<HolographicMaterialPreset["parameters"]>;
   targetElementId?: string;
+  sourceImageRef?: ImageRef;
+  sourceKind?: "selected" | "uploaded";
+  sourceText?: string;
   nativeTransform?: { x?: number; y?: number; rotation?: number };
 }): HolographicEffectPlan {
   const preset = getPresetById(options.presetId);
@@ -74,6 +81,9 @@ export function createEffectPlan(options: {
     presetId: preset.id,
     presetName: preset.name,
     targetElementId: options.targetElementId,
+    sourceImageRef: options.sourceImageRef,
+    sourceKind: options.sourceKind,
+    sourceText: options.sourceText?.trim().slice(0, 96),
     parameters,
     layers,
     nativeTransform: options.nativeTransform,
