@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react";
-import { upload } from "@canva/asset";
+import React, { useId, useState } from "react";
+import { type ImageRef, upload } from "@canva/asset";
 import { addElementAtPoint } from "@canva/design";
 
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -8,6 +8,13 @@ const MAX_DATA_URL_CHARACTERS = 10 * 1024 * 1024;
 
 type SupportedImageMime = "image/png" | "image/jpeg" | "image/webp";
 type UploadStage = "uploading" | "adding";
+
+export type UploadedImageResult = Readonly<{
+  ref: ImageRef;
+  fileName: string;
+  mimeType: SupportedImageMime;
+  dataUrl: string;
+}>;
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -30,9 +37,10 @@ export async function uploadDataUrlToCanva(
     mimeType: SupportedImageMime;
     fileName: string;
     productName: string;
+    insertIntoDesign?: boolean;
   }>,
   onStage?: (stage: UploadStage) => void,
-): Promise<void> {
+): Promise<UploadedImageResult> {
   if (!input.dataUrl.startsWith(`data:${input.mimeType};base64,`)) {
     throw new Error("The local image data does not match the selected file type.");
   }
@@ -51,48 +59,60 @@ export async function uploadDataUrlToCanva(
   });
   await asset.whenUploaded();
 
-  onStage?.("adding");
-  await addElementAtPoint({
-    type: "image",
+  if (input.insertIntoDesign !== false) {
+    onStage?.("adding");
+    await addElementAtPoint({
+      type: "image",
+      ref: asset.ref,
+      altText: {
+        text: input.productName + " source image",
+        decorative: false,
+      },
+    });
+  }
+
+  return Object.freeze({
     ref: asset.ref,
-    altText: {
-      text: input.productName + " test image",
-      decorative: false,
-    },
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    dataUrl: input.dataUrl,
   });
 }
 
 export type LocalImageUploadProps = Readonly<{
   productName: string;
   classPrefix: "hf" | "dp";
-  onUploaded?: () => void;
+  onUploaded?: (result: UploadedImageResult) => void;
+  insertIntoDesign?: boolean;
+  sourceLabel?: string;
 }>;
 
 export function LocalImageUpload({
   productName,
   classPrefix,
   onUploaded,
+  insertIntoDesign = true,
+  sourceLabel = "SOURCE IMAGE",
 }: LocalImageUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<"idle" | "reading" | "uploading" | "adding" | "done" | "error">("idle");
-  const [message, setMessage] = useState("Upload a local PNG, JPEG, or WebP test image.");
+  const reactId = useId();
+  const inputId = `${classPrefix}-local-image-${reactId.replace(/:/g, "")}`;
+  const [status, setStatus] = useState<
+    "idle" | "reading" | "uploading" | "adding" | "done" | "error"
+  >("idle");
+  const [message, setMessage] = useState("Choose or drop a PNG, JPEG, or WebP image.");
   const busy = status === "reading" || status === "uploading" || status === "adding";
 
-  const chooseFile = () => inputRef.current?.click();
-
-  const onFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0];
-    event.currentTarget.value = "";
-    if (!file) return;
+  const processFile = async (file: File) => {
+    if (busy) return;
 
     if (!ACCEPTED_TYPES.has(file.type)) {
       setStatus("error");
-      setMessage("Use a PNG, JPEG, or WebP image for Canva testing.");
+      setMessage("Use a PNG, JPEG, or WebP image.");
       return;
     }
     if (file.size <= 0 || file.size > MAX_RAW_BYTES) {
       setStatus("error");
-      setMessage("Use a non-empty image up to 7 MB for direct Canva test upload.");
+      setMessage("Use a non-empty image up to 7 MB.");
       return;
     }
 
@@ -101,12 +121,13 @@ export function LocalImageUpload({
       setMessage("Preparing the local image…");
       const dataUrl = await readAsDataUrl(file);
 
-      await uploadDataUrlToCanva(
+      const result = await uploadDataUrlToCanva(
         {
           dataUrl,
           mimeType: file.type as SupportedImageMime,
           fileName: file.name,
           productName,
+          insertIntoDesign,
         },
         (stage) => {
           setStatus(stage);
@@ -119,36 +140,61 @@ export function LocalImageUpload({
       );
 
       setStatus("done");
-      setMessage("Test image added to Canva. Select it to continue testing.");
-      onUploaded?.();
+      setMessage(
+        insertIntoDesign
+          ? `${file.name} uploaded and added to Canva.`
+          : `${file.name} uploaded and ready as a ${productName} source.`,
+      );
+      onUploaded?.(result);
     } catch (cause) {
       setStatus("error");
-      setMessage(cause instanceof Error ? cause.message : "The Canva test image upload failed.");
+      setMessage(cause instanceof Error ? cause.message : "The Canva image upload failed.");
     }
   };
 
+  const onFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (file) await processFile(file);
+  };
+
   return (
-    <section className={classPrefix + "-upload-card"} aria-label={productName + " test upload"}>
+    <section
+      className={classPrefix + "-upload-card"}
+      aria-label={productName + " image upload"}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files?.[0];
+        if (file) void processFile(file);
+      }}
+    >
       <div className={classPrefix + "-upload-copy"}>
-        <span className={classPrefix + "-upload-kicker"}>TEST SOURCE</span>
+        <span className={classPrefix + "-upload-kicker"}>{sourceLabel}</span>
         <strong>Upload image to Canva</strong>
-        <p>{message}</p>
+        <p aria-live="polite">{message}</p>
       </div>
       <input
-        ref={inputRef}
+        id={inputId}
         className={classPrefix + "-upload-input"}
         type="file"
         accept="image/png,image/jpeg,image/webp"
+        disabled={busy}
         onChange={(event) => void onFile(event)}
       />
-      <button
+      <label
         className={classPrefix + "-upload-button"}
-        type="button"
-        disabled={busy}
-        onClick={chooseFile}
+        htmlFor={inputId}
+        aria-disabled={busy}
+        onClick={(event) => {
+          if (busy) event.preventDefault();
+        }}
       >
-        {busy ? "UPLOADING…" : status === "done" ? "UPLOAD ANOTHER" : "UPLOAD TEST IMAGE"}
-      </button>
+        {busy ? "UPLOADING…" : status === "done" ? "UPLOAD ANOTHER" : "CHOOSE IMAGE"}
+      </label>
     </section>
   );
 }
