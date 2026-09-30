@@ -1,50 +1,58 @@
 import type { CreationType } from "./material-contract";
 
-export type ForgeRoute = "APP_OWNED_EFFECT" | "PREVIEW_ONLY";
+export type ForgeRoute = "APP_OWNED_EFFECT" | "DERIVED_IMAGE" | "HYBRID";
 
 export type CreationForgeSupport = Readonly<{
   creationType: CreationType;
   route: ForgeRoute;
-  forgeable: boolean;
+  forgeable: true;
+  requiredSource: "none" | "text" | "image";
   reason: string;
 }>;
 
 const SUPPORT: Readonly<Record<CreationType, CreationForgeSupport>> = Object.freeze({
   holo_text: Object.freeze({
     creationType: "holo_text",
-    route: "PREVIEW_ONLY",
-    forgeable: false,
-    reason: "Holo Text needs a trusted source-text binding before HoloForge can forge it safely.",
+    route: "APP_OWNED_EFFECT",
+    forgeable: true,
+    requiredSource: "text",
+    reason: "Enter the text you want to turn into a spectral holographic title.",
   }),
   holo_logo: Object.freeze({
     creationType: "holo_logo",
-    route: "PREVIEW_ONLY",
-    forgeable: false,
-    reason: "Holo Logo needs a trusted source-logo binding before HoloForge can forge it safely.",
+    route: "DERIVED_IMAGE",
+    forgeable: true,
+    requiredSource: "image",
+    reason: "Choose an uploaded image or one selected in Canva to forge a holographic logo treatment.",
   }),
   holo_graphic: Object.freeze({
     creationType: "holo_graphic",
-    route: "APP_OWNED_EFFECT",
+    route: "HYBRID",
     forgeable: true,
-    reason: "Creates an editable HoloForge app element in Canva.",
+    requiredSource: "none",
+    reason:
+      "Without a source, HoloForge creates an editable spectral graphic. With a source image, it forges a derived holographic raster.",
   }),
   glass: Object.freeze({
     creationType: "glass",
     route: "APP_OWNED_EFFECT",
     forgeable: true,
-    reason: "Creates an editable HoloForge glass app element in Canva.",
+    requiredSource: "none",
+    reason: "Creates an editable refractive glass plate in Canva.",
   }),
   chrome: Object.freeze({
     creationType: "chrome",
     route: "APP_OWNED_EFFECT",
     forgeable: true,
-    reason: "Creates an editable HoloForge chrome app element in Canva.",
+    requiredSource: "none",
+    reason: "Creates an editable holographic chrome plate in Canva.",
   }),
   light_fx: Object.freeze({
     creationType: "light_fx",
     route: "APP_OWNED_EFFECT",
     forgeable: true,
-    reason: "Creates an editable HoloForge light-effect app element in Canva.",
+    requiredSource: "none",
+    reason: "Creates an editable photonic light overlay in Canva.",
   }),
 });
 
