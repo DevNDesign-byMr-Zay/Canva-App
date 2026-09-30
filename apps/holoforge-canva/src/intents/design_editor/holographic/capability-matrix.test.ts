@@ -14,15 +14,15 @@ describe("capability-matrix", () => {
   });
 
   it("classifies app-owned holographic properties", () => {
-    for (const property of ["colorShift", "reflection", "glow", "grain", "angle", "transparency"]) {
+    for (const property of ["colorShift", "depth", "reflection", "glow", "grain", "angle", "transparency"]) {
       expect(getPropertyCapability(property).tier).toBe("APP_OWNED_EFFECT");
       expect(getPropertyCapability(property).canvaSupported).toBe(true);
     }
     expect(getPropertyCapability("motionMode").tier).toBe("PREVIEW_ONLY");
   });
 
-  it("classifies spatial properties as preview-only", () => {
-    expect(getPropertyCapability("depth").tier).toBe("PREVIEW_ONLY");
+  it("keeps unsupported dimensions preview-only while persisting material depth", () => {
+    expect(getPropertyCapability("depth").tier).toBe("APP_OWNED_EFFECT");
     expect(getPropertyCapability("width").tier).toBe("PREVIEW_ONLY");
     expect(getPropertyCapability("height").tier).toBe("PREVIEW_ONLY");
   });
