@@ -2,6 +2,18 @@
 
 This is the production backend for the standalone DepthPop Canva app.
 
+The production backend intentionally preserves the DepthPop-specific behavior and request/response shape from the Drive router while removing unrelated ROARY/ÆTHER routes and unsafe historical boundaries.
+
+Drive-compatible aliases are supported for integration parity:
+
+    POST /api/depthpop
+    POST /tool/depth_pop
+    POST /tool/depthpop
+    POST /tool/enhance
+    GET  /tool/progress/{progress_id}
+
+The standalone Canva frontend uses /api/depthpop. The /tool/* aliases exist so the maintained backend contract can be compared directly with the historical Drive router without restoring the full Studio shell.
+
 The production flow is:
 
 1. the Canva frontend reads the single selected image;
@@ -48,4 +60,4 @@ Security boundaries:
 - FAL_KEY is never accepted from request headers or frontend payloads;
 - generated image cache entries expire after 15 minutes.
 
-The exact historical Drive router remains under ../reference/drive-source as a .txt provenance artifact so source scanners do not mistake archived historical code for a live server.
+The exact historical Drive router remains under ../reference/drive-source as a .txt provenance artifact so source scanners do not mistake archived historical code for a live server. The reference directory is repository-only and is deliberately excluded from the final DepthPop Canva handoff ZIP.
