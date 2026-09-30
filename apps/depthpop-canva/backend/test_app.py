@@ -76,3 +76,49 @@ def test_fal_media_url_rejects_untrusted_hosts():
         assert getattr(exc, "status_code", None) == 502
     else:
         raise AssertionError("untrusted provider host should have been rejected")
+
+
+def test_depthpop_route_completes_with_stubbed_depth_provider(monkeypatch):
+    async def fake_verify():
+        return depthpop.VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
+
+    async def fake_depth_map(raw: bytes, mime: str):
+        assert raw
+        assert mime == "image/png"
+        depth = Image.new("L", (24, 24))
+        depth.putdata([int((x / 23) * 255) for _y in range(24) for x in range(24)])
+        buffer = io.BytesIO()
+        depth.save(buffer, format="PNG")
+        return buffer.getvalue(), "https://v2.fal.media/files/test/depth.png"
+
+    monkeypatch.setattr(depthpop, "CANVA_APP_ID", "test-app")
+    monkeypatch.setenv("FAL_KEY", "test-key")
+    monkeypatch.setattr(depthpop, "_depth_map", fake_depth_map)
+    depthpop.app.dependency_overrides[depthpop.verify_canva_user] = fake_verify
+
+    try:
+        client = TestClient(depthpop.app)
+        response = client.post(
+            "/api/depthpop",
+            files={"image": ("source.png", _png_bytes((24, 24)), "image/png")},
+            data={
+                "strength": "0.32",
+                "bokeh": "35",
+                "depth_fidelity": "0.95",
+                "num_inference_steps": "28",
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["ok"] is True
+        assert payload["mimeType"] == "image/png"
+        assert payload["model"] == "depthpop-depth-anything-v2-local-dof"
+        assert payload["url"].startswith("http://testserver/cache/image/")
+
+        cached = client.get(payload["url"].removeprefix("http://testserver"))
+        assert cached.status_code == 200
+        assert cached.headers["content-type"].startswith("image/png")
+        with Image.open(io.BytesIO(cached.content)) as result:
+            assert result.size == (24, 24)
+    finally:
+        depthpop.app.dependency_overrides.clear()
