@@ -18,6 +18,17 @@ permissions:
   contents: read
 
 jobs:
+  standalone-regression-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify app separation and required runtime files
+        run: node scripts/verify-standalone-canva-apps.mjs
+
   canva-frontends:
     name: ${{ matrix.app }}
     runs-on: ubuntu-latest
