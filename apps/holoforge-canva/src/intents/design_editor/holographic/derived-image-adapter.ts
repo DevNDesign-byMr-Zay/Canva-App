@@ -95,7 +95,7 @@ export function applyHolographicPixels(
   }
 }
 
-async function loadImage(url: string): Promise<HTMLImageElement> {
+async function loadImage(url: string): Promise<Readonly<{ image: HTMLImageElement; objectUrl: string }>> {
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) {
     throw new Error(`Could not download the Canva source image (HTTP ${response.status}).`);
@@ -103,18 +103,19 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
 
+  const image = new Image();
+  image.crossOrigin = "anonymous";
   try {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
       image.onerror = () => reject(new Error("The Canva source image could not be decoded."));
       image.src = objectUrl;
     });
-    return image;
-  } finally {
+  } catch (cause) {
     URL.revokeObjectURL(objectUrl);
+    throw cause;
   }
+  return Object.freeze({ image, objectUrl });
 }
 
 function fitWithin(width: number, height: number, maxPixels = 4_000_000, maxSide = 2400) {
@@ -132,22 +133,27 @@ export async function renderHolographicRaster(
   plan: HolographicEffectPlan,
 ): Promise<string> {
   const { url } = await getTemporaryUrl({ type: "image", ref: sourceRef });
-  const image = await loadImage(url);
-  const fitted = fitWithin(image.naturalWidth || image.width, image.naturalHeight || image.height);
+  const loaded = await loadImage(url);
+  try {
+    const { image } = loaded;
+    const fitted = fitWithin(image.naturalWidth || image.width, image.naturalHeight || image.height);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = fitted.width;
-  canvas.height = fitted.height;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) throw new Error("HoloForge could not initialize its raster material engine.");
+    const canvas = document.createElement("canvas");
+    canvas.width = fitted.width;
+    canvas.height = fitted.height;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("HoloForge could not initialize its raster material engine.");
 
-  ctx.clearRect(0, 0, fitted.width, fitted.height);
-  ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
-  const imageData = ctx.getImageData(0, 0, fitted.width, fitted.height);
-  applyHolographicPixels(imageData.data, fitted.width, fitted.height, plan);
-  ctx.putImageData(imageData, 0, 0);
+    ctx.clearRect(0, 0, fitted.width, fitted.height);
+    ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
+    const imageData = ctx.getImageData(0, 0, fitted.width, fitted.height);
+    applyHolographicPixels(imageData.data, fitted.width, fitted.height, plan);
+    ctx.putImageData(imageData, 0, 0);
 
-  return canvas.toDataURL("image/png");
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(loaded.objectUrl);
+  }
 }
 
 export const canvaDerivedImageAdapter: DerivedImageAdapter = Object.freeze({
