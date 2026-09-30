@@ -117,7 +117,7 @@ UI
 - preview/index.html       -> standalone browser preview with local test-file picker
 - src/                     -> maintained React/TypeScript/CSS UI source
 - src/assets/              -> packaged HoloForge or DepthPop logo asset
-- local test upload        -> production app can upload PNG/JPEG/WebP into Canva for testing
+- image source workflow    -> production app can choose/drop PNG/JPEG/WebP and bind Canva raster sources
 ${backend}
 This package intentionally contains no node_modules, no secret .env file, no historical ROARY/ÆTHER shell, no Drive provenance HTML/router source, and no combined HoloForge/DepthPop runtime switcher.
 
@@ -166,6 +166,41 @@ for (const app of APPS) {
     await cp(envTemplate, join(destination, ".env.template"));
   }
 
+  if (app.id === "holoforge-canva") {
+    const holoApp = await readFile(join(destination, "src", "intents", "design_editor", "app.tsx"), "utf8");
+    for (const marker of [
+      "useCanvaImageSelection",
+      "canvaDerivedImageAdapter",
+      'sourceLabel="HOLOGRAM SOURCE"',
+      'insertIntoDesign={false}',
+      "sourceImageRef={activeSourceRef}",
+    ]) {
+      if (!holoApp.includes(marker)) {
+        throw new Error(`HoloForge packaged runtime is missing functional source/forge marker: ${marker}`);
+      }
+    }
+
+    const selectionSource = await readFile(
+      join(destination, "src", "intents", "design_editor", "use-canva-image-selection.ts"),
+      "utf8",
+    );
+    for (const marker of ["selection.registerOnChange", 'scope: "image"', "getTemporaryUrl"]) {
+      if (!selectionSource.includes(marker)) {
+        throw new Error(`HoloForge selected-image binding missing marker: ${marker}`);
+      }
+    }
+
+    const derivedSource = await readFile(
+      join(destination, "src", "intents", "design_editor", "holographic", "derived-image-adapter.ts"),
+      "utf8",
+    );
+    for (const marker of ["applyHolographicPixels", "parentRef: sourceRef", "await asset.whenUploaded()"]) {
+      if (!derivedSource.includes(marker)) {
+        throw new Error(`HoloForge derived-image engine missing marker: ${marker}`);
+      }
+    }
+  }
+
   if (app.includeBackend) {
     await cp(join(source, "backend"), join(destination, "backend"), { recursive: true });
   }
@@ -183,8 +218,8 @@ for (const app of APPS) {
       throw new Error(`${app.displayName} package is missing required Canva permission: ${permission}`);
     }
   }
-  if (app.id === "depthpop-canva" && !permissions.has("canva:asset:private:read")) {
-    throw new Error("DepthPop package requires canva:asset:private:read for selected-image processing.");
+  if (!permissions.has("canva:asset:private:read")) {
+    throw new Error(`${app.displayName} package requires canva:asset:private:read for Canva image-source processing.`);
   }
 
   const packagedPackage = JSON.parse(await readFile(join(destination, "package.json"), "utf8"));
@@ -222,6 +257,13 @@ for (const app of APPS) {
     expectedLogo,
     "src/intents/design_editor/local-image-upload.tsx",
     "src/intents/design_editor/local-image-upload.test.tsx",
+    ...(app.id === "holoforge-canva"
+      ? [
+          "src/intents/design_editor/use-canva-image-selection.ts",
+          "src/intents/design_editor/holographic/derived-image-adapter.ts",
+          "src/intents/design_editor/holographic/derived-image-adapter.test.ts",
+        ]
+      : []),
   ]) {
     if (!files.includes(required)) {
       throw new Error(`${app.displayName} package is missing required independent-app member: ${required}`);
@@ -246,7 +288,16 @@ for (const app of APPS) {
   }
 
   const uploadSource = await readFile(join(destination, "src", "intents", "design_editor", "local-image-upload.tsx"), "utf8");
-  for (const marker of ["uploadDataUrlToCanva", "await upload({", "await asset.whenUploaded()", "await addElementAtPoint({", "MAX_DATA_URL_CHARACTERS"]) {
+  for (const marker of [
+    "uploadDataUrlToCanva",
+    "await upload({",
+    "await asset.whenUploaded()",
+    "await addElementAtPoint({",
+    "MAX_DATA_URL_CHARACTERS",
+    "insertIntoDesign",
+    "htmlFor={inputId}",
+    "onDrop=",
+  ]) {
     if (!uploadSource.includes(marker)) {
       throw new Error(`${app.displayName} packaged upload implementation is missing required Canva upload marker: ${marker}`);
     }
