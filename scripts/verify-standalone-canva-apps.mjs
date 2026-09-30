@@ -1,0 +1,260 @@
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+
+const APPS = {
+  holoforge: {
+    root: "apps/holoforge-canva",
+    logo: "src/assets/holoforge-logo.svg",
+    required: [
+      "package.json",
+      "canva-app.json",
+      "tsconfig.json",
+      "README.md",
+      "preview/index.html",
+      "src/index.tsx",
+      "src/intents/design_editor/index.tsx",
+      "src/intents/design_editor/app.tsx",
+      "src/intents/design_editor/app.css",
+      "src/intents/design_editor/local-image-upload.tsx",
+      "src/intents/design_editor/holographic/app-owned-effect-adapter.ts",
+      "src/intents/design_editor/holographic/effect-executor.ts",
+      "src/intents/design_editor/holographic/effect-plan.ts",
+      "src/intents/design_editor/holographic/forge-support.ts",
+      "src/intents/design_editor/holographic/material-contract.ts",
+      "src/assets/holoforge-logo.svg",
+    ],
+    forbiddenText: ["__MRZAY_CANVA_PRODUCT__", "DepthPopPanel"],
+  },
+  depthpop: {
+    root: "apps/depthpop-canva",
+    logo: "src/assets/depthpop-logo.svg",
+    required: [
+      "package.json",
+      "canva-app.json",
+      "tsconfig.json",
+      ".env.template",
+      "README.md",
+      "preview/index.html",
+      "src/index.tsx",
+      "src/intents/design_editor/index.tsx",
+      "src/intents/design_editor/app.tsx",
+      "src/intents/design_editor/app.css",
+      "src/intents/design_editor/local-image-upload.tsx",
+      "src/depthpop/depthpop-model.ts",
+      "src/assets/depthpop-logo.svg",
+      "backend/app.py",
+      "backend/requirements.txt",
+      "backend/Dockerfile",
+      "backend/.env.example",
+      "backend/README.md",
+      "backend/test_app.py",
+      "reference/DRIVE_SOURCE.md",
+      "reference/drive-source/roaryv246_v115_depthpop_modeldrawer_FINALFIX.html",
+      "reference/drive-source/roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py.txt",
+    ],
+    forbiddenText: ["__MRZAY_CANVA_PRODUCT__", "HoloForgeScenario"],
+  },
+};
+
+const failures = [];
+
+const fail = (message) => failures.push(message);
+const full = (appRoot, rel) => path.join(root, appRoot, rel);
+const readText = (file) => fs.readFileSync(file, "utf8");
+
+for (const [name, spec] of Object.entries(APPS)) {
+  for (const rel of spec.required) {
+    const file = full(spec.root, rel);
+    if (!fs.existsSync(file)) {
+      fail(`${name}: missing required file ${rel}`);
+      continue;
+    }
+    if (fs.statSync(file).isFile() && fs.statSync(file).size === 0) {
+      fail(`${name}: required file is empty ${rel}`);
+    }
+  }
+
+  const manifestPath = full(spec.root, "canva-app.json");
+  if (fs.existsSync(manifestPath)) {
+    const manifest = JSON.parse(readText(manifestPath));
+    if (manifest?.intent?.design_editor?.enrolled !== true) {
+      fail(`${name}: Canva Design Editor intent is not enrolled`);
+    }
+    const permissions = new Set(
+      (manifest?.runtime?.permissions ?? []).map((permission) => permission?.name),
+    );
+    for (const requiredPermission of [
+      "canva:design:content:read",
+      "canva:design:content:write",
+      "canva:asset:private:write",
+    ]) {
+      if (!permissions.has(requiredPermission)) {
+        fail(`${name}: missing Canva permission ${requiredPermission}`);
+      }
+    }
+  }
+
+  const packagePath = full(spec.root, "package.json");
+  if (fs.existsSync(packagePath)) {
+    const pkg = JSON.parse(readText(packagePath));
+    for (const scriptName of ["build", "typecheck", "test"]) {
+      if (!pkg?.scripts?.[scriptName]) {
+        fail(`${name}: package.json is missing ${scriptName} script`);
+      }
+    }
+    for (const dependency of ["@canva/asset", "@canva/design"]) {
+      if (!pkg?.dependencies?.[dependency]) {
+        fail(`${name}: package.json is missing ${dependency} required for test-image upload/add-to-design`);
+      }
+    }
+  }
+
+  const preview = full(spec.root, "preview/index.html");
+  if (fs.existsSync(preview)) {
+    const previewText = readText(preview);
+    if (!previewText.includes("../" + spec.logo)) {
+      fail(`${name}: preview does not reference packaged logo ${spec.logo}`);
+    }
+    if (!previewText.includes("UPLOAD TEST IMAGE")) {
+      fail(`${name}: preview is missing the local test-image picker`);
+    }
+  }
+
+  const sourceRoot = full(spec.root, "src");
+  if (fs.existsSync(sourceRoot)) {
+    const queue = [sourceRoot];
+    while (queue.length) {
+      const current = queue.pop();
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const item = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          queue.push(item);
+        } else if (/\.(?:ts|tsx|js|jsx|css|html)$/u.test(entry.name)) {
+          const source = readText(item);
+          for (const forbidden of spec.forbiddenText) {
+            if (source.includes(forbidden)) {
+              fail(
+                `${name}: forbidden cross-product/runtime-switcher reference "${forbidden}" in ${path.relative(root, item)}`,
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const uploadSource = full(spec.root, "src/intents/design_editor/local-image-upload.tsx");
+  if (fs.existsSync(uploadSource)) {
+    const uploadText = readText(uploadSource);
+    for (const marker of [
+      "UPLOAD TEST IMAGE",
+      "readAsDataUrl",
+      "await upload({",
+      "await asset.whenUploaded()",
+      "await addElementAtPoint({",
+      'accept="image/png,image/jpeg,image/webp"',
+      "7 * 1024 * 1024",
+    ]) {
+      if (!uploadText.includes(marker)) {
+        fail(`${name}: test-image upload marker missing: ${marker}`);
+      }
+    }
+  }
+}
+
+const depthModel = readText(full(APPS.depthpop.root, "src/depthpop/depthpop-model.ts"));
+for (const contract of [
+  "depthStrength: 0.32",
+  "depthBlur: 35",
+  "depthFidelity: 0.95",
+  "steps: 28",
+  "0.05, 0.75",
+  "0, 100",
+  "0.05, 1",
+  "8, 50",
+]) {
+  if (!depthModel.includes(contract)) {
+    fail(`depthpop: Drive v115 contract marker missing: ${contract}`);
+  }
+}
+
+const depthApp = readText(full(APPS.depthpop.root, "src/intents/design_editor/app.tsx"));
+for (const marker of [
+  "getTemporaryUrl",
+  "buildDepthPopFormFields",
+  'fetch(host + "/api/depthpop"',
+  "await upload({",
+  "parentRef: content.ref",
+  "await asset.whenUploaded()",
+  "content.ref = asset.ref",
+  "await draft.save()",
+  "<DepthPopLogo />",
+  '<LocalImageUpload productName="DepthPop"',
+]) {
+  if (!depthApp.includes(marker)) {
+    fail(`depthpop: execution/UI marker missing: ${marker}`);
+  }
+}
+
+const backend = readText(full(APPS.depthpop.root, "backend/app.py"));
+for (const marker of [
+  'title="DepthPop Canva Backend"',
+  "verify_canva_user",
+  "fal_client",
+  "depth-anything",
+  "_render_depthpop",
+  '@app.post("/api/depthpop"',
+  '@app.get("/cache/image/{image_id}")',
+]) {
+  if (!backend.includes(marker)) {
+    fail(`depthpop backend: required runtime marker missing: ${marker}`);
+  }
+}
+
+const holoApp = readText(full(APPS.holoforge.root, "src/intents/design_editor/app.tsx"));
+for (const marker of [
+  "<HoloForgeLogo />",
+  '<LocalImageUpload productName="HoloForge"',
+  "executeHolographicEffectPlan",
+]) {
+  if (!holoApp.includes(marker)) {
+    fail(`holoforge: runtime/UI marker missing: ${marker}`);
+  }
+}
+
+const holoAdapter = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/holographic/app-owned-effect-adapter.ts"),
+);
+for (const marker of ["initAppElement", "appElementClient.addElement", "renderHolographicSvg"]) {
+  if (!holoAdapter.includes(marker)) {
+    fail(`holoforge: editable Canva app-element marker missing: ${marker}`);
+  }
+}
+
+const packagerPath = path.join(root, "scripts/package-independent-canva-apps.mjs");
+if (fs.existsSync(packagerPath)) {
+  const packager = readText(packagerPath);
+  for (const marker of [
+    "src/assets/holoforge-logo.svg",
+    "src/assets/depthpop-logo.svg",
+    "local test upload",
+  ]) {
+    if (!packager.includes(marker)) {
+      fail(`packaging: independent-app package guard missing: ${marker}`);
+    }
+  }
+}
+
+if (failures.length) {
+  console.error("\nStandalone Canva app verification failed:\n");
+  for (const message of failures) console.error(" - " + message);
+  process.exit(1);
+}
+
+console.log("Standalone Canva app verification passed.");
+console.log(" - HoloForge: independent app + embedded/packaged logo + Canva test-image upload + editable app-element execution");
+console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
+console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
+console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");
