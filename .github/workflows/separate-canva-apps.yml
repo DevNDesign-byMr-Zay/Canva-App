@@ -81,3 +81,157 @@ jobs:
         run: python -m pytest -q
       - name: Build backend container
         run: docker build -t depthpop-canva-backend .
+
+  package-standalone-apps:
+    name: package standalone app ZIPs
+    needs:
+      - canva-frontends
+      - depthpop-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build standalone app bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for app in holoforge-canva depthpop-canva; do
+            (
+              cd "apps/$app"
+              npm install --ignore-scripts
+              npm run build
+              test -s dist/app.js
+              node --check dist/app.js
+            )
+          done
+      - name: Assemble complete ZIP packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          repository = Path.cwd()
+          output = repository / "release-packages"
+          output.mkdir(exist_ok=True)
+
+          required = {
+              "holoforge-canva": [
+                  "canva-app.json",
+                  "preview/index.html",
+                  "dist/app.js",
+                  "src/index.tsx",
+                  "src/intents/design_editor/app.tsx",
+                  "src/intents/design_editor/app.css",
+                  "README.md",
+              ],
+              "depthpop-canva": [
+                  "canva-app.json",
+                  "preview/index.html",
+                  "dist/app.js",
+                  "src/index.tsx",
+                  "src/intents/design_editor/app.tsx",
+                  "src/intents/design_editor/app.css",
+                  "src/depthpop/depthpop-model.ts",
+                  "backend/app.py",
+                  "backend/requirements.txt",
+                  "backend/Dockerfile",
+                  "backend/test_app.py",
+                  "reference/DRIVE_SOURCE.md",
+                  "reference/drive-source/roaryv246_v115_depthpop_modeldrawer_FINALFIX.html",
+                  "reference/drive-source/roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py.txt",
+                  "README.md",
+              ],
+          }
+
+          archive_hashes = []
+          commit = os.environ.get("GITHUB_SHA", "unknown")
+
+          for app_name, required_paths in required.items():
+              root = repository / "apps" / app_name
+              missing = [
+                  rel
+                  for rel in required_paths
+                  if not (root / rel).is_file() or (root / rel).stat().st_size == 0
+              ]
+              if missing:
+                  raise SystemExit(f"{app_name}: missing or empty required files: {missing}")
+
+              members = []
+              for path in sorted(root.rglob("*")):
+                  if not path.is_file():
+                      continue
+                  rel = path.relative_to(root)
+                  if "node_modules" in rel.parts:
+                      continue
+                  if path.stat().st_size == 0:
+                      raise SystemExit(f"{app_name}: refusing to package empty file {rel.as_posix()}")
+                  data = path.read_bytes()
+                  members.append(
+                      {
+                          "path": rel.as_posix(),
+                          "bytes": len(data),
+                          "sha256": hashlib.sha256(data).hexdigest(),
+                      }
+                  )
+
+              manifest = {
+                  "schemaVersion": 1,
+                  "app": app_name,
+                  "sourceCommit": commit,
+                  "fileCount": len(members),
+                  "requiredFilesVerified": required_paths,
+                  "files": members,
+              }
+
+              zip_path = output / f"{app_name}-app.zip"
+              with ZipFile(zip_path, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:
+                  for member in members:
+                      archive.write(root / member["path"], member["path"])
+                  archive.writestr(
+                      "PACKAGE_MANIFEST.json",
+                      json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                  )
+
+              digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+              archive_hashes.append(f"{digest}  {zip_path.name}")
+
+          (output / "SHA256SUMS.txt").write_text(
+              "\n".join(archive_hashes) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Verify packaged ZIP contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t release-packages/holoforge-canva-app.zip
+          unzip -t release-packages/depthpop-canva-app.zip
+          unzip -l release-packages/holoforge-canva-app.zip | grep -F "preview/index.html"
+          unzip -l release-packages/holoforge-canva-app.zip | grep -F "canva-app.json"
+          unzip -l release-packages/holoforge-canva-app.zip | grep -F "dist/app.js"
+          unzip -l release-packages/depthpop-canva-app.zip | grep -F "backend/app.py"
+          unzip -l release-packages/depthpop-canva-app.zip | grep -F "reference/drive-source/roaryv246_v115_depthpop_modeldrawer_FINALFIX.html"
+          unzip -l release-packages/depthpop-canva-app.zip | grep -F "preview/index.html"
+          unzip -l release-packages/depthpop-canva-app.zip | grep -F "canva-app.json"
+          unzip -l release-packages/depthpop-canva-app.zip | grep -F "dist/app.js"
+          sha256sum -c release-packages/SHA256SUMS.txt
+      - name: Upload complete standalone app packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: standalone-canva-app-packages-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            release-packages/holoforge-canva-app.zip
+            release-packages/depthpop-canva-app.zip
+            release-packages/SHA256SUMS.txt
