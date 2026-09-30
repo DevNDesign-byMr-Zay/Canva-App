@@ -6,20 +6,22 @@ The maintained project is a **Canva Design Editor application/tooling** reposito
 
 The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
 
-## HoloForge + DepthPop Canva Design Studio
+## Independent HoloForge and DepthPop Canva apps
 
-The maintained Canva sidebar now exposes two explicit product surfaces: **HoloForge** for holographic creation/spatial review/verified Apply, and **DepthPop** for depth, focus, bokeh and edge-lift preview controls. The historical authenticated AETHER/ROARY application remains provenance-only and is excluded from the clean Canva distribution ZIP.
+HoloForge and DepthPop are now maintained as **two independent Canva Design Editor apps**, not as modes inside one shared runtime.
 
+- `apps/holoforge-canva/` — HoloForge holographic material studio. It has its own Canva manifest, runtime entrypoint, tests, production build, and a from-scratch CREATE → SPATIAL → VERIFY interface. Forgeable materials are written as editable HoloForge app elements through Canva's app-element boundary.
+- `apps/depthpop-canva/` — DepthPop image effect. It has its own Canva manifest, runtime entrypoint, tests, production build, backend, and static UI preview. Its visible control contract is recovered from the maintained Drive v115 source rather than invented from the combined sidebar.
+- `apps/depthpop-canva/backend/` — authenticated FastAPI processing service for the standalone DepthPop app.
+- `apps/depthpop-canva/reference/drive-source/` — exact historical Drive UI/backend provenance used to audit the reconstruction.
+
+The older `canva-app/` tree remains for compatibility and release-history continuity. New independent product development should target the `apps/holoforge-canva/` and `apps/depthpop-canva/` roots.
 
 <p align="center">
   <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
 </p>
 
-**HoloForge** is the maintained Canva holographic design studio in this repository. Its slim sidebar workflow is organized around **CREATE → SPATIAL → VERIFY**: create editable holographic app elements, inspect renderer-neutral 2.5D spatial relationships, then review and explicitly apply supported changes through the existing verified execution boundary.
-
-![HoloForge Canva Studio product interface preview](docs/images/holoforge-canva-studio-preview.svg)
-
-> **Product interface preview.** This is the approved visual direction for the maintained Canva sidebar, not a claim that every illustrated state is a pixel-for-pixel runtime capture. Runtime capabilities and limitations are documented in [docs/HOLOFORGE_CANVA.md](docs/HOLOFORGE_CANVA.md).
+HoloForge's maintained workflow is **CREATE → SPATIAL → VERIFY**. DepthPop's standalone workflow is selected raster image → exact v115 controls → authenticated processing → derived Canva asset → selected-image replacement.
 
 ## What is executable and inspectable today
 
