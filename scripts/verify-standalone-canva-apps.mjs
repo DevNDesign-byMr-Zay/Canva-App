@@ -349,7 +349,7 @@ if (fs.existsSync(packagerPath)) {
   for (const marker of [
     "src/assets/holoforge-logo.svg",
     "src/assets/depthpop-logo.svg",
-    "local test upload",
+    "image source workflow",
     "Historical Drive sources remain in the GitHub repository for provenance only",
     'includeReference: false',
     'file.startsWith("reference/")',
