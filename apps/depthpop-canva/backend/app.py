@@ -41,6 +41,7 @@ if CANVA_APP_ORIGIN:
 
 _jwks_client: PyJWKClient | None = None
 _image_cache: dict[str, tuple[float, bytes, str]] = {}
+_progress_cache: dict[str, dict[str, Any]] = {}
 _render_slots = asyncio.Semaphore(max(1, int(os.getenv("DEPTHPOP_MAX_CONCURRENCY", "3"))))
 
 
@@ -317,6 +318,29 @@ def _render_depthpop(
     return buffer.getvalue()
 
 
+def _progress_cleanup() -> None:
+    now = time.time()
+    expired = [
+        key
+        for key, record in _progress_cache.items()
+        if now - float(record.get("ts", 0.0)) > CACHE_TTL_SECONDS
+    ]
+    for key in expired:
+        _progress_cache.pop(key, None)
+
+
+def _progress_set(progress_id: str | None, percent: int, status: str, message: str) -> None:
+    if not progress_id:
+        return
+    _progress_cleanup()
+    _progress_cache[str(progress_id)] = {
+        "percent": max(0, min(100, int(percent))),
+        "status": str(status),
+        "msg": str(message),
+        "ts": time.time(),
+    }
+
+
 def _cache_put(data: bytes, mime: str) -> str:
     now = time.time()
     expired = [key for key, (created, _, _) in _image_cache.items() if now - created > CACHE_TTL_SECONDS]
@@ -342,6 +366,15 @@ async def health() -> dict[str, str]:
     return {"service": "depthpop-canva", "status": "ok"}
 
 
+@app.get("/tool/progress/{progress_id}")
+async def tool_progress(progress_id: str) -> dict[str, Any]:
+    _progress_cleanup()
+    record = _progress_cache.get(str(progress_id))
+    if not record:
+        return {"ok": False, "error": "not_found"}
+    return {"ok": True, **record}
+
+
 @app.get("/cache/image/{image_id}")
 async def cached_image(image_id: str) -> Response:
     record = _image_cache.get(image_id)
@@ -361,6 +394,9 @@ async def cached_image(image_id: str) -> Response:
 
 
 @app.post("/api/depthpop")
+@app.post("/tool/depth_pop")
+@app.post("/tool/depthpop")
+@app.post("/tool/enhance")
 async def execute_depthpop(
     request: Request,
     image: UploadFile = File(...),
@@ -368,13 +404,19 @@ async def execute_depthpop(
     bokeh: int = Form(35, ge=0, le=100),
     depth_fidelity: float = Form(0.95, ge=0.05, le=1.0),
     num_inference_steps: int = Form(28, ge=8, le=50),
+    preview: int = Form(0, ge=0, le=1),
+    output_format: str = Form("png"),
+    progress_id: str | None = Form(None),
     _user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict[str, Any]:
     _require_config()
+    _progress_set(progress_id, 1, "running", "start")
 
     async with _render_slots:
         raw, mime = await _read_source_image(image)
+        _progress_set(progress_id, 10, "running", "image_loaded")
         depth_raw, depth_provider_url = await _depth_map(raw, mime)
+        _progress_set(progress_id, 55, "running", "depth_fetched")
         output = await asyncio.to_thread(
             _render_depthpop,
             raw,
@@ -384,13 +426,27 @@ async def execute_depthpop(
             bokeh=bokeh,
             num_inference_steps=num_inference_steps,
         )
+        _progress_set(progress_id, 95, "running", "encode")
         image_id = _cache_put(output, "image/png")
         output_url = _public_url(request, "/cache/image/" + image_id)
+        _progress_set(progress_id, 100, "done", "complete")
+        controls = {
+            "preview": int(preview),
+            "strength": float(strength),
+            "bokeh": int(bokeh),
+            "depth_fidelity": float(depth_fidelity),
+            "num_inference_steps": int(num_inference_steps),
+            "output_format": str(output_format),
+        }
         return {
             "ok": True,
             "url": output_url,
             "thumbnailUrl": output_url,
             "mimeType": "image/png",
             "depthMapUrl": depth_provider_url,
+            "depth_map_url": depth_provider_url,
+            "image": {"url": output_url},
+            "images": [{"url": output_url}],
+            "controls": controls,
             "model": "depthpop-depth-anything-v2-local-dof",
         }

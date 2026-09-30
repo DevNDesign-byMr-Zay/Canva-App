@@ -1,5 +1,7 @@
 # Canva Design Editor Application & Tooling
 
+> **Canva deliverables:** use only the two independent packages generated from `apps/holoforge-canva/` and `apps/depthpop-canva/`. Historical ROARY/ÆTHER HTML under `app/authenticated-v115/` and `apps/depthpop-canva/reference/` is provenance only and must never be uploaded to or opened as a Canva app. See [CANVA_APPS_START_HERE.md](CANVA_APPS_START_HERE.md).
+
 This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, a **TypeScript Canva Design Editor application** (`canva-app/`), and a **physically materialized authenticated application build** recovered from that archive.
 
 The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
@@ -13,7 +15,7 @@ HoloForge and DepthPop are now maintained as **two independent Canva Design Edit
 - `apps/holoforge-canva/` — HoloForge holographic material studio. It has its own Canva manifest, runtime entrypoint, tests, production build, and a from-scratch CREATE → SPATIAL → VERIFY interface. Forgeable materials are written as editable HoloForge app elements through Canva's app-element boundary.
 - `apps/depthpop-canva/` — DepthPop image effect. It has its own Canva manifest, runtime entrypoint, tests, production build, backend, and static UI preview. Its visible control contract is recovered from the maintained Drive v115 source rather than invented from the combined sidebar.
 - `apps/depthpop-canva/backend/` — authenticated FastAPI processing service for the standalone DepthPop app.
-- `apps/depthpop-canva/reference/drive-source/` — exact historical Drive UI/backend provenance used to audit the reconstruction.
+- `apps/depthpop-canva/reference/drive-source/` — exact historical Drive UI/backend provenance used to audit the reconstruction. This directory remains **repository-only** and is deliberately excluded from user-facing Canva ZIPs.
 
 The older `canva-app/` tree remains for compatibility and release-history continuity. New independent product development should target the `apps/holoforge-canva/` and `apps/depthpop-canva/` roots.
 

@@ -19,7 +19,7 @@ const APPS = Object.freeze([
     displayName: "DepthPop",
     packageName: "depthpop-canva-app",
     includeBackend: true,
-    includeReference: true,
+    includeReference: false,
   },
 ]);
 
@@ -118,8 +118,10 @@ UI
 - src/                     -> maintained React/TypeScript/CSS UI source
 - src/assets/              -> packaged HoloForge or DepthPop logo asset
 - local test upload        -> production app can upload PNG/JPEG/WebP into Canva for testing
-${backend}${reference}
-This package intentionally contains no node_modules, no secret .env file, and no combined HoloForge/DepthPop runtime switcher.
+${backend}
+This package intentionally contains no node_modules, no secret .env file, no historical ROARY/ÆTHER shell, no Drive provenance HTML/router source, and no combined HoloForge/DepthPop runtime switcher.
+
+Historical Drive sources remain in the GitHub repository for provenance only and are deliberately excluded from this user-facing Canva package.
 `;
 }
 
@@ -167,10 +169,6 @@ for (const app of APPS) {
   if (app.includeBackend) {
     await cp(join(source, "backend"), join(destination, "backend"), { recursive: true });
   }
-  if (app.includeReference) {
-    await cp(join(source, "reference"), join(destination, "reference"), { recursive: true });
-  }
-
   await writeFile(join(destination, "START-HERE.html"), startHereHtml(app.displayName), "utf8");
   await writeFile(join(destination, "UPLOAD-TO-CANVA.txt"), uploadInstructions(app.displayName), "utf8");
   await writeFile(join(destination, "PACKAGE_CONTENTS.txt"), packageContents(app), "utf8");
@@ -203,7 +201,13 @@ for (const app of APPS) {
   for (const file of files) {
     const filePath = join(destination, file);
     await assertNonEmptyFile(filePath, `${app.displayName} package member`);
-    if (file.includes("node_modules/") || file === ".env") {
+    if (
+      file.includes("node_modules/") ||
+      file === ".env" ||
+      file.startsWith("reference/") ||
+      file.startsWith("app/authenticated-v115/") ||
+      file.startsWith("canva-app/")
+    ) {
       throw new Error(`Forbidden package member: ${file}`);
     }
   }
@@ -221,6 +225,23 @@ for (const app of APPS) {
   ]) {
     if (!files.includes(required)) {
       throw new Error(`${app.displayName} package is missing required independent-app member: ${required}`);
+    }
+  }
+
+  const legacyShellMarkers = [
+    "Media Library",
+    "Conversations",
+    "New Chat",
+    "R.O.A.R.Y Studio",
+    "AETHER",
+    "ÆTHER",
+  ];
+  for (const executable of ["app.js", "preview/index.html"]) {
+    const executableText = await readFile(join(destination, executable), "utf8");
+    for (const marker of legacyShellMarkers) {
+      if (executableText.includes(marker)) {
+        throw new Error(`${app.displayName} executable leaked historical ROARY/ÆTHER shell marker "${marker}" in ${executable}.`);
+      }
     }
   }
 

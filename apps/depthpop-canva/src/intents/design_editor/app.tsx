@@ -27,6 +27,13 @@ type BackendResponse = {
   model?: string;
 };
 
+type BackendProgress = {
+  ok: boolean;
+  percent?: number;
+  status?: string;
+  msg?: string;
+};
+
 function backendOrigin(): string {
   if (typeof BACKEND_HOST !== "string") return "";
   return BACKEND_HOST.trim().replace(/\/+$/u, "");
@@ -114,6 +121,7 @@ export function App() {
   const execute = async () => {
     if (!canExecute) return;
 
+    let progressTimer: number | null = null;
     setError(null);
     setProgress(6);
     setState("reading");
@@ -138,6 +146,10 @@ export function App() {
       setState("processing");
 
       const token = await auth.getCanvaUserToken();
+      const progressId =
+        typeof globalThis.crypto?.randomUUID === "function"
+          ? globalThis.crypto.randomUUID()
+          : "depthpop-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
       const fields = buildDepthPopFormFields(settings);
       const form = new FormData();
       form.append("image", sourceBlob, sourceMime === "image/png" ? "source.png" : sourceMime === "image/webp" ? "source.webp" : "source.jpg");
@@ -145,6 +157,22 @@ export function App() {
       form.append("bokeh", fields.bokeh);
       form.append("depth_fidelity", fields.depth_fidelity);
       form.append("num_inference_steps", fields.num_inference_steps);
+      form.append("progress_id", progressId);
+
+      progressTimer = window.setInterval(() => {
+        void fetch(host + "/tool/progress/" + encodeURIComponent(progressId), {
+          cache: "no-store",
+        })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((payload: BackendProgress | null) => {
+            if (!payload?.ok || typeof payload.percent !== "number") return;
+            const backendPercent = Math.max(0, Math.min(100, payload.percent));
+            setProgress(Math.min(72, 22 + Math.round(backendPercent * 0.5)));
+          })
+          .catch(() => {
+            // Progress is advisory; the authenticated render request remains authoritative.
+          });
+      }, 300);
 
       const response = await fetch(host + "/api/depthpop", {
         method: "POST",
@@ -187,6 +215,10 @@ export function App() {
       setProgress(0);
       setState("error");
       setError(cause instanceof Error ? cause.message : "DepthPop could not process the selected image.");
+    } finally {
+      if (progressTimer !== null) {
+        window.clearInterval(progressTimer);
+      }
     }
   };
 

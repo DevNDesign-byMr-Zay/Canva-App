@@ -26,7 +26,16 @@ const APPS = {
       "src/intents/design_editor/holographic/material-contract.ts",
       "src/assets/holoforge-logo.svg",
     ],
-    forbiddenText: ["__MRZAY_CANVA_PRODUCT__", "DepthPopPanel"],
+    forbiddenText: [
+      "__MRZAY_CANVA_PRODUCT__",
+      "DepthPopPanel",
+      "Media Library",
+      "Conversations",
+      "New Chat",
+      "R.O.A.R.Y Studio",
+      "AETHER",
+      "ÆTHER",
+    ],
   },
   depthpop: {
     root: "apps/depthpop-canva",
@@ -56,7 +65,16 @@ const APPS = {
       "reference/drive-source/roaryv246_v115_depthpop_modeldrawer_FINALFIX.html",
       "reference/drive-source/roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py.txt",
     ],
-    forbiddenText: ["__MRZAY_CANVA_PRODUCT__", "HoloForgeScenario"],
+    forbiddenText: [
+      "__MRZAY_CANVA_PRODUCT__",
+      "HoloForgeScenario",
+      "Media Library",
+      "Conversations",
+      "New Chat",
+      "R.O.A.R.Y Studio",
+      "AETHER",
+      "ÆTHER",
+    ],
   },
 };
 
@@ -262,6 +280,11 @@ if (fs.existsSync(packagerPath)) {
     "src/assets/holoforge-logo.svg",
     "src/assets/depthpop-logo.svg",
     "local test upload",
+    "Historical Drive sources remain in the GitHub repository for provenance only",
+    'includeReference: false',
+    'file.startsWith("reference/")',
+    '"Media Library"',
+    '"R.O.A.R.Y Studio"',
   ]) {
     if (!packager.includes(marker)) {
       fail(`packaging: independent-app package guard missing: ${marker}`);
@@ -280,3 +303,4 @@ console.log(" - HoloForge: independent app + embedded/packaged logo + Canva test
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");
+console.log(" - User-facing packages exclude historical ROARY/ÆTHER shell and Drive provenance source files");
