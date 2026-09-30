@@ -4,13 +4,11 @@ import asyncio
 import base64
 import hashlib
 import io
-import ipaddress
 import os
-import socket
 import time
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import fal_client
 import httpx
@@ -102,55 +100,47 @@ async def verify_canva_user(authorization: str | None = Header(default=None)) ->
     return VerifiedCanvaUser(user_id=user_id, brand_id=brand_id)
 
 
-def _is_public_ip(address: str) -> bool:
-    ip = ipaddress.ip_address(address)
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
+FAL_MEDIA_BASES = {
+    "fal.media": "https://fal.media",
+    "v2.fal.media": "https://v2.fal.media",
+    "v3.fal.media": "https://v3.fal.media",
+}
 
 
-async def _assert_public_https_url(url: str) -> None:
+def _fal_media_request_target(url: str) -> tuple[str, str]:
     parsed = urlparse(url)
-    if parsed.scheme.lower() != "https" or not parsed.hostname:
-        raise HTTPException(status_code=502, detail="Provider returned a non-public image URL")
-    try:
-        infos = await asyncio.to_thread(
-            socket.getaddrinfo,
-            parsed.hostname,
-            443,
-            type=socket.SOCK_STREAM,
-        )
-    except socket.gaierror as exc:
-        raise HTTPException(status_code=502, detail="Provider image hostname could not be resolved") from exc
-    addresses = {info[4][0] for info in infos}
-    if not addresses or any(not _is_public_ip(address) for address in addresses):
-        raise HTTPException(status_code=502, detail="Provider image URL did not resolve to public addresses")
+    host = (parsed.hostname or "").lower()
+    base = FAL_MEDIA_BASES.get(host)
+    if parsed.scheme.lower() != "https" or not base:
+        raise HTTPException(status_code=502, detail="Depth-map provider returned an unexpected file host")
+    if not parsed.path.startswith("/") or parsed.path.startswith("//"):
+        raise HTTPException(status_code=502, detail="Depth-map provider returned an invalid file path")
+
+    target = parsed.path
+    if parsed.query:
+        target += "?" + parsed.query
+    return base, target
 
 
 async def _fetch_provider_image(url: str) -> bytes:
-    current = url
-    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), follow_redirects=False) as client:
-        for _ in range(4):
-            await _assert_public_https_url(current)
-            response = await client.get(current, headers={"User-Agent": "depthpop-canva/1.0"})
-            if response.status_code in {301, 302, 303, 307, 308}:
-                location = response.headers.get("location")
-                if not location:
-                    raise HTTPException(status_code=502, detail="Provider image redirect was invalid")
-                current = urljoin(current, location)
-                continue
-            if response.status_code >= 400:
-                raise HTTPException(status_code=502, detail="Provider image download failed")
-            raw = response.content
-            if not raw or len(raw) > MAX_IMAGE_BYTES:
-                raise HTTPException(status_code=502, detail="Provider image was empty or too large")
-            return raw
-    raise HTTPException(status_code=502, detail="Provider image exceeded redirect limit")
+    base, target = _fal_media_request_target(url)
+    async with httpx.AsyncClient(
+        base_url=base,
+        timeout=httpx.Timeout(30.0),
+        follow_redirects=False,
+        headers={"User-Agent": "depthpop-canva/1.0"},
+    ) as client:
+        response = await client.get(target)
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=502, detail="Depth-map provider image download failed")
+    if response.status_code in {301, 302, 303, 307, 308}:
+        raise HTTPException(status_code=502, detail="Depth-map provider image redirected unexpectedly")
+
+    raw = response.content
+    if not raw or len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=502, detail="Depth-map provider image was empty or too large")
+    return raw
 
 
 async def _read_source_image(image: UploadFile) -> tuple[bytes, str]:

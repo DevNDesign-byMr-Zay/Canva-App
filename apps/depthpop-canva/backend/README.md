@@ -44,7 +44,7 @@ Security boundaries:
 - CANVA_APP_ID is enforced as the JWT audience;
 - selected image bytes are downloaded client-side from Canva's temporary asset URL instead of asking the backend to fetch a user-controlled URL;
 - accepted inputs are PNG, JPEG, or WebP and limited to 50 MB;
-- provider-returned URLs must be HTTPS and resolve only to public IPs;
+- depth-map downloads are restricted to fixed fal.media origins and never follow redirects;
 - FAL_KEY is never accepted from request headers or frontend payloads;
 - generated image cache entries expire after 15 minutes.
 

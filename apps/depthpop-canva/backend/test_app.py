@@ -59,3 +59,20 @@ def test_cached_output_expires_when_stale(monkeypatch):
     client = TestClient(depthpop.app)
     response = client.get("/cache/image/" + key)
     assert response.status_code == 404
+
+
+def test_fal_media_url_is_rebuilt_against_fixed_origin():
+    base, target = depthpop._fal_media_request_target(
+        "https://v2.fal.media/files/example/depth.png?token=abc"
+    )
+    assert base == "https://v2.fal.media"
+    assert target == "/files/example/depth.png?token=abc"
+
+
+def test_fal_media_url_rejects_untrusted_hosts():
+    try:
+        depthpop._fal_media_request_target("https://example.com/anything.png")
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 502
+    else:
+        raise AssertionError("untrusted provider host should have been rejected")
