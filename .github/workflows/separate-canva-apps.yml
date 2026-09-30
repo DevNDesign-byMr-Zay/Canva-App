@@ -1,0 +1,83 @@
+name: Separate Canva apps
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - ".github/workflows/separate-canva-apps.yml"
+  push:
+    branches:
+      - main
+      - "mrzay/**"
+    paths:
+      - "apps/**"
+      - ".github/workflows/separate-canva-apps.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canva-frontends:
+    name: ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - holoforge-canva
+          - depthpop-canva
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install app dependencies
+        run: npm install --ignore-scripts
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Verify build output
+        shell: bash
+        run: |
+          test -s dist/app.js
+          node --check dist/app.js
+      - name: Retain production bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.app }}-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/${{ matrix.app }}/dist/app.js
+            apps/${{ matrix.app }}/canva-app.json
+            apps/${{ matrix.app }}/preview/index.html
+
+  depthpop-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/depthpop-canva/backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/depthpop-canva/backend/requirements.txt
+      - name: Install backend
+        run: python -m pip install -r requirements.txt
+      - name: Compile backend
+        run: python -m py_compile app.py test_app.py
+      - name: Backend unit tests
+        run: python -m pytest -q
+      - name: Build backend container
+        run: docker build -t depthpop-canva-backend .
