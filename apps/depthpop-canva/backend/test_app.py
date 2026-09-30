@@ -122,3 +122,81 @@ def test_depthpop_route_completes_with_stubbed_depth_provider(monkeypatch):
             assert result.size == (24, 24)
     finally:
         depthpop.app.dependency_overrides.clear()
+
+
+
+def test_drive_compatible_route_alias_and_progress_contract(monkeypatch):
+    async def fake_verify():
+        return depthpop.VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
+
+    async def fake_depth_map(raw: bytes, mime: str):
+        assert raw
+        assert mime == "image/png"
+        depth = Image.new("L", (24, 24))
+        depth.putdata([int((x / 23) * 255) for _y in range(24) for x in range(24)])
+        buffer = io.BytesIO()
+        depth.save(buffer, format="PNG")
+        return buffer.getvalue(), "https://v2.fal.media/files/test/depth.png"
+
+    monkeypatch.setattr(depthpop, "CANVA_APP_ID", "test-app")
+    monkeypatch.setenv("FAL_KEY", "test-key")
+    monkeypatch.setattr(depthpop, "_depth_map", fake_depth_map)
+    depthpop.app.dependency_overrides[depthpop.verify_canva_user] = fake_verify
+    depthpop._progress_cache.clear()
+
+    try:
+        client = TestClient(depthpop.app)
+        response = client.post(
+            "/tool/depth_pop",
+            files={"image": ("source.png", _png_bytes((24, 24)), "image/png")},
+            data={
+                "strength": "0.32",
+                "bokeh": "35",
+                "depth_fidelity": "0.95",
+                "num_inference_steps": "28",
+                "preview": "0",
+                "output_format": "png",
+                "progress_id": "drive-v115-test",
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["ok"] is True
+        assert payload["url"] == payload["image"]["url"]
+        assert payload["images"] == [{"url": payload["url"]}]
+        assert payload["depth_map_url"] == payload["depthMapUrl"]
+        assert payload["controls"] == {
+            "preview": 0,
+            "strength": 0.32,
+            "bokeh": 35,
+            "depth_fidelity": 0.95,
+            "num_inference_steps": 28,
+            "output_format": "png",
+        }
+
+        progress = client.get("/tool/progress/drive-v115-test")
+        assert progress.status_code == 200
+        assert progress.json()["ok"] is True
+        assert progress.json()["percent"] == 100
+        assert progress.json()["status"] == "done"
+        assert progress.json()["msg"] == "complete"
+    finally:
+        depthpop.app.dependency_overrides.clear()
+        depthpop._progress_cache.clear()
+
+
+def test_all_drive_depthpop_aliases_are_registered():
+    routes = {route.path for route in depthpop.app.routes}
+    assert "/api/depthpop" in routes
+    assert "/tool/depth_pop" in routes
+    assert "/tool/depthpop" in routes
+    assert "/tool/enhance" in routes
+    assert "/tool/progress/{progress_id}" in routes
+
+
+def test_missing_progress_record_matches_drive_style_not_found_shape():
+    depthpop._progress_cache.clear()
+    client = TestClient(depthpop.app)
+    response = client.get("/tool/progress/missing-progress")
+    assert response.status_code == 200
+    assert response.json() == {"ok": False, "error": "not_found"}
