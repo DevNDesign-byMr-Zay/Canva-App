@@ -5,7 +5,7 @@ import { auth } from "@canva/user";
 
 import {
   DEFAULT_DEPTHPOP_SETTINGS,
-  buildDepthPopPayload,
+  buildDepthPopFormFields,
   normalizeDepthPopSettings,
   type DepthPopSettings,
 } from "../../depthpop/depthpop-model";
@@ -87,12 +87,19 @@ function DepthPopMark() {
 }
 
 function messageForState(state: RunState): string {
-  if (state === "reading") return "Reading selected Canva image…";
-  if (state === "processing") return "Building depth map + cinematic separation…";
+  if (state === "reading") return "Reading the selected Canva image…";
+  if (state === "processing") return "Building the depth map + cinematic separation…";
   if (state === "uploading") return "Importing the DepthPop render into Canva…";
   if (state === "saving") return "Replacing the selected image…";
   if (state === "done") return "DepthPop complete. The selected Canva image was replaced.";
   return "";
+}
+
+function ensureSupportedInput(blob: Blob): "image/png" | "image/jpeg" | "image/webp" {
+  if (blob.type === "image/png" || blob.type === "image/jpeg" || blob.type === "image/webp") {
+    return blob.type;
+  }
+  throw new Error("DepthPop currently supports PNG, JPEG, and WebP raster images.");
 }
 
 export function App() {
@@ -113,7 +120,7 @@ export function App() {
     if (!canExecute) return;
 
     setError(null);
-    setProgress(8);
+    setProgress(6);
     setState("reading");
 
     try {
@@ -122,17 +129,34 @@ export function App() {
       if (!content) throw new Error("Select one raster image in Canva before running DepthPop.");
 
       const temporary = await getTemporaryUrl({ type: "image", ref: content.ref });
-      setProgress(24);
+      const sourceResponse = await fetch(temporary.url, { mode: "cors", cache: "no-store" });
+      if (!sourceResponse.ok) {
+        throw new Error("Canva's temporary source image could not be downloaded.");
+      }
+      const sourceBlob = await sourceResponse.blob();
+      const sourceMime = ensureSupportedInput(sourceBlob);
+      if (sourceBlob.size <= 0 || sourceBlob.size > 50 * 1024 * 1024) {
+        throw new Error("Selected image is empty or exceeds Canva's 50 MB image limit.");
+      }
+
+      setProgress(22);
       setState("processing");
 
       const token = await auth.getCanvaUserToken();
+      const fields = buildDepthPopFormFields(settings);
+      const form = new FormData();
+      form.append("image", sourceBlob, sourceMime === "image/png" ? "source.png" : sourceMime === "image/webp" ? "source.webp" : "source.jpg");
+      form.append("strength", fields.strength);
+      form.append("bokeh", fields.bokeh);
+      form.append("depth_fidelity", fields.depth_fidelity);
+      form.append("num_inference_steps", fields.num_inference_steps);
+
       const response = await fetch(host + "/api/depthpop", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify(buildDepthPopPayload(temporary.url, settings)),
+        body: form,
       });
 
       const body = (await response.json().catch(() => null)) as BackendResponse | { detail?: string } | null;
@@ -153,11 +177,12 @@ export function App() {
         thumbnailUrl: body.thumbnailUrl || body.url,
         mimeType: body.mimeType,
         parentRef: content.ref,
-        aiDisclosure: "none",
+        aiDisclosure: "app_generated",
       });
+      await asset.whenUploaded();
 
       content.ref = asset.ref;
-      setProgress(92);
+      setProgress(93);
       setState("saving");
       await draft.save();
 
@@ -265,7 +290,7 @@ export function App() {
         </button>
 
         <p className="dp-note">
-          Runs only on the image you selected. The original Canva asset remains the parent of the derived DepthPop asset.
+          Runs only on the image you selected. The derived asset keeps the original Canva image as its parent.
         </p>
       </section>
     </main>

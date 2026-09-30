@@ -32,24 +32,19 @@ export function normalizeDepthPopSettings(
   });
 }
 
-export type DepthPopBackendPayload = Readonly<{
-  sourceUrl: string;
-  strength: number;
-  bokeh: number;
-  depthFidelity: number;
-  numInferenceSteps: number;
+export type DepthPopFormFields = Readonly<{
+  strength: string;
+  bokeh: string;
+  depth_fidelity: string;
+  num_inference_steps: string;
 }>;
 
-export function buildDepthPopPayload(
-  sourceUrl: string,
-  settings: DepthPopSettings,
-): DepthPopBackendPayload {
+export function buildDepthPopFormFields(settings: DepthPopSettings): DepthPopFormFields {
   const normalized = normalizeDepthPopSettings(settings);
   return Object.freeze({
-    sourceUrl,
-    strength: normalized.depthStrength,
-    bokeh: normalized.depthBlur,
-    depthFidelity: normalized.depthFidelity,
-    numInferenceSteps: normalized.steps,
+    strength: String(normalized.depthStrength),
+    bokeh: String(normalized.depthBlur),
+    depth_fidelity: String(normalized.depthFidelity),
+    num_inference_steps: String(normalized.steps),
   });
 }

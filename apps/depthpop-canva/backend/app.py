@@ -16,22 +16,22 @@ import fal_client
 import httpx
 import jwt
 import numpy as np
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from jwt import PyJWKClient
 from PIL import Image, ImageFilter
-from pydantic import BaseModel, Field, HttpUrl
 
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
 CACHE_TTL_SECONDS = 15 * 60
 CACHE_LIMIT = 32
+SUPPORTED_IMAGE_MIME = {"image/png", "image/jpeg", "image/webp"}
 
 CANVA_APP_ID = os.getenv("CANVA_APP_ID", "").strip()
 CANVA_APP_ORIGIN = os.getenv("CANVA_APP_ORIGIN", "").strip().rstrip("/")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
 
-app = FastAPI(title="DepthPop Canva Backend", version="1.0.0")
+app = FastAPI(title="DepthPop Canva Backend", version="1.0.1")
 if CANVA_APP_ORIGIN:
     app.add_middleware(
         CORSMiddleware,
@@ -44,23 +44,6 @@ if CANVA_APP_ORIGIN:
 _jwks_client: PyJWKClient | None = None
 _image_cache: dict[str, tuple[float, bytes, str]] = {}
 _render_slots = asyncio.Semaphore(max(1, int(os.getenv("DEPTHPOP_MAX_CONCURRENCY", "3"))))
-
-
-class DepthPopRequest(BaseModel):
-    sourceUrl: HttpUrl
-    strength: float = Field(0.32, ge=0.05, le=0.75)
-    bokeh: int = Field(35, ge=0, le=100)
-    depthFidelity: float = Field(0.95, ge=0.05, le=1.0)
-    numInferenceSteps: int = Field(28, ge=8, le=50)
-
-
-class DepthPopResponse(BaseModel):
-    ok: bool = True
-    url: str
-    thumbnailUrl: str
-    mimeType: str = "image/png"
-    depthMapUrl: str | None = None
-    model: str = "depthpop-depth-anything-v2-local-dof"
 
 
 @dataclass(frozen=True)
@@ -134,7 +117,7 @@ def _is_public_ip(address: str) -> bool:
 async def _assert_public_https_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme.lower() != "https" or not parsed.hostname:
-        raise HTTPException(status_code=400, detail="sourceUrl must be a public HTTPS URL")
+        raise HTTPException(status_code=502, detail="Provider returned a non-public image URL")
     try:
         infos = await asyncio.to_thread(
             socket.getaddrinfo,
@@ -143,13 +126,13 @@ async def _assert_public_https_url(url: str) -> None:
             type=socket.SOCK_STREAM,
         )
     except socket.gaierror as exc:
-        raise HTTPException(status_code=400, detail="sourceUrl hostname could not be resolved") from exc
+        raise HTTPException(status_code=502, detail="Provider image hostname could not be resolved") from exc
     addresses = {info[4][0] for info in infos}
     if not addresses or any(not _is_public_ip(address) for address in addresses):
-        raise HTTPException(status_code=400, detail="sourceUrl must resolve only to public addresses")
+        raise HTTPException(status_code=502, detail="Provider image URL did not resolve to public addresses")
 
 
-async def _fetch_image(url: str) -> tuple[bytes, str]:
+async def _fetch_provider_image(url: str) -> bytes:
     current = url
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), follow_redirects=False) as client:
         for _ in range(4):
@@ -158,24 +141,36 @@ async def _fetch_image(url: str) -> tuple[bytes, str]:
             if response.status_code in {301, 302, 303, 307, 308}:
                 location = response.headers.get("location")
                 if not location:
-                    raise HTTPException(status_code=502, detail="Image redirect was missing a location")
+                    raise HTTPException(status_code=502, detail="Provider image redirect was invalid")
                 current = urljoin(current, location)
                 continue
             if response.status_code >= 400:
-                raise HTTPException(
-                    status_code=502,
-                    detail="Could not fetch selected Canva image (" + str(response.status_code) + ")",
-                )
+                raise HTTPException(status_code=502, detail="Provider image download failed")
             raw = response.content
             if not raw or len(raw) > MAX_IMAGE_BYTES:
-                raise HTTPException(status_code=413, detail="Selected image is empty or exceeds 50 MB")
-            mime = (
-                response.headers.get("content-type") or "image/png"
-            ).split(";", 1)[0].strip().lower()
-            if mime not in {"image/png", "image/jpeg", "image/webp"}:
-                mime = "image/png"
-            return raw, mime
-    raise HTTPException(status_code=502, detail="Too many image redirects")
+                raise HTTPException(status_code=502, detail="Provider image was empty or too large")
+            return raw
+    raise HTTPException(status_code=502, detail="Provider image exceeded redirect limit")
+
+
+async def _read_source_image(image: UploadFile) -> tuple[bytes, str]:
+    mime = (image.content_type or "").split(";", 1)[0].strip().lower()
+    if mime not in SUPPORTED_IMAGE_MIME:
+        raise HTTPException(status_code=415, detail="DepthPop supports PNG, JPEG, and WebP images")
+
+    raw = await image.read(MAX_IMAGE_BYTES + 1)
+    if not raw:
+        raise HTTPException(status_code=400, detail="Selected image was empty")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Selected image exceeds 50 MB")
+
+    try:
+        with Image.open(io.BytesIO(raw)) as probe:
+            probe.verify()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Selected file is not a valid raster image") from exc
+
+    return raw, mime
 
 
 def _to_data_url(raw: bytes, mime: str) -> str:
@@ -217,36 +212,30 @@ async def _depth_map(raw: bytes, mime: str) -> tuple[bytes, str]:
             arguments={"image_url": data_url},
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Depth-map provider failed: " + str(exc)) from exc
+        raise HTTPException(status_code=502, detail="Depth-map provider failed") from exc
+
     depth_url = (_extract_image_url(result) or "").strip()
     if not depth_url:
         raise HTTPException(status_code=502, detail="Depth-map provider returned no image")
-    depth_raw, _ = await _fetch_image(depth_url)
+
+    depth_raw = await _fetch_provider_image(depth_url)
     return depth_raw, depth_url
 
 
 def _auto_invert_and_focus(depth01: np.ndarray) -> tuple[bool, float]:
-    h, w = depth01.shape
-    if h < 4 or w < 4:
+    height, width = depth01.shape
+    if height < 4 or width < 4:
         return False, 0.35
-    cy0, cy1 = int(h * 0.35), int(h * 0.65)
-    cx0, cx1 = int(w * 0.35), int(w * 0.65)
+
+    cy0, cy1 = int(height * 0.35), int(height * 0.65)
+    cx0, cx1 = int(width * 0.35), int(width * 0.65)
     center = float(depth01[cy0:cy1, cx0:cx1].mean())
-    top = float(depth01[: max(1, int(h * 0.12)), :].mean())
-    bottom = float(depth01[int(h * 0.88) :, :].mean())
-    left = float(
-        depth01[
-            int(h * 0.12) : int(h * 0.88),
-            : max(1, int(w * 0.12)),
-        ].mean()
-    )
-    right = float(
-        depth01[
-            int(h * 0.12) : int(h * 0.88),
-            int(w * 0.88) :,
-        ].mean()
-    )
+    top = float(depth01[: max(1, int(height * 0.12)), :].mean())
+    bottom = float(depth01[int(height * 0.88) :, :].mean())
+    left = float(depth01[int(height * 0.12) : int(height * 0.88), : max(1, int(width * 0.12))].mean())
+    right = float(depth01[int(height * 0.12) : int(height * 0.88), int(width * 0.88) :].mean())
     edges = 0.25 * (top + bottom + left + right)
+
     invert = center > edges
     oriented = 1.0 - depth01 if invert else depth01
     focus = float(np.quantile(oriented, 0.35))
@@ -275,9 +264,7 @@ def _apply_depth_lens_blur(
     invert, focus = _auto_invert_and_focus(depth01)
     oriented = 1.0 - depth01 if invert else depth01
     curve = max(0.75, min(1.15 + (fidelity - 0.5) * 1.25, 2.25))
-    max_radius = (bokeh / 100.0) * (
-        22.0 if steps >= 30 else 18.0 if steps >= 20 else 14.0
-    )
+    max_radius = (bokeh / 100.0) * (22.0 if steps >= 30 else 18.0 if steps >= 20 else 14.0)
     max_radius *= 0.70 + 0.60 * strength
     max_radius = max(0.0, min(float(max_radius), 26.0))
     levels = 10 if steps >= 30 else 8 if steps >= 20 else 6
@@ -294,11 +281,9 @@ def _apply_depth_lens_blur(
     blurred_levels = []
     for index in range(levels):
         radius = max_radius * (index / (levels - 1))
-        blurred = (
-            base
-            if radius <= 0.05
-            else np.asarray(image.filter(ImageFilter.GaussianBlur(radius))).astype(np.float32)
-        )
+        blurred = base if radius <= 0.05 else np.asarray(
+            image.filter(ImageFilter.GaussianBlur(radius))
+        ).astype(np.float32)
         blurred_levels.append(blurred)
     stack = np.stack(blurred_levels, axis=0)
 
@@ -317,21 +302,25 @@ def _apply_depth_lens_blur(
     return Image.fromarray(np.clip(output, 0, 255).astype(np.uint8), mode="RGB")
 
 
-def _render_depthpop(raw: bytes, depth_raw: bytes, req: DepthPopRequest) -> bytes:
+def _render_depthpop(
+    raw: bytes,
+    depth_raw: bytes,
+    *,
+    depth_fidelity: float,
+    strength: float,
+    bokeh: int,
+    num_inference_steps: int,
+) -> bytes:
     image = Image.open(io.BytesIO(raw)).convert("RGB")
-    depth = (
-        Image.open(io.BytesIO(depth_raw))
-        .convert("L")
-        .resize(image.size, Image.Resampling.BILINEAR)
-    )
+    depth = Image.open(io.BytesIO(depth_raw)).convert("L").resize(image.size, Image.Resampling.BILINEAR)
     depth01 = np.asarray(depth).astype(np.float32) / 255.0
     output = _apply_depth_lens_blur(
         image,
         depth01,
-        depth_fidelity=req.depthFidelity,
-        strength=req.strength,
-        bokeh=req.bokeh,
-        quality_steps=req.numInferenceSteps,
+        depth_fidelity=depth_fidelity,
+        strength=strength,
+        bokeh=bokeh,
+        quality_steps=num_inference_steps,
     )
     buffer = io.BytesIO()
     output.save(buffer, format="PNG", optimize=True)
@@ -340,16 +329,14 @@ def _render_depthpop(raw: bytes, depth_raw: bytes, req: DepthPopRequest) -> byte
 
 def _cache_put(data: bytes, mime: str) -> str:
     now = time.time()
-    expired = [
-        key
-        for key, (created, _, _) in _image_cache.items()
-        if now - created > CACHE_TTL_SECONDS
-    ]
+    expired = [key for key, (created, _, _) in _image_cache.items() if now - created > CACHE_TTL_SECONDS]
     for key in expired:
         _image_cache.pop(key, None)
+
     if len(_image_cache) >= CACHE_LIMIT:
         oldest = min(_image_cache, key=lambda key: _image_cache[key][0])
         _image_cache.pop(oldest, None)
+
     key = hashlib.sha256(data).hexdigest()[:32]
     _image_cache[key] = (now, data, mime)
     return key
@@ -370,10 +357,12 @@ async def cached_image(image_id: str) -> Response:
     record = _image_cache.get(image_id)
     if not record:
         raise HTTPException(status_code=404, detail="Image expired or unavailable")
+
     created, data, mime = record
     if time.time() - created > CACHE_TTL_SECONDS:
         _image_cache.pop(image_id, None)
         raise HTTPException(status_code=404, detail="Image expired or unavailable")
+
     return Response(
         content=data,
         media_type=mime,
@@ -381,22 +370,37 @@ async def cached_image(image_id: str) -> Response:
     )
 
 
-@app.post("/api/depthpop", response_model=DepthPopResponse)
+@app.post("/api/depthpop")
 async def execute_depthpop(
-    payload: DepthPopRequest,
     request: Request,
+    image: UploadFile = File(...),
+    strength: float = Form(0.32, ge=0.05, le=0.75),
+    bokeh: int = Form(35, ge=0, le=100),
+    depth_fidelity: float = Form(0.95, ge=0.05, le=1.0),
+    num_inference_steps: int = Form(28, ge=8, le=50),
     _user: VerifiedCanvaUser = Depends(verify_canva_user),
-) -> DepthPopResponse:
+) -> dict[str, Any]:
     _require_config()
+
     async with _render_slots:
-        raw, mime = await _fetch_image(str(payload.sourceUrl))
+        raw, mime = await _read_source_image(image)
         depth_raw, depth_provider_url = await _depth_map(raw, mime)
-        output = await asyncio.to_thread(_render_depthpop, raw, depth_raw, payload)
+        output = await asyncio.to_thread(
+            _render_depthpop,
+            raw,
+            depth_raw,
+            depth_fidelity=depth_fidelity,
+            strength=strength,
+            bokeh=bokeh,
+            num_inference_steps=num_inference_steps,
+        )
         image_id = _cache_put(output, "image/png")
         output_url = _public_url(request, "/cache/image/" + image_id)
-        return DepthPopResponse(
-            url=output_url,
-            thumbnailUrl=output_url,
-            mimeType="image/png",
-            depthMapUrl=depth_provider_url,
-        )
+        return {
+            "ok": True,
+            "url": output_url,
+            "thumbnailUrl": output_url,
+            "mimeType": "image/png",
+            "depthMapUrl": depth_provider_url,
+            "model": "depthpop-depth-anything-v2-local-dof",
+        }

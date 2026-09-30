@@ -4,4 +4,6 @@ httpx>=0.28,<1
 PyJWT[crypto]>=2.10,<3
 Pillow>=11,<13
 numpy>=2,<3
+python-multipart>=0.0.20,<1
 fal-client==1.0.3
+pytest>=8,<9

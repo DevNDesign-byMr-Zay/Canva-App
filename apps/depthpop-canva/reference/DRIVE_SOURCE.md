@@ -5,14 +5,14 @@ The standalone Canva app is based on the maintained Drive v115 interface:
 - roaryv246_v115_depthpop_modeldrawer_FINALFIX.html
 - Drive file ID: 1PW8b9KIYNAtGKG4IL3_zCsnP4Vbvquo3
 
-The associated DepthPop router preserved here is:
+The associated historical DepthPop router is preserved byte-for-byte as:
 
-- roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py
+- roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py.txt
 - Drive file ID: 1nDTMiYuC4dAIJ1m_wSUaB3RQ8ixhEJYR
 
-Both files are stored byte-for-byte under drive-source so the new Canva implementation can be audited against the actual working lineage rather than a rewritten description.
+The .txt suffix is deliberate: the router is provenance, not live application code, and should not be scanned or imported as a production Python service.
 
-The historical router is not used directly in production. During recovery it was found to contain unrelated ROARY endpoints and stale progress references outside the isolated DepthPop path. backend/app.py keeps the DepthPop algorithm and provider boundary while removing unrelated tools, accepting no client-supplied provider keys, validating Canva JWTs, and adding safe public image fetching for the Canva Selection API workflow.
+The production backend in ../../backend/app.py keeps the DepthPop-specific provider and depth-aware rendering behavior while removing unrelated ROARY endpoints, browser-supplied provider keys, permissive CORS, and user-controlled server-side URL fetching.
 
 Visible v115 control contract:
 - Depth Strength (subject pop): default 0.32, 0.05–0.75, step 0.01

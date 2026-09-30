@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_DEPTHPOP_SETTINGS,
-  buildDepthPopPayload,
+  buildDepthPopFormFields,
   normalizeDepthPopSettings,
 } from "./depthpop-model";
 
@@ -32,13 +32,12 @@ describe("DepthPop Drive v115 contract", () => {
     });
   });
 
-  it("maps controls directly into the backend request without invented presets", () => {
-    expect(buildDepthPopPayload("https://example.com/image.png", DEFAULT_DEPTHPOP_SETTINGS)).toEqual({
-      sourceUrl: "https://example.com/image.png",
-      strength: 0.32,
-      bokeh: 35,
-      depthFidelity: 0.95,
-      numInferenceSteps: 28,
+  it("maps the four controls directly to backend multipart fields", () => {
+    expect(buildDepthPopFormFields(DEFAULT_DEPTHPOP_SETTINGS)).toEqual({
+      strength: "0.32",
+      bokeh: "35",
+      depth_fidelity: "0.95",
+      num_inference_steps: "28",
     });
   });
 });
