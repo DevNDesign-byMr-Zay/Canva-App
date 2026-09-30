@@ -1,4 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@canva/asset", () => ({
+  getTemporaryUrl: vi.fn(),
+  upload: vi.fn(),
+}));
+
+vi.mock("@canva/design", () => ({
+  addElementAtPoint: vi.fn(),
+}));
 
 import { applyHolographicPixels } from "./derived-image-adapter";
 import type { HolographicEffectPlan } from "./effect-plan";
