@@ -224,7 +224,7 @@ jobs:
           unzip -l release-packages/depthpop-canva-app.zip | grep -F "preview/index.html"
           unzip -l release-packages/depthpop-canva-app.zip | grep -F "canva-app.json"
           unzip -l release-packages/depthpop-canva-app.zip | grep -F "dist/app.js"
-          sha256sum -c release-packages/SHA256SUMS.txt
+          (cd release-packages && sha256sum -c SHA256SUMS.txt)
       - name: Upload complete standalone app packages
         uses: actions/upload-artifact@v7
         with:
