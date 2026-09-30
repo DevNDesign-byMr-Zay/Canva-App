@@ -263,7 +263,8 @@ for (const marker of [
 const holoApp = readText(full(APPS.holoforge.root, "src/intents/design_editor/app.tsx"));
 for (const marker of [
   "<HoloForgeLogo />",
-  '<LocalImageUpload productName="HoloForge"',
+  "<LocalImageUpload",
+  'productName="HoloForge"',
   "executeHolographicEffectPlan",
 ]) {
   if (!holoApp.includes(marker)) {
