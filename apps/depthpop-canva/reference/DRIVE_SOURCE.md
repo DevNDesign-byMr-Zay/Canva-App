@@ -22,3 +22,12 @@ Visible v115 control contract:
 - action: EXECUTE DEPTHPOP
 
 The previous Canva adaptation that substituted Fast/Balanced/Cinematic presets is superseded by this exact four-control contract.
+
+
+## Packaging boundary
+
+These Drive files are **provenance only**. They are not part of the user-facing DepthPop Canva handoff ZIP.
+
+The historical v115 HTML contains the complete ROARY Studio shell (including Media Library, Conversations, New Chat, and the composer) because DepthPop originally lived as a tool inside that application. The standalone Canva app extracts only the DepthPop-specific visual/control contract and processing behavior.
+
+If a Canva preview shows the ROARY/ÆTHER shell, the wrong artifact has been opened or uploaded. The correct DepthPop Canva runtime is the root-level `app.js` from the generated `DepthPop-Canva-App.zip`.
