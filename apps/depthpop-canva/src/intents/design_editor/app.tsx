@@ -10,6 +10,8 @@ import {
   type DepthPopSettings,
 } from "../../depthpop/depthpop-model";
 
+import { LocalImageUpload } from "./local-image-upload";
+
 import "./app.css";
 
 declare const BACKEND_HOST: string;
@@ -68,20 +70,13 @@ function SliderControl({
   );
 }
 
-function DepthPopMark() {
+function DepthPopLogo() {
   return (
-    <svg className="dp-mark" viewBox="0 0 58 58" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="dp-g" x1="8" y1="8" x2="50" y2="50">
-          <stop stopColor="#ece8ff" />
-          <stop offset=".42" stopColor="#b184ff" />
-          <stop offset="1" stopColor="#7352ff" />
-        </linearGradient>
-      </defs>
-      <rect x="16" y="16" width="28" height="28" rx="5" stroke="url(#dp-g)" opacity=".32" />
-      <rect x="10" y="22" width="28" height="28" rx="5" stroke="url(#dp-g)" opacity=".58" />
-      <rect x="22" y="10" width="28" height="28" rx="5" stroke="url(#dp-g)" strokeWidth="1.8" />
-      <circle cx="36" cy="24" r="4.5" fill="url(#dp-g)" />
+    <svg className="dp-mark" viewBox="0 0 24 24" role="img" aria-label="DepthPop layered square depth emblem">
+      <path d="M7 7h10v10H7V7Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".35" />
+      <path d="M5 9h10v10H5V9Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".6" />
+      <path d="M9 5h10v10H9V5Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" />
+      <path d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z" fill="#A855F7" opacity=".92" />
     </svg>
   );
 }
@@ -209,7 +204,7 @@ export function App() {
           <button className="dp-reset" type="button" onClick={reset} disabled={isBusy} aria-label="Reset DepthPop controls">
             ↺
           </button>
-          <div className="dp-icon-wrap"><DepthPopMark /></div>
+          <div className="dp-icon-wrap"><DepthPopLogo /></div>
           <span className="dp-canva-pill">CANVA</span>
         </header>
 
@@ -259,6 +254,8 @@ export function App() {
             onChange={(value) => setSetting("steps", value)}
           />
         </div>
+
+        <LocalImageUpload productName="DepthPop" classPrefix="dp" />
 
         <div className={"dp-source " + (selectedImages.count === 1 ? "is-ready" : "")}>
           <span className="dp-source-dot" />

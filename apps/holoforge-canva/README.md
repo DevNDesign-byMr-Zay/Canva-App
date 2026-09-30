@@ -18,3 +18,12 @@ Production:
     npm run build
 
 Upload the generated JavaScript bundle for this app to its own HoloForge record in the Canva Developer Portal. Do not register this build as DepthPop.
+
+
+## Built-in test image upload
+
+HoloForge includes an **UPLOAD TEST IMAGE** control in the production Canva panel. It accepts PNG, JPEG, and WebP files up to 7 MB, converts the file to a Canva-supported data URL, uploads it to the user's private media library, waits for the upload to complete, and adds it to the current design with `addElementAtPoint`.
+
+Required permissions are declared in `canva-app.json`: design content write plus private asset write. The packaged `src/assets/holoforge-logo.svg` is also retained, while the runtime header embeds the same logo geometry so it cannot break because of a missing external URL.
+
+The standalone `preview/index.html` has its own local file picker for visual testing outside Canva. That preview never uploads to Canva; the production `app.js` does.

@@ -112,8 +112,10 @@ ROOT
 - tsconfig.json            -> TypeScript configuration
 
 UI
-- preview/index.html       -> standalone browser preview
+- preview/index.html       -> standalone browser preview with local test-file picker
 - src/                     -> maintained React/TypeScript/CSS UI source
+- src/assets/              -> packaged HoloForge or DepthPop logo asset
+- local test upload        -> production app can upload PNG/JPEG/WebP into Canva for testing
 ${backend}${reference}
 This package intentionally contains no node_modules, no secret .env file, and no combined HoloForge/DepthPop runtime switcher.
 `;
@@ -128,11 +130,13 @@ for (const app of APPS) {
   const buildBundle = join(source, "dist", "app.js");
   const manifestPath = join(source, "canva-app.json");
   const previewPath = join(source, "preview", "index.html");
+  const logoPath = join(source, "src", "assets", app.id === "holoforge-canva" ? "holoforge-logo.svg" : "depthpop-logo.svg");
 
   for (const [path, label] of [
     [buildBundle, `${app.displayName} compiled Canva bundle`],
     [manifestPath, `${app.displayName} Canva manifest`],
     [previewPath, `${app.displayName} HTML UI preview`],
+    [logoPath, `${app.displayName} logo asset`],
   ]) {
     if (!(await exists(path))) {
       throw new Error(`${label} is missing. Build both independent apps before packaging.`);
@@ -184,7 +188,10 @@ for (const app of APPS) {
     }
   }
 
-  if (!files.includes("app.js") || !files.includes("START-HERE.html") || !files.includes("preview/index.html")) {
+  const expectedLogo = app.id === "holoforge-canva"
+    ? "src/assets/holoforge-logo.svg"
+    : "src/assets/depthpop-logo.svg";
+  if (!files.includes("app.js") || !files.includes("START-HERE.html") || !files.includes("preview/index.html") || !files.includes(expectedLogo)) {
     throw new Error(`${app.displayName} package is missing its executable bundle or visible HTML UI.`);
   }
 
