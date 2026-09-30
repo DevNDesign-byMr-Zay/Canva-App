@@ -56,11 +56,31 @@ describe("uploadDataUrlToCanva", () => {
       type: "image",
       ref: "asset-ref-123",
       altText: {
-        text: "TEST APP test image",
+        text: "TEST APP source image",
         decorative: false,
       },
     });
     expect(stages).toEqual(["uploading", "adding"]);
+  });
+
+  it("can stage an upload without inserting the raw source into the design", async () => {
+    const whenUploaded = vi.fn().mockResolvedValue(undefined);
+    uploadMock.mockResolvedValue({
+      ref: "asset-ref-staged",
+      whenUploaded,
+    });
+
+    const result = await uploadDataUrlToCanva({
+      dataUrl: "data:image/png;base64,AAAA",
+      mimeType: "image/png",
+      fileName: "logo.png",
+      productName: "TEST APP",
+      insertIntoDesign: false,
+    });
+
+    expect(result.ref).toBe("asset-ref-staged");
+    expect(whenUploaded).toHaveBeenCalledTimes(1);
+    expect(addElementAtPointMock).not.toHaveBeenCalled();
   });
 
   it("rejects a mismatched data URL before calling Canva", async () => {

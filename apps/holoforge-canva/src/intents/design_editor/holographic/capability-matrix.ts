@@ -1,7 +1,7 @@
 export type CapabilityTier =
   | "NATIVE_CANVA_EDIT"
   | "APP_OWNED_EFFECT"
-  | "GENERATED_ASSET"
+  | "DERIVED_IMAGE"
   | "PREVIEW_ONLY";
 
 export type PropertyCapability = {
@@ -46,9 +46,10 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
   },
   depth: {
     property: "depth",
-    tier: "PREVIEW_ONLY",
-    canvaSupported: false,
-    description: "2.5D spatial scene layer depth for holographic preview only.",
+    tier: "APP_OWNED_EFFECT",
+    canvaSupported: true,
+    description:
+      "Static depth styling is persisted by HoloForge and drives layered offset or depth-preserving raster treatment; motion remains preview-only.",
   },
   colorShift: {
     property: "colorShift",
@@ -95,9 +96,10 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
   },
   rasterOverlay: {
     property: "rasterOverlay",
-    tier: "GENERATED_ASSET",
-    canvaSupported: false,
-    description: "High-resolution generated asset layer inserted into design as an element.",
+    tier: "DERIVED_IMAGE",
+    canvaSupported: true,
+    description:
+      "A source-bound raster treatment rendered by HoloForge, uploaded with parentRef, and inserted as a derived Canva image asset.",
   },
 };
 

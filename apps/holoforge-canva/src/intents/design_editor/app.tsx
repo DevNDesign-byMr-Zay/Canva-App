@@ -2,16 +2,19 @@ import React, { useState } from "react";
 
 import { CreatePanel } from "./create/create-panel";
 import { canvaAppOwnedEffectAdapter } from "./holographic/app-owned-effect-adapter";
+import { canvaDerivedImageAdapter } from "./holographic/derived-image-adapter";
 import {
   executeHolographicEffectPlan,
   type HolographicExecutionResult,
 } from "./holographic/effect-executor";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
-import { LocalImageUpload } from "./local-image-upload";
+import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
+import { useCanvaImageSelection } from "./use-canva-image-selection";
 
 import "./app.css";
 
 type StudioTab = "create" | "spatial" | "verify";
+type SourceMode = "selected" | "uploaded";
 
 function HoloForgeLogo() {
   return (
@@ -63,7 +66,13 @@ function HoloForgeLogo() {
   );
 }
 
-function SpatialPreview({ plan }: { plan: HolographicEffectPlan | null }) {
+function SpatialPreview({
+  plan,
+  sourcePreviewUrl,
+}: {
+  plan: HolographicEffectPlan | null;
+  sourcePreviewUrl: string | null;
+}) {
   if (!plan) {
     return (
       <div className="hf-empty-state">
@@ -75,13 +84,45 @@ function SpatialPreview({ plan }: { plan: HolographicEffectPlan | null }) {
   }
 
   const p = plan.parameters;
+  const showSource = Boolean(plan.sourceImageRef && sourcePreviewUrl);
+
   return (
     <div className="hf-spatial-panel">
       <div className="hf-stage">
-        <div className={"hf-hologram preset-" + plan.presetId}>
+        <div
+          className={
+            "hf-hologram preset-" +
+            plan.presetId +
+            " creation-" +
+            plan.creationType +
+            " motion-" +
+            p.motionMode
+          }
+          style={
+            {
+              "--hf-rx": `${66 - p.depth * 0.12}deg`,
+              "--hf-rz": `${-18 + p.angle / 36}deg`,
+              "--hf-glow-size": `${10 + p.glow * 0.32}px`,
+              "--hf-reflect-opacity": String(0.16 + p.reflection * 0.006),
+              "--hf-material-opacity": String(0.32 + (100 - p.transparency) * 0.0052),
+            } as React.CSSProperties
+          }
+        >
           <span className="hf-holo-plane hf-holo-plane-back" />
           <span className="hf-holo-plane hf-holo-plane-mid" />
-          <span className="hf-holo-plane hf-holo-plane-front" />
+          <span className="hf-holo-plane hf-holo-plane-front">
+            {showSource && (
+              <img
+                src={sourcePreviewUrl ?? undefined}
+                className="hf-source-preview-image"
+                alt="Current HoloForge source"
+              />
+            )}
+            {plan.creationType === "holo_text" && (
+              <b className="hf-spatial-text">{plan.sourceText || "HOLOFORGE"}</b>
+            )}
+            {plan.creationType === "light_fx" && <i className="hf-spatial-light-ring" />}
+          </span>
           <span className="hf-holo-scan" />
         </div>
       </div>
@@ -91,8 +132,8 @@ function SpatialPreview({ plan }: { plan: HolographicEffectPlan | null }) {
           <strong>{plan.presetName}</strong>
         </div>
         <div>
-          <span>MODE</span>
-          <strong>{p.motionMode.toUpperCase()}</strong>
+          <span>OUTPUT</span>
+          <strong>{plan.sourceImageRef ? "RASTER FORGE" : "APP ELEMENT"}</strong>
         </div>
       </div>
       <div className="hf-metric-grid">
@@ -102,7 +143,7 @@ function SpatialPreview({ plan }: { plan: HolographicEffectPlan | null }) {
         <div><span>Glow</span><strong>{p.glow}%</strong></div>
       </div>
       <p className="hf-boundary-copy">
-        Spatial depth and motion are preview semantics. Forge writes only supported editable HoloForge app-element properties into Canva.
+        Depth, color shift, reflection, glow, grain, angle and transparency drive the forged static material. Motion mode remains a live preview behavior because Canva app elements do not preserve HoloForge animation playback.
       </p>
     </div>
   );
@@ -124,11 +165,19 @@ function VerifyPanel({
       </div>
       <div className="hf-proof-copy">
         <span className="hf-section-kicker">FORGE RECEIPT</span>
-        <h2>{result ? "CANVA ELEMENT CREATED" : "AWAITING FORGE"}</h2>
+        <h2>
+          {result
+            ? result.route === "DERIVED_IMAGE"
+              ? "HOLOGRAPHIC IMAGE CREATED"
+              : "CANVA ELEMENT CREATED"
+            : "AWAITING FORGE"}
+        </h2>
         <p>
           {result
-            ? "HoloForge received a successful Canva app-element write response for the current material."
-            : "Forge a supported material to create an editable app-owned element and seal this receipt."}
+            ? result.route === "DERIVED_IMAGE"
+              ? "HoloForge transformed the bound raster into a derived Canva asset and inserted the forged holographic treatment into the design."
+              : "HoloForge created an editable app-owned holographic design element in Canva."
+            : "Forge a material to create a real Canva output and seal this receipt."}
         </p>
       </div>
       {plan && (
@@ -141,7 +190,7 @@ function VerifyPanel({
       )}
       {result && result.previewOnlyProperties.length > 0 && (
         <p className="hf-boundary-copy">
-          Preview-only properties retained outside the Canva write: {result.previewOnlyProperties.join(", ")}.
+          Preview-only behavior: {result.previewOnlyProperties.join(", ")}.
         </p>
       )}
       {error && <div className="hf-error">{error}</div>}
@@ -155,6 +204,22 @@ export function App() {
   const [result, setResult] = useState<HolographicExecutionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForging, setIsForging] = useState(false);
+  const selectedImage = useCanvaImageSelection();
+  const [uploadedSource, setUploadedSource] = useState<UploadedImageResult | null>(null);
+  const [sourceMode, setSourceMode] = useState<SourceMode>("selected");
+
+  const activeSourceRef =
+    sourceMode === "selected" ? selectedImage.ref ?? undefined : uploadedSource?.ref;
+  const activeSourcePreview =
+    sourceMode === "selected" ? selectedImage.previewUrl : uploadedSource?.dataUrl ?? null;
+  const sourceDescription =
+    sourceMode === "selected"
+      ? selectedImage.ref
+        ? "Selected Canva raster"
+        : selectedImage.count > 1
+          ? `${selectedImage.count} images selected`
+          : "No Canva image selected"
+      : uploadedSource?.fileName ?? "No upload staged";
 
   const preview = (nextPlan: HolographicEffectPlan) => {
     setPlan(nextPlan);
@@ -168,11 +233,14 @@ export function App() {
     setResult(null);
     setIsForging(true);
     try {
-      const receipt = await executeHolographicEffectPlan(nextPlan, canvaAppOwnedEffectAdapter);
+      const receipt = await executeHolographicEffectPlan(nextPlan, {
+        appOwned: canvaAppOwnedEffectAdapter,
+        derivedImage: canvaDerivedImageAdapter,
+      });
       setResult(receipt);
       setTab("verify");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "HoloForge could not create the Canva element.");
+      setError(cause instanceof Error ? cause.message : "HoloForge could not create the Canva output.");
       setTab("verify");
     } finally {
       setIsForging(false);
@@ -186,12 +254,50 @@ export function App() {
         <div className="hf-brand-copy">
           <span className="hf-eyebrow">HOLOGRAPHIC DESIGN STUDIO</span>
           <h1>HOLOFORGE</h1>
-          <p>Forge spectral materials into editable Canva design elements.</p>
+          <p>Design spectral text, logos, graphics, glass, chrome and photonic overlays inside Canva.</p>
         </div>
         <span className="hf-canva-pill">CANVA</span>
       </header>
 
-      <LocalImageUpload productName="HoloForge" classPrefix="hf" />
+      <section className="hf-source-dock" aria-label="HoloForge source binding">
+        <div className="hf-source-dock-head">
+          <div>
+            <span>CANVA SOURCE</span>
+            <strong>{sourceDescription}</strong>
+          </div>
+          <span className={"hf-source-led " + (activeSourceRef ? "is-ready" : "")} />
+        </div>
+        <div className="hf-source-mode-group">
+          <button
+            type="button"
+            className={sourceMode === "selected" ? "is-active" : ""}
+            disabled={!selectedImage.ref}
+            onClick={() => setSourceMode("selected")}
+          >
+            USE SELECTED
+          </button>
+          <button
+            type="button"
+            className={sourceMode === "uploaded" ? "is-active" : ""}
+            disabled={!uploadedSource}
+            onClick={() => setSourceMode("uploaded")}
+          >
+            USE UPLOAD
+          </button>
+        </div>
+        {selectedImage.error && <p className="hf-source-warning">{selectedImage.error}</p>}
+      </section>
+
+      <LocalImageUpload
+        productName="HoloForge"
+        classPrefix="hf"
+        insertIntoDesign={false}
+        sourceLabel="HOLOGRAM SOURCE"
+        onUploaded={(uploaded) => {
+          setUploadedSource(uploaded);
+          setSourceMode("uploaded");
+        }}
+      />
 
       <nav className="hf-tabs" aria-label="HoloForge workflow">
         {(["create", "spatial", "verify"] as const).map((item, index) => (
@@ -213,15 +319,20 @@ export function App() {
             onPreviewHologram={preview}
             onForgeIntoCanva={forge}
             isForging={isForging}
+            sourceImageRef={activeSourceRef}
+            sourceKind={sourceMode}
+            sourceDescription={sourceDescription}
           />
         )}
-        {tab === "spatial" && <SpatialPreview plan={plan} />}
+        {tab === "spatial" && (
+          <SpatialPreview plan={plan} sourcePreviewUrl={activeSourcePreview} />
+        )}
         {tab === "verify" && <VerifyPanel plan={plan} result={result} error={error} />}
       </section>
 
       <footer className="hf-footer">
         <span className="hf-signal" />
-        APP-OWNED MATERIAL ENGINE · EXPLICIT USER ACTION
+        SOURCE → MATERIAL → SPATIAL PREVIEW → CANVA FORGE
       </footer>
     </main>
   );

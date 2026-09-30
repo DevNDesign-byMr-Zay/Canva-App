@@ -1,3 +1,4 @@
+import type { ImageRef } from "@canva/asset";
 import React, { useMemo, useState } from "react";
 import { Alert, Button, Text } from "@canva/app-ui-kit";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -7,7 +8,7 @@ import {
   type HolographicMaterialPreset,
 } from "../holographic/material-contract";
 import { createEffectPlan, type HolographicEffectPlan } from "../holographic/effect-plan";
-import { canExecuteHolographicPlan } from "../holographic/effect-executor";
+import { canExecuteHolographicPlan, resolveExecutionRoute } from "../holographic/effect-executor";
 import { getCreationForgeSupport } from "../holographic/forge-support";
 import { CreationTypes } from "./creation-types";
 import { MaterialPresets } from "./material-presets";
@@ -17,12 +18,18 @@ export type CreatePanelProps = {
   onPreviewHologram: (plan: HolographicEffectPlan) => void;
   onForgeIntoCanva: (plan: HolographicEffectPlan) => Promise<void> | void;
   isForging?: boolean;
+  sourceImageRef?: ImageRef;
+  sourceKind?: "selected" | "uploaded";
+  sourceDescription?: string;
 };
 
 export const CreatePanel: React.FC<CreatePanelProps> = ({
   onPreviewHologram,
   onForgeIntoCanva,
   isForging = false,
+  sourceImageRef,
+  sourceKind,
+  sourceDescription,
 }) => {
   const intl = useIntl();
   const [creationType, setCreationType] = useState<CreationType>("holo_graphic");
@@ -32,6 +39,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [parameters, setParameters] = useState<MaterialParameters>(MATERIAL_PRESETS[0].parameters);
   const [activeTabSection, setActiveTabSection] = useState<"presets" | "custom">("presets");
   const [previewPlan, setPreviewPlan] = useState<HolographicEffectPlan | null>(null);
+  const [textSource, setTextSource] = useState("HOLOFORGE");
 
   const handleSelectPreset = (preset: HolographicMaterialPreset) => {
     setSelectedPreset(preset);
@@ -51,11 +59,19 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         creationType,
         presetId: selectedPreset.id,
         customParameters: parameters,
+        sourceImageRef,
+        sourceKind,
+        sourceText: creationType === "holo_text" ? textSource : undefined,
       }),
-    [creationType, parameters, selectedPreset.id],
+    [creationType, parameters, selectedPreset.id, sourceImageRef, sourceKind, textSource],
   );
+
   const support = getCreationForgeSupport(creationType);
   const canForge = canExecuteHolographicPlan(currentPlan) && !isForging;
+  const route = resolveExecutionRoute(currentPlan);
+  const sourceMissing =
+    (support.requiredSource === "image" && !sourceImageRef) ||
+    (support.requiredSource === "text" && !textSource.trim());
 
   const previewLabel = intl.formatMessage({
     defaultMessage: "Preview Hologram",
@@ -76,6 +92,37 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           />
         </span>
         <CreationTypes selectedType={creationType} onSelectType={setCreationType} />
+
+        {creationType === "holo_text" && (
+          <div className="hf-source-editor">
+            <label htmlFor="hf-holo-text">TEXT SOURCE</label>
+            <input
+              id="hf-holo-text"
+              type="text"
+              maxLength={96}
+              value={textSource}
+              onChange={(event) => setTextSource(event.target.value)}
+              placeholder="Enter holographic text"
+            />
+            <span>{textSource.trim().length}/96 · rendered as a re-editable HoloForge app element</span>
+          </div>
+        )}
+
+        {(creationType === "holo_logo" || creationType === "holo_graphic") && (
+          <div className={"hf-source-status " + (sourceImageRef ? "is-ready" : "")}>
+            <div>
+              <span>IMAGE SOURCE</span>
+              <strong>
+                {sourceImageRef
+                  ? sourceDescription || (sourceKind === "selected" ? "Selected Canva image" : "Uploaded source")
+                  : creationType === "holo_logo"
+                    ? "Required for Holo Logo"
+                    : "Optional for Holo Graphic"}
+              </strong>
+            </div>
+            <b>{sourceImageRef ? (route === "DERIVED_IMAGE" ? "PIXEL FORGE" : "BOUND") : "NO SOURCE"}</b>
+          </div>
+        )}
       </div>
 
       <div className="hf-section">
@@ -117,21 +164,24 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       {previewPlan && (
         <Alert tone="info">
           <FormattedMessage
-            defaultMessage="Preview ready for {presetName}. SPATIAL shows the 2.5D design comparison; depth and motion remain preview-only."
+            defaultMessage="Preview ready for {presetName}. SPATIAL shows the depth and material intent before you commit the forge."
             description="Preview update banner"
             values={{ presetName: previewPlan.presetName }}
           />
         </Alert>
       )}
 
-      {!support.forgeable && (
+      {sourceMissing && (
         <Alert tone="warn">
-          <FormattedMessage
-            defaultMessage="{reason} You can still preview this creation type."
-            description="Explains why a creation type cannot yet be forged into Canva."
-            values={{ reason: support.reason }}
-          />
+          {support.reason}
         </Alert>
+      )}
+
+      {!sourceMissing && (
+        <div className="hf-route-note">
+          <span>OUTPUT ROUTE</span>
+          <strong>{route === "DERIVED_IMAGE" ? "Derived holographic image" : "Editable HoloForge app element"}</strong>
+        </div>
       )}
 
       <div className="hf-action-bar">
@@ -159,8 +209,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       <div className="hf-capability-note">
         <Text>
           <FormattedMessage
-            defaultMessage="Forgeable materials create editable HoloForge app elements in Canva. Position changes use Canva-native editing; depth and motion stay preview-only."
-            description="Capability footnote explaining native vs app-owned effects."
+            defaultMessage="HoloForge creates holographic design treatments for Canva: editable text/material elements or derived raster treatments for source imagery. Motion stays a preview behavior; the forged output is static and production-safe."
+            description="Capability footnote explaining HoloForge's product boundary."
           />
         </Text>
       </div>

@@ -45,11 +45,12 @@ describe("app-owned holographic effect adapter", () => {
 
   it("escapes material labels and clamps visual percentages", () => {
     const data: HolographicAppElementData = {
-      version: 1,
+      version: 2,
       creationType: "holo_graphic",
       presetId: "gold&glass",
       family: "iridescent",
       colorShift: 150,
+      depth: 50,
       reflection: 0,
       glow: 100,
       grain: 100,
@@ -61,6 +62,21 @@ describe("app-owned holographic effect adapter", () => {
     const svg = renderHolographicSvg(data);
     expect(svg).toContain("GOLD&amp;GLASS");
     expect(svg).toContain('opacity="0"');
+  });
+
+  it("renders source text as a holographic text element", () => {
+    const plan = createEffectPlan({
+      creationType: "holo_text",
+      presetId: "prism-foil",
+      sourceText: "MR. ZAY",
+    });
+    const preset = getPresetById(plan.presetId)!;
+    const data = appElementDataFromPlan(plan, preset.family);
+    const svg = renderHolographicSvg(data);
+
+    expect(data.sourceText).toBe("MR. ZAY");
+    expect(svg).toContain("MR. ZAY");
+    expect(svg).toContain("textGlow");
   });
 
   it("adds a real app-owned element through the Canva adapter", async () => {

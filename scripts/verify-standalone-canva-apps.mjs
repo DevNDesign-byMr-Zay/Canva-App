@@ -20,10 +20,13 @@ const APPS = {
       "src/intents/design_editor/local-image-upload.tsx",
       "src/intents/design_editor/local-image-upload.test.tsx",
       "src/intents/design_editor/holographic/app-owned-effect-adapter.ts",
+      "src/intents/design_editor/holographic/derived-image-adapter.ts",
+      "src/intents/design_editor/holographic/derived-image-adapter.test.ts",
       "src/intents/design_editor/holographic/effect-executor.ts",
       "src/intents/design_editor/holographic/effect-plan.ts",
       "src/intents/design_editor/holographic/forge-support.ts",
       "src/intents/design_editor/holographic/material-contract.ts",
+      "src/intents/design_editor/use-canva-image-selection.ts",
       "src/assets/holoforge-logo.svg",
     ],
     forbiddenText: [
@@ -110,9 +113,7 @@ for (const [name, spec] of Object.entries(APPS)) {
       "canva:design:content:write",
       "canva:asset:private:write",
     ];
-    if (name === "depthpop") {
-      requiredPermissions.push("canva:asset:private:read");
-    }
+    requiredPermissions.push("canva:asset:private:read");
     for (const requiredPermission of requiredPermissions) {
       if (!permissions.has(requiredPermission)) {
         fail(`${name}: missing Canva permission ${requiredPermission}`);
@@ -141,8 +142,11 @@ for (const [name, spec] of Object.entries(APPS)) {
     if (!previewText.includes("../" + spec.logo)) {
       fail(`${name}: preview does not reference packaged logo ${spec.logo}`);
     }
-    if (!previewText.includes("UPLOAD TEST IMAGE")) {
-      fail(`${name}: preview is missing the local test-image picker`);
+    if (
+      !previewText.includes("type=\"file\"") ||
+      !previewText.includes('accept="image/png,image/jpeg,image/webp"')
+    ) {
+      fail(`${name}: preview is missing its local PNG/JPEG/WebP file picker`);
     }
   }
 
@@ -173,7 +177,7 @@ for (const [name, spec] of Object.entries(APPS)) {
   if (fs.existsSync(uploadSource)) {
     const uploadText = readText(uploadSource);
     for (const marker of [
-      "UPLOAD TEST IMAGE",
+      "CHOOSE IMAGE",
       "readAsDataUrl",
       "uploadDataUrlToCanva",
       "MAX_DATA_URL_CHARACTERS",
@@ -181,6 +185,9 @@ for (const [name, spec] of Object.entries(APPS)) {
       "name: input.fileName",
       "await asset.whenUploaded()",
       "await addElementAtPoint({",
+      "insertIntoDesign",
+      "htmlFor={inputId}",
+      "onDrop=",
       'accept="image/png,image/jpeg,image/webp"',
       "7 * 1024 * 1024",
       "10 * 1024 * 1024",
@@ -256,11 +263,75 @@ for (const marker of [
 const holoApp = readText(full(APPS.holoforge.root, "src/intents/design_editor/app.tsx"));
 for (const marker of [
   "<HoloForgeLogo />",
-  '<LocalImageUpload productName="HoloForge"',
+  "<LocalImageUpload",
+  'productName="HoloForge"',
   "executeHolographicEffectPlan",
 ]) {
   if (!holoApp.includes(marker)) {
     fail(`holoforge: runtime/UI marker missing: ${marker}`);
+  }
+}
+
+const holoSelection = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/use-canva-image-selection.ts"),
+);
+for (const marker of [
+  'selection.registerOnChange({',
+  'scope: "image"',
+  "getTemporaryUrl",
+  "draft.contents[0]?.ref",
+]) {
+  if (!holoSelection.includes(marker)) {
+    fail(`holoforge: selected-image binding marker missing: ${marker}`);
+  }
+}
+
+const holoDerived = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/holographic/derived-image-adapter.ts"),
+);
+for (const marker of [
+  "applyHolographicPixels",
+  "getTemporaryUrl",
+  "parentRef: sourceRef",
+  "await asset.whenUploaded()",
+  "await addElementAtPoint({",
+]) {
+  if (!holoDerived.includes(marker)) {
+    fail(`holoforge: derived hologram marker missing: ${marker}`);
+  }
+}
+
+const holoExecutor = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/holographic/effect-executor.ts"),
+);
+for (const marker of [
+  '"DERIVED_IMAGE"',
+  '"APP_OWNED_EFFECT"',
+  'plan.creationType === "holo_logo"',
+  'plan.creationType === "holo_graphic" && plan.sourceImageRef',
+  "sourceText",
+]) {
+  if (!holoExecutor.includes(marker)) {
+    fail(`holoforge: functional route marker missing: ${marker}`);
+  }
+}
+
+const holoForgeSupport = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/holographic/forge-support.ts"),
+);
+for (const marker of [
+  'holo_text: Object.freeze({',
+  'holo_logo: Object.freeze({',
+  'holo_graphic: Object.freeze({',
+  'glass: Object.freeze({',
+  'chrome: Object.freeze({',
+  'light_fx: Object.freeze({',
+  'requiredSource: "text"',
+  'requiredSource: "image"',
+  'route: "HYBRID"',
+]) {
+  if (!holoForgeSupport.includes(marker)) {
+    fail(`holoforge: creation-type capability marker missing: ${marker}`);
   }
 }
 
@@ -279,7 +350,7 @@ if (fs.existsSync(packagerPath)) {
   for (const marker of [
     "src/assets/holoforge-logo.svg",
     "src/assets/depthpop-logo.svg",
-    "local test upload",
+    "image source workflow",
     "Historical Drive sources remain in the GitHub repository for provenance only",
     'includeReference: false',
     'file.startsWith("reference/")',
@@ -299,7 +370,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + embedded/packaged logo + Canva test-image upload + editable app-element execution");
+console.log(" - HoloForge: independent app + native file picker + selected-image binding + six functional hologram creation modes + app-element/derived-image execution");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");

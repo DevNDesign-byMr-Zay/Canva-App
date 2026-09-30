@@ -14,6 +14,10 @@
       {
         "name": "canva:asset:private:write",
         "type": "mandatory"
+      },
+      {
+        "name": "canva:asset:private:read",
+        "type": "mandatory"
       }
     ]
   },

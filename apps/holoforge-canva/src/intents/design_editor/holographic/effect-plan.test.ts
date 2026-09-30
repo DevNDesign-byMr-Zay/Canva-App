@@ -35,6 +35,24 @@ describe("effect-plan", () => {
     expect(nativeLayers).toHaveLength(3);
   });
 
+  it("carries compact source bindings into the forge plan", () => {
+    const plan = createEffectPlan({
+      creationType: "holo_logo",
+      presetId: "holo-gold",
+      sourceImageRef: "image-ref" as never,
+      sourceKind: "uploaded",
+    });
+    expect(plan.sourceImageRef).toBe("image-ref");
+    expect(plan.sourceKind).toBe("uploaded");
+
+    const textPlan = createEffectPlan({
+      creationType: "holo_text",
+      presetId: "prism-foil",
+      sourceText: "  Holographic typography  ",
+    });
+    expect(textPlan.sourceText).toBe("Holographic typography");
+  });
+
   it("throws for an unknown preset", () => {
     expect(() =>
       createEffectPlan({
