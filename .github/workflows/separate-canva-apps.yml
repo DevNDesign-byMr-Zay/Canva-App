@@ -81,3 +81,58 @@ jobs:
         run: python -m pytest -q
       - name: Build backend container
         run: docker build -t depthpop-canva-backend .
+
+
+  package-independent-apps:
+    name: Complete independent app packages
+    needs:
+      - canva-frontends
+      - depthpop-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Build HoloForge
+        working-directory: apps/holoforge-canva
+        run: |
+          npm install --ignore-scripts
+          npm run build
+      - name: Build DepthPop
+        working-directory: apps/depthpop-canva
+        run: |
+          npm install --ignore-scripts
+          npm run build
+      - name: Assemble complete independent packages
+        run: node scripts/package-independent-canva-apps.mjs .artifacts/independent-canva-apps
+      - name: Verify package entrypoints
+        shell: bash
+        run: |
+          for app in holoforge-canva depthpop-canva; do
+            root=".artifacts/independent-canva-apps/$app"
+            test -s "$root/app.js"
+            node --check "$root/app.js"
+            test -s "$root/canva-app.json"
+            test -s "$root/START-HERE.html"
+            test -s "$root/preview/index.html"
+          done
+          test -s .artifacts/independent-canva-apps/depthpop-canva/backend/app.py
+          test -s .artifacts/independent-canva-apps/depthpop-canva/backend/test_app.py
+      - name: Retain HoloForge complete package
+        uses: actions/upload-artifact@v7
+        with:
+          name: HoloForge-Canva-App-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          include-hidden-files: true
+          path: .artifacts/independent-canva-apps/holoforge-canva/
+      - name: Retain DepthPop complete package
+        uses: actions/upload-artifact@v7
+        with:
+          name: DepthPop-Canva-App-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          include-hidden-files: true
+          path: .artifacts/independent-canva-apps/depthpop-canva/
