@@ -18,6 +18,7 @@ const APPS = {
       "src/intents/design_editor/app.tsx",
       "src/intents/design_editor/app.css",
       "src/intents/design_editor/local-image-upload.tsx",
+      "src/intents/design_editor/local-image-upload.test.tsx",
       "src/intents/design_editor/holographic/app-owned-effect-adapter.ts",
       "src/intents/design_editor/holographic/effect-executor.ts",
       "src/intents/design_editor/holographic/effect-plan.ts",
@@ -42,6 +43,7 @@ const APPS = {
       "src/intents/design_editor/app.tsx",
       "src/intents/design_editor/app.css",
       "src/intents/design_editor/local-image-upload.tsx",
+      "src/intents/design_editor/local-image-upload.test.tsx",
       "src/depthpop/depthpop-model.ts",
       "src/assets/depthpop-logo.svg",
       "backend/app.py",
@@ -85,11 +87,15 @@ for (const [name, spec] of Object.entries(APPS)) {
     const permissions = new Set(
       (manifest?.runtime?.permissions ?? []).map((permission) => permission?.name),
     );
-    for (const requiredPermission of [
+    const requiredPermissions = [
       "canva:design:content:read",
       "canva:design:content:write",
       "canva:asset:private:write",
-    ]) {
+    ];
+    if (name === "depthpop") {
+      requiredPermissions.push("canva:asset:private:read");
+    }
+    for (const requiredPermission of requiredPermissions) {
       if (!permissions.has(requiredPermission)) {
         fail(`${name}: missing Canva permission ${requiredPermission}`);
       }
@@ -151,17 +157,33 @@ for (const [name, spec] of Object.entries(APPS)) {
     for (const marker of [
       "UPLOAD TEST IMAGE",
       "readAsDataUrl",
+      "uploadDataUrlToCanva",
+      "MAX_DATA_URL_CHARACTERS",
       "await upload({",
+      "name: input.fileName",
       "await asset.whenUploaded()",
       "await addElementAtPoint({",
       'accept="image/png,image/jpeg,image/webp"',
       "7 * 1024 * 1024",
+      "10 * 1024 * 1024",
     ]) {
       if (!uploadText.includes(marker)) {
         fail(`${name}: test-image upload marker missing: ${marker}`);
       }
     }
   }
+}
+
+const holoPackage = JSON.parse(readText(full(APPS.holoforge.root, "package.json")));
+const depthPackage = JSON.parse(readText(full(APPS.depthpop.root, "package.json")));
+if (holoPackage.name !== "holoforge-canva-app") {
+  fail(`holoforge: unexpected package identity ${holoPackage.name ?? "missing"}`);
+}
+if (depthPackage.name !== "depthpop-canva-app") {
+  fail(`depthpop: unexpected package identity ${depthPackage.name ?? "missing"}`);
+}
+if (holoPackage.name === depthPackage.name) {
+  fail("packaging: HoloForge and DepthPop must remain distinct Canva app packages");
 }
 
 const depthModel = readText(full(APPS.depthpop.root, "src/depthpop/depthpop-model.ts"));

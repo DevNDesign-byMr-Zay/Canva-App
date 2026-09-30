@@ -10,12 +10,14 @@ const APPS = Object.freeze([
   {
     id: "holoforge-canva",
     displayName: "HoloForge",
+    packageName: "holoforge-canva-app",
     includeBackend: false,
     includeReference: false,
   },
   {
     id: "depthpop-canva",
     displayName: "DepthPop",
+    packageName: "depthpop-canva-app",
     includeBackend: true,
     includeReference: true,
   },
@@ -131,12 +133,16 @@ for (const app of APPS) {
   const manifestPath = join(source, "canva-app.json");
   const previewPath = join(source, "preview", "index.html");
   const logoPath = join(source, "src", "assets", app.id === "holoforge-canva" ? "holoforge-logo.svg" : "depthpop-logo.svg");
+  const uploadSourcePath = join(source, "src", "intents", "design_editor", "local-image-upload.tsx");
+  const uploadTestPath = join(source, "src", "intents", "design_editor", "local-image-upload.test.tsx");
 
   for (const [path, label] of [
     [buildBundle, `${app.displayName} compiled Canva bundle`],
     [manifestPath, `${app.displayName} Canva manifest`],
     [previewPath, `${app.displayName} HTML UI preview`],
     [logoPath, `${app.displayName} logo asset`],
+    [uploadSourcePath, `${app.displayName} Canva upload implementation`],
+    [uploadTestPath, `${app.displayName} Canva upload contract test`],
   ]) {
     if (!(await exists(path))) {
       throw new Error(`${label} is missing. Build both independent apps before packaging.`);
@@ -173,6 +179,20 @@ for (const app of APPS) {
   if (manifest?.intent?.design_editor?.enrolled !== true) {
     throw new Error(`${app.displayName} manifest is not enrolled in the Canva Design Editor intent.`);
   }
+  const permissions = new Set((manifest?.runtime?.permissions ?? []).map((entry) => entry?.name));
+  for (const permission of ["canva:design:content:read", "canva:design:content:write", "canva:asset:private:write"]) {
+    if (!permissions.has(permission)) {
+      throw new Error(`${app.displayName} package is missing required Canva permission: ${permission}`);
+    }
+  }
+  if (app.id === "depthpop-canva" && !permissions.has("canva:asset:private:read")) {
+    throw new Error("DepthPop package requires canva:asset:private:read for selected-image processing.");
+  }
+
+  const packagedPackage = JSON.parse(await readFile(join(destination, "package.json"), "utf8"));
+  if (packagedPackage?.name !== app.packageName) {
+    throw new Error(`${app.displayName} package identity mismatch: expected ${app.packageName}, received ${packagedPackage?.name ?? "missing"}`);
+  }
 
   const preview = await readFile(join(destination, "preview", "index.html"), "utf8");
   if (!preview.includes(app.displayName.toUpperCase())) {
@@ -191,8 +211,24 @@ for (const app of APPS) {
   const expectedLogo = app.id === "holoforge-canva"
     ? "src/assets/holoforge-logo.svg"
     : "src/assets/depthpop-logo.svg";
-  if (!files.includes("app.js") || !files.includes("START-HERE.html") || !files.includes("preview/index.html") || !files.includes(expectedLogo)) {
-    throw new Error(`${app.displayName} package is missing its executable bundle or visible HTML UI.`);
+  for (const required of [
+    "app.js",
+    "START-HERE.html",
+    "preview/index.html",
+    expectedLogo,
+    "src/intents/design_editor/local-image-upload.tsx",
+    "src/intents/design_editor/local-image-upload.test.tsx",
+  ]) {
+    if (!files.includes(required)) {
+      throw new Error(`${app.displayName} package is missing required independent-app member: ${required}`);
+    }
+  }
+
+  const uploadSource = await readFile(join(destination, "src", "intents", "design_editor", "local-image-upload.tsx"), "utf8");
+  for (const marker of ["uploadDataUrlToCanva", "await upload({", "await asset.whenUploaded()", "await addElementAtPoint({", "MAX_DATA_URL_CHARACTERS"]) {
+    if (!uploadSource.includes(marker)) {
+      throw new Error(`${app.displayName} packaged upload implementation is missing required Canva upload marker: ${marker}`);
+    }
   }
 
   if (app.includeBackend) {
@@ -213,3 +249,22 @@ for (const app of APPS) {
     `${app.displayName} package ready: ${relative(root, destination)} (${files.length} files)\n`,
   );
 }
+
+const packagedNames = await Promise.all(
+  APPS.map(async (app) => {
+    const pkg = JSON.parse(await readFile(join(outputRoot, app.id, "package.json"), "utf8"));
+    return pkg.name;
+  }),
+);
+if (new Set(packagedNames).size !== APPS.length) {
+  throw new Error("HoloForge and DepthPop packages must keep distinct package identities.");
+}
+
+const [holoBundle, depthBundle] = await Promise.all([
+  readFile(join(outputRoot, "holoforge-canva", "app.js"), "utf8"),
+  readFile(join(outputRoot, "depthpop-canva", "app.js"), "utf8"),
+]);
+if (holoBundle === depthBundle) {
+  throw new Error("HoloForge and DepthPop compiled Canva bundles must not be identical.");
+}
+process.stdout.write("Independent Canva package identity check passed.\n");

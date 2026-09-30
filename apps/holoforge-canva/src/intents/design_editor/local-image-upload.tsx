@@ -4,6 +4,10 @@ import { addElementAtPoint } from "@canva/design";
 
 const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_RAW_BYTES = 7 * 1024 * 1024;
+const MAX_DATA_URL_CHARACTERS = 10 * 1024 * 1024;
+
+type SupportedImageMime = "image/png" | "image/jpeg" | "image/webp";
+type UploadStage = "uploading" | "adding";
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -17,6 +21,44 @@ function readAsDataUrl(file: File): Promise<string> {
       resolve(reader.result);
     };
     reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadDataUrlToCanva(
+  input: Readonly<{
+    dataUrl: string;
+    mimeType: SupportedImageMime;
+    fileName: string;
+    productName: string;
+  }>,
+  onStage?: (stage: UploadStage) => void,
+): Promise<void> {
+  if (!input.dataUrl.startsWith(`data:${input.mimeType};base64,`)) {
+    throw new Error("The local image data does not match the selected file type.");
+  }
+  if (input.dataUrl.length > MAX_DATA_URL_CHARACTERS) {
+    throw new Error("The encoded image exceeds Canva's 10 MB data-URL upload limit.");
+  }
+
+  onStage?.("uploading");
+  const asset = await upload({
+    type: "image",
+    name: input.fileName,
+    mimeType: input.mimeType,
+    url: input.dataUrl,
+    thumbnailUrl: input.dataUrl,
+    aiDisclosure: "none",
+  });
+  await asset.whenUploaded();
+
+  onStage?.("adding");
+  await addElementAtPoint({
+    type: "image",
+    ref: asset.ref,
+    altText: {
+      text: input.productName + " test image",
+      decorative: false,
+    },
   });
 }
 
@@ -59,27 +101,22 @@ export function LocalImageUpload({
       setMessage("Preparing the local image…");
       const dataUrl = await readAsDataUrl(file);
 
-      setStatus("uploading");
-      setMessage("Uploading to your Canva media library…");
-      const asset = await upload({
-        type: "image",
-        mimeType: file.type as "image/png" | "image/jpeg" | "image/webp",
-        url: dataUrl,
-        thumbnailUrl: dataUrl,
-        aiDisclosure: "none",
-      });
-      await asset.whenUploaded();
-
-      setStatus("adding");
-      setMessage("Adding the uploaded image to the current Canva design…");
-      await addElementAtPoint({
-        type: "image",
-        ref: asset.ref,
-        altText: {
-          text: productName + " test image",
-          decorative: false,
+      await uploadDataUrlToCanva(
+        {
+          dataUrl,
+          mimeType: file.type as SupportedImageMime,
+          fileName: file.name,
+          productName,
         },
-      });
+        (stage) => {
+          setStatus(stage);
+          setMessage(
+            stage === "uploading"
+              ? "Uploading to your Canva media library…"
+              : "Adding the uploaded image to the current Canva design…",
+          );
+        },
+      );
 
       setStatus("done");
       setMessage("Test image added to Canva. Select it to continue testing.");
