@@ -9,11 +9,11 @@ export function HoloCamera({ spec }: { spec: HoloCameraSpec }) {
 
   useEffect(() => {
     camera.position.set(spec.position.x, spec.position.y, spec.position.z);
-    camera.near = spec.near;
-    camera.far = spec.far;
     camera.lookAt(spec.target.x, spec.target.y, spec.target.z);
 
     if (camera instanceof PerspectiveCamera) {
+      camera.near = spec.near;
+      camera.far = spec.far;
       camera.fov = spec.fov;
       camera.updateProjectionMatrix();
     }
