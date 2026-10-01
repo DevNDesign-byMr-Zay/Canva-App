@@ -63,6 +63,24 @@ class JobRepository:
                 return None
             return job
 
+    def find_by_export(
+        self,
+        *,
+        user_id: str,
+        brand_id: str,
+        export_id: str,
+    ) -> ExportJob | None:
+        with self._lock:
+            self._cleanup()
+            for _, job in self._values.values():
+                if (
+                    job.exportId == export_id
+                    and job.userId == user_id
+                    and job.brandId == brand_id
+                ):
+                    return job
+            return None
+
 
 class ArtifactRepository:
     def __init__(self) -> None:
