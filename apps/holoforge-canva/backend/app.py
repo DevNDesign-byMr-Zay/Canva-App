@@ -37,6 +37,7 @@ async def health() -> dict[str, object]:
         "ok": True,
         "service": "holoforge-render-backend",
         "version": "0.1.0",
+        "blenderVersion": os.getenv("HOLOFORGE_BLENDER_VERSION", "").strip() or None,
         "supportedFormats": renderers.supported_formats(),
     }
 
