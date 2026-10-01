@@ -58,6 +58,27 @@ describe("HoloScene import", () => {
     );
   });
 
+  it("rejects unsafe camera and transform values", () => {
+    const parsed = JSON.parse(fixtureJson());
+    parsed.camera.near = -1;
+    parsed.camera.far = 0;
+    parsed.objects[0].transform.scale.x = 0;
+
+    expect(() => parseHoloSceneJson(JSON.stringify(parsed))).toThrow(
+      /does not match the HoloScene v1 structure/i,
+    );
+  });
+
+  it("rejects material values outside the renderer contract", () => {
+    const parsed = JSON.parse(fixtureJson());
+    parsed.objects[0].material.opacity = 3;
+    parsed.objects[0].material.ior = 99;
+
+    expect(() => parseHoloSceneJson(JSON.stringify(parsed))).toThrow(
+      /does not match the HoloScene v1 structure/i,
+    );
+  });
+
   it("rejects duplicate object ids through semantic validation", () => {
     const parsed = JSON.parse(fixtureJson());
     parsed.objects.push({
