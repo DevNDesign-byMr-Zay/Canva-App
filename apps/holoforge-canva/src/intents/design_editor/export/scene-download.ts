@@ -14,10 +14,35 @@ export function sceneDownloadName(scene: HoloScene): string {
   return safeStem(scene.id) + ".holoscene.json";
 }
 
+function compactSharedRasterSource(scene: HoloScene): HoloScene {
+  const sharedSource = scene.source.previewUrl;
+  if (!sharedSource) return scene;
+
+  let changed = false;
+  const objects = scene.objects.map((object) => {
+    if (object.geometry.sourceUrl !== sharedSource) return object;
+    changed = true;
+    return Object.freeze({
+      ...object,
+      geometry: Object.freeze({
+        ...object.geometry,
+        sourceUrl: undefined,
+      }),
+    });
+  });
+
+  if (!changed) return scene;
+  return Object.freeze({
+    ...scene,
+    objects: Object.freeze(objects),
+  });
+}
+
 export async function preparePortableHoloScene(
   scene: HoloScene,
 ): Promise<HoloScene> {
-  return await prepareSceneForBackend(scene);
+  const materialized = await prepareSceneForBackend(scene);
+  return compactSharedRasterSource(materialized);
 }
 
 export async function downloadHoloScene(scene: HoloScene): Promise<string> {
