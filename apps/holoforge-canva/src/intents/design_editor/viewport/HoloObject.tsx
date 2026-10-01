@@ -80,13 +80,12 @@ function SelectionEdges({ selected }: { selected: boolean }) {
 export type HoloObjectProps = {
   object: HoloObjectSpec;
   selected: boolean;
-  playing: boolean;
   currentTimeMs: number;
   onSelect: (id: string) => void;
 };
 
 export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject(
-  { object, selected, playing, currentTimeMs, onSelect },
+  { object, selected, currentTimeMs, onSelect },
   forwardedRef,
 ) {
   const root = useRef<Group>(null);
@@ -135,8 +134,6 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
       }
       return;
     }
-
-    if (!playing && object.animationPreset !== "static") return;
 
     switch (object.animationPreset) {
       case "shimmer":
