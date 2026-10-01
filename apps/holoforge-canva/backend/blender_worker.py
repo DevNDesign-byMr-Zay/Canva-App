@@ -480,6 +480,16 @@ direction = (
     target["z"] - camera.location.z,
 )
 camera.rotation_euler = __import__("mathutils").Vector(direction).to_track_quat("-Z", "Y").to_euler()
+camera_target = (
+    float(target["x"]),
+    float(target["y"]),
+    float(target["z"]),
+)
+camera_base_location = (
+    float(camera.location.x),
+    float(camera.location.y),
+    float(camera.location.z),
+)
 
 # Lighting
 world = bpy.data.worlds.new("HoloForgeWorld")
@@ -595,6 +605,159 @@ elif format_name == "png-sequence":
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for frame in sorted(frames.glob("*.png")):
             archive.write(frame, arcname=frame.name)
+elif format_name == "lightfield-quilt":
+    quilt = request.get("quilt") or {}
+    columns = int(quilt["columns"])
+    rows = int(quilt["rows"])
+    views = int(quilt["views"])
+    view_aspect = float(quilt["viewAspect"])
+    view_cone = float(quilt["viewConeDegrees"])
+
+    width = int(request["resolution"]["width"])
+    height = int(request["resolution"]["height"])
+    if width % columns != 0 or height % rows != 0:
+        raise RuntimeError("quilt resolution must divide evenly into its tile grid")
+
+    tile_width = width // columns
+    tile_height = height // rows
+    actual_aspect = tile_width / max(1, tile_height)
+    if abs(actual_aspect - view_aspect) > 0.02:
+        raise RuntimeError(
+            "quilt viewAspect does not match the requested resolution/grid"
+        )
+
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError("ffmpeg is required for lightfield-quilt export")
+
+    views_dir = output_dir / "lightfield-views"
+    views_dir.mkdir(exist_ok=True)
+
+    # The quilt convention used here stores the left-most view at bottom-left
+    # and advances left-to-right, bottom-to-top. FFmpeg tiles top-to-bottom,
+    # so each output slot maps back into that canonical view ordering.
+    base_x, base_y, base_z = camera_base_location
+    target_x, target_y, target_z = camera_target
+    rel_x = base_x - target_x
+    rel_y = base_y - target_y
+    rel_z = base_z - target_z
+
+    scene.render.resolution_x = tile_width
+    scene.render.resolution_y = tile_height
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA" if request.get("transparentBackground") else "RGB"
+    scene.render.image_settings.color_depth = "8"
+
+    timeline = scene_data["timeline"]
+    source_frame_start = scene.frame_start
+    source_frame_end = scene.frame_end
+    current_frame = 1 + round(
+        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
+        * float(timeline["fps"])
+    )
+    current_frame = max(source_frame_start, min(source_frame_end, current_frame))
+    scene.frame_set(current_frame)
+
+    # Freeze the authored scene at its selected timeline time. Quilt frames are
+    # camera views, not animation frames, so object/material animation must not
+    # advance while the camera walks through the view cone.
+    frozen_objects = []
+    for obj in scene.objects:
+        if obj == camera:
+            continue
+        frozen_objects.append((obj, obj.matrix_world.copy()))
+    for obj, matrix in frozen_objects:
+        obj.animation_data_clear()
+        obj.matrix_world = matrix
+
+    for material in bpy.data.materials:
+        if material.node_tree and material.node_tree.animation_data:
+            material.node_tree.animation_data_clear()
+
+    camera.animation_data_clear()
+    scene.frame_start = 1
+    scene.frame_end = views
+
+    for slot_index in range(views):
+        row_from_top = slot_index // columns
+        column = slot_index % columns
+        view_index = (rows - 1 - row_from_top) * columns + column
+
+        fraction = view_index / max(1, views - 1)
+        angle = math.radians((-view_cone / 2.0) + view_cone * fraction)
+        cosine = math.cos(angle)
+        sine = math.sin(angle)
+
+        rotated_x = rel_x * cosine + rel_z * sine
+        rotated_z = -rel_x * sine + rel_z * cosine
+        camera.location = (
+            target_x + rotated_x,
+            target_y + rel_y,
+            target_z + rotated_z,
+        )
+
+        view_direction = __import__("mathutils").Vector(
+            (
+                target_x - camera.location.x,
+                target_y - camera.location.y,
+                target_z - camera.location.z,
+            )
+        )
+        camera.rotation_euler = view_direction.to_track_quat("-Z", "Y").to_euler()
+
+        render_frame = slot_index + 1
+        camera.keyframe_insert(data_path="location", frame=render_frame)
+        camera.keyframe_insert(data_path="rotation_euler", frame=render_frame)
+
+    # Prevent Blender from interpolating between adjacent discrete quilt views.
+    if camera.animation_data and camera.animation_data.action:
+        for fcurve in camera.animation_data.action.fcurves:
+            for keyframe in fcurve.keyframe_points:
+                keyframe.interpolation = "CONSTANT"
+
+    scene.render.filepath = str(views_dir / "slot_")
+    bpy.ops.render.render(animation=True)
+
+    aspect_text = f"{view_aspect:.5f}".rstrip("0").rstrip(".")
+    target = output_dir / (
+        f"{stem}_qs{columns}x{rows}a{aspect_text}.png"
+    )
+    tile_filter = (
+        f"tile={columns}x{rows}:nb_frames={views}:padding=0:margin=0"
+    )
+    completed = subprocess.run(
+        [
+            ffmpeg,
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-framerate",
+            "1",
+            "-start_number",
+            "1",
+            "-i",
+            str(views_dir / "slot_%04d.png"),
+            "-vf",
+            tile_filter,
+            "-frames:v",
+            "1",
+            str(target),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "ffmpeg light-field quilt assembly failed: "
+            + completed.stderr[-3000:]
+        )
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise RuntimeError("ffmpeg produced no light-field quilt artifact")
 else:
     raise RuntimeError("Unsupported worker format: " + format_name)
 
