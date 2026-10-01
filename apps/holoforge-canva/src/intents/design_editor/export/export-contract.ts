@@ -117,10 +117,10 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     label: "Light-field Quilt",
     extension: ".png",
     mimeType: "image/png",
-    execution: "device-adapter",
+    execution: "render-worker",
     ready: false,
     animated: false,
-    description: "Multi-view quilt output. Tile count, view count, aspect and calibration must come from a selected device profile.",
+    description: "Multi-view light-field quilt PNG. HoloForge renders discrete camera views into a quilt; final optical interlacing/calibration remains the display runtime's responsibility.",
   },
 ]);
 
@@ -129,7 +129,16 @@ export type LightfieldQuiltOptions = Readonly<{
   rows: number;
   views: number;
   viewAspect: number;
+  viewConeDegrees: number;
 }>;
+
+export const GENERIC_45_VIEW_QUILT: LightfieldQuiltOptions = Object.freeze({
+  columns: 5,
+  rows: 9,
+  views: 45,
+  viewAspect: 1.8,
+  viewConeDegrees: 40,
+});
 
 export type HoloExportRequest = Readonly<{
   schemaVersion: 1;
@@ -160,17 +169,25 @@ export function buildExportRequest(
     format,
     profile: capability.profile,
     includeAnimation: overrides.includeAnimation ?? capability.animated,
-    resolution: overrides.resolution ?? { width: 1920, height: 1080 },
+    resolution:
+      overrides.resolution ??
+      (format === "lightfield-quilt"
+        ? { width: 3600, height: 3600 }
+        : { width: 1920, height: 1080 }),
     transparentBackground: overrides.transparentBackground ?? (
       format === "webm-alpha" ||
       format === "png-sequence" ||
       format === "lightfield-quilt"
     ),
-    ...(overrides.quilt ? { quilt: overrides.quilt } : {}),
+    ...(format === "lightfield-quilt"
+      ? { quilt: overrides.quilt ?? GENERIC_45_VIEW_QUILT }
+      : overrides.quilt
+        ? { quilt: overrides.quilt }
+        : {}),
   };
 
   if (format === "lightfield-quilt" && !request.quilt) {
-    throw new Error("A light-field quilt export requires an explicit device/profile layout.");
+    throw new Error("A light-field quilt export requires a quilt layout.");
   }
 
   return Object.freeze(request);
