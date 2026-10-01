@@ -275,6 +275,11 @@ class HoloExportRequest(BaseModel):
                 raise ValueError("lightfield quilt width must be divisible by columns")
             if self.resolution.height % self.quilt.rows != 0:
                 raise ValueError("lightfield quilt height must be divisible by rows")
+            tile_width = self.resolution.width / self.quilt.columns
+            tile_height = self.resolution.height / self.quilt.rows
+            actual_aspect = tile_width / tile_height
+            if abs(actual_aspect - self.quilt.viewAspect) > 0.02:
+                raise ValueError("lightfield quilt viewAspect must match its tile geometry")
         return self
 
 
