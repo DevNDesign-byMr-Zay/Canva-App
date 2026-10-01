@@ -888,3 +888,21 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   font-weight:900;
   letter-spacing:.10em;
 }
+
+
+.hf-export-progress {
+  position:relative;
+  height:5px;
+  overflow:hidden;
+  border-radius:999px;
+  border:1px solid rgba(99,239,255,.10);
+  background:rgba(255,255,255,.035);
+}
+.hf-export-progress > span {
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#63efff,#9c73ff,#ff72c7);
+  box-shadow:0 0 10px rgba(99,239,255,.35);
+  transition:width .22s ease;
+}

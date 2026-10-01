@@ -2,6 +2,13 @@ import React, { useMemo, useState } from "react";
 
 import type { HoloScene } from "../scene/holo-scene";
 import {
+  backendOrigin,
+  createBackendExport,
+  downloadBackendExport,
+  isWorkerExportImplemented,
+  waitForExport,
+} from "./export-client";
+import {
   EXPORT_CAPABILITIES,
   buildExportRequest,
   capabilityFor,
@@ -31,7 +38,16 @@ const GROUPS = [
 export function ExportPanel({ scene }: { scene: HoloScene }) {
   const [format, setFormat] = useState<HoloExportFormat>("scene-json");
   const [status, setStatus] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [busy, setBusy] = useState(false);
   const capability = capabilityFor(format);
+  const backendConfigured = Boolean(backendOrigin());
+  const workerImplemented =
+    capability.execution === "render-worker" &&
+    isWorkerExportImplemented(format);
+  const actionable =
+    capability.ready ||
+    (workerImplemented && backendConfigured);
 
   const requestPreview = useMemo(() => {
     if (format === "lightfield-quilt") {
@@ -46,23 +62,57 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
     );
   }, [format, scene]);
 
-  const performExport = () => {
+  const performExport = async () => {
+    if (busy || !actionable) return;
     setStatus(null);
-    if (!capability.ready || capability.execution !== "client") return;
+    setProgress(0);
+    setBusy(true);
 
     try {
       if (capability.format === "scene-json") {
         downloadHoloScene(scene);
+        setProgress(100);
         setStatus("HoloScene download prepared.");
+        return;
       }
+
+      const request = buildExportRequest(scene, format);
+      setStatus("Materializing the HoloForge scene for the render backend…");
+      setProgress(4);
+
+      const created = await createBackendExport(scene, request);
+      setStatus("Export queued.");
+      setProgress(8);
+
+      await waitForExport(created.jobId, (job) => {
+        setProgress(job.percent);
+        setStatus(job.message);
+      });
+
+      const fileName = await downloadBackendExport(created.exportId);
+      setProgress(100);
+      setStatus(fileName + " downloaded.");
     } catch (cause) {
       setStatus(
         cause instanceof Error
           ? cause.message
-          : "The browser could not prepare the HoloForge download.",
+          : "HoloForge could not complete this export.",
       );
+    } finally {
+      setBusy(false);
     }
   };
+
+  const availabilityLabel =
+    capability.ready
+      ? "READY"
+      : workerImplemented
+        ? backendConfigured
+          ? "WORKER READY"
+          : "BACKEND REQUIRED"
+        : capability.execution === "device-adapter"
+          ? "DEVICE ADAPTER"
+          : "NOT IMPLEMENTED";
 
   return (
     <section className="hf-export-panel" aria-label="HoloForge export profiles">
@@ -71,12 +121,8 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
           <span>05 · EXPORT / DEPLOY</span>
           <strong>{capability.label}</strong>
         </div>
-        <b className={capability.ready ? "is-ready" : ""}>
-          {capability.ready
-            ? "READY"
-            : capability.execution === "device-adapter"
-              ? "DEVICE ADAPTER"
-              : "RENDER WORKER"}
+        <b className={actionable ? "is-ready" : ""}>
+          {availabilityLabel}
         </b>
       </div>
 
@@ -87,6 +133,10 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
             <div>
               {group.formats.map((candidate) => {
                 const option = capabilityFor(candidate);
+                const implemented =
+                  option.ready ||
+                  (option.execution === "render-worker" &&
+                    isWorkerExportImplemented(candidate));
                 return (
                   <button
                     key={candidate}
@@ -95,10 +145,11 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
                     onClick={() => {
                       setFormat(candidate);
                       setStatus(null);
+                      setProgress(0);
                     }}
                   >
                     {option.label}
-                    <i className={option.ready ? "is-ready" : ""} />
+                    <i className={implemented ? "is-ready" : ""} />
                   </button>
                 );
               })}
@@ -116,27 +167,48 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
         </div>
       </div>
 
-      {capability.ready ? (
-        <button type="button" className="hf-export-primary" onClick={performExport}>
-          DOWNLOAD {capability.label.toUpperCase()}
-        </button>
-      ) : (
-        <button type="button" className="hf-export-primary" disabled>
-          {capability.execution === "device-adapter"
-            ? "SELECT DEVICE PROFILE IN RENDER WORKER"
-            : "RENDER WORKER REQUIRED"}
-        </button>
+      <button
+        type="button"
+        className="hf-export-primary"
+        disabled={!actionable || busy}
+        onClick={() => void performExport()}
+      >
+        {busy
+          ? "EXPORTING " + Math.round(progress) + "%"
+          : capability.ready
+            ? "DOWNLOAD " + capability.label.toUpperCase()
+            : workerImplemented
+              ? backendConfigured
+                ? "RENDER " + capability.label.toUpperCase()
+                : "CONFIGURE RENDER BACKEND"
+              : capability.execution === "device-adapter"
+                ? "DEVICE ADAPTER NOT IMPLEMENTED"
+                : "FORMAT NOT IMPLEMENTED"}
+      </button>
+
+      {busy && (
+        <div
+          className="hf-export-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        >
+          <span style={{ width: Math.max(0, Math.min(100, progress)) + "%" }} />
+        </div>
       )}
 
       {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
 
       <p className="hf-export-boundary">
-        HoloForge only marks an export READY when this runtime can produce the actual file.
-        Worker/device formats stay visible and selectable for planning, but cannot masquerade as finished downloads.
+        Scene JSON is generated locally. GLB, glTF, MP4 and PNG sequences use the
+        authenticated HoloForge render backend when configured. USDZ, alpha-WebM
+        and light-field quilts remain unavailable until their dedicated adapters
+        generate the actual target files.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT-READY
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 4 WORKER IMPLEMENTED
       </span>
     </section>
   );
