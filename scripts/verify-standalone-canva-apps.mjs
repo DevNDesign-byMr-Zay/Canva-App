@@ -297,8 +297,8 @@ const holoRenderSmoke = readText(
   full(APPS.holoforge.root, "backend/render_smoke.py"),
 );
 for (const marker of [
-  '"format_name="glb"',
-  '"format_name="webm-alpha"',
+  'format_name="glb"',
+  'format_name="webm-alpha"',
   "blender_worker.py",
   "alphaextract",
   "alphaVerified",
