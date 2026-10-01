@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import io
 import json
 import os
 import shutil
@@ -8,7 +10,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 def scene_payload() -> dict:
@@ -71,11 +73,53 @@ def scene_payload() -> dict:
         "timeline": {
             "durationMs": 250,
             "fps": 8,
-            "currentTimeMs": 0,
+            "currentTimeMs": 125,
             "playing": False,
         },
         "exportProfile": "generic-3d",
     }
+
+
+def source_scene_payload() -> dict:
+    payload = scene_payload()
+    image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle(
+        (10, 8, 54, 56),
+        radius=10,
+        fill=(70, 225, 255, 230),
+    )
+    draw.ellipse((22, 18, 45, 41), fill=(255, 90, 220, 210))
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+    payload["source"] = {
+        "type": "raster",
+        "assetId": "render-smoke-source",
+        "previewUrl": data_url,
+    }
+    payload["objects"][0] = {
+        **payload["objects"][0],
+        "id": "smoke-logo",
+        "name": "Smoke Logo",
+        "creationType": "holo_logo",
+        "geometry": {
+            "type": "plane",
+            "sourceUrl": data_url,
+            "thickness": 0.08,
+            "bevelSize": 0.01,
+            "bevelSegments": 2,
+        },
+        "material": {
+            **payload["objects"][0]["material"],
+            "opacity": 0.55,
+        },
+        "animationPreset": "static",
+        "sourceText": None,
+    }
+    return payload
 
 
 def run_worker(
@@ -89,6 +133,7 @@ def run_worker(
     include_animation: bool = True,
     resolution: tuple[int, int] = (320, 180),
     quilt: dict | None = None,
+    scene_override: dict | None = None,
 ) -> tuple[Path, dict]:
     output = root / format_name
     output.mkdir(parents=True, exist_ok=True)
@@ -105,7 +150,7 @@ def run_worker(
         request["quilt"] = quilt
 
     payload = {
-        "scene": scene_payload(),
+        "scene": scene_override or scene_payload(),
         "request": request,
         "outputDir": str(output),
     }
@@ -144,7 +189,13 @@ def run_worker(
     return artifact, result
 
 
-def verify_png_still(artifact: Path, *, width: int, height: int) -> None:
+def verify_png_still(
+    artifact: Path,
+    *,
+    width: int,
+    height: int,
+    require_partial_alpha: bool = False,
+) -> None:
     if artifact.suffix.lower() != ".png":
         raise SystemExit("PNG still smoke produced the wrong artifact extension")
 
@@ -159,6 +210,10 @@ def verify_png_still(artifact: Path, *, width: int, height: int) -> None:
         minimum, maximum = alpha.getextrema()
         if minimum >= 255 or maximum <= 0:
             raise SystemExit("PNG still smoke did not preserve meaningful transparency")
+        if require_partial_alpha:
+            extrema = set(alpha.getdata())
+            if not any(0 < value < 255 for value in extrema):
+                raise SystemExit("PNG still smoke did not preserve partial object opacity")
 
 
 def verify_webm_alpha(artifact: Path) -> None:
@@ -292,7 +347,7 @@ def main() -> int:
         if glb.suffix.lower() != ".glb":
             raise SystemExit("Blender worker smoke produced the wrong GLB artifact type")
 
-        usdz, _ = run_worker(
+        usdz, usdz_result = run_worker(
             blender,
             worker,
             root,
@@ -302,8 +357,10 @@ def main() -> int:
             include_animation=False,
         )
         verify_usdz(usdz)
+        if int(usdz_result.get("frame", -1)) != 2:
+            raise SystemExit("Static USDZ smoke did not freeze the authored timeline frame")
 
-        png_still, _ = run_worker(
+        png_still, png_result = run_worker(
             blender,
             worker,
             root,
@@ -312,8 +369,16 @@ def main() -> int:
             transparent=True,
             include_animation=False,
             resolution=(320, 180),
+            scene_override=source_scene_payload(),
         )
-        verify_png_still(png_still, width=320, height=180)
+        if int(png_result.get("frame", -1)) != 2:
+            raise SystemExit("PNG still smoke did not freeze the authored timeline frame")
+        verify_png_still(
+            png_still,
+            width=320,
+            height=180,
+            require_partial_alpha=True,
+        )
 
         webm, _ = run_worker(
             blender,
