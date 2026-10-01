@@ -4,6 +4,7 @@ import {
   largestAlphaContour,
   normalizeContour,
   traceAlphaContours,
+  usefulAlphaContours,
 } from "./alpha-contour";
 
 describe("alpha contour extraction", () => {
@@ -33,6 +34,22 @@ describe("alpha contour extraction", () => {
     expect(contour.length).toBeGreaterThanOrEqual(4);
     const xs = contour.map((point) => point.x);
     expect(Math.min(...xs)).toBeGreaterThanOrEqual(2);
+  });
+
+
+  it("keeps multiple useful disconnected silhouettes while dropping tiny noise", () => {
+    const mask = new Uint8Array([
+      1,1,1,0,0,0,0,0,
+      1,1,1,0,0,1,1,0,
+      1,1,1,0,0,1,1,0,
+      0,0,0,0,0,0,0,0,
+      0,0,0,0,0,0,0,1,
+    ]);
+
+    const contours = usefulAlphaContours(mask, 8, 5, 0, 8, 0.002);
+    expect(contours).toHaveLength(2);
+    expect(contours[0]!.length).toBeGreaterThanOrEqual(4);
+    expect(contours[1]!.length).toBeGreaterThanOrEqual(4);
   });
 
   it("normalizes the contour around the scene origin while preserving aspect", () => {

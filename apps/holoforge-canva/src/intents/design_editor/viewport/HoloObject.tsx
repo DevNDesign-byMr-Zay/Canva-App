@@ -215,24 +215,28 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
           </group>
         ) : sourceUrl ? (
           <group>
-            {alphaShape.shape ? (
-              <mesh {...commonProps}>
-                <extrudeGeometry
-                  args={[
-                    alphaShape.shape,
-                    {
-                      depth: thickness,
-                      bevelEnabled: true,
-                      bevelThickness: Math.min(thickness * 0.24, object.geometry.bevelSize),
-                      bevelSize: object.geometry.bevelSize,
-                      bevelSegments: Math.max(1, object.geometry.bevelSegments),
-                      curveSegments: 6,
-                    },
-                  ]}
-                />
-                <HoloMaterial spec={object.material} />
-                <SelectionEdges selected={selected} />
-              </mesh>
+            {alphaShape.shapes.length ? (
+              <group>
+                {alphaShape.shapes.map((shape, index) => (
+                  <mesh key={index} {...commonProps}>
+                    <extrudeGeometry
+                      args={[
+                        shape,
+                        {
+                          depth: thickness,
+                          bevelEnabled: true,
+                          bevelThickness: Math.min(thickness * 0.24, object.geometry.bevelSize),
+                          bevelSize: object.geometry.bevelSize,
+                          bevelSegments: Math.max(1, object.geometry.bevelSegments),
+                          curveSegments: 6,
+                        },
+                      ]}
+                    />
+                    <HoloMaterial spec={object.material} />
+                    <SelectionEdges selected={selected} />
+                  </mesh>
+                ))}
+              </group>
             ) : (
               <mesh {...commonProps}>
                 <boxGeometry args={[frontWidth, frontHeight, thickness]} />

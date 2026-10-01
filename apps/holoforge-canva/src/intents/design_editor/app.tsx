@@ -115,10 +115,11 @@ function SpatialPreview({
       </div>
 
       <p className="hf-boundary-copy">
-        This SPATIAL view is now a real Three.js scene inside the Canva app iframe. Orbit, pan, zoom,
-        object selection, playback and timeline scrubbing operate on the HoloScene contract. Mesh
-        generation, custom shaders and production 3D exports are intentionally reserved for the next
-        backend/geometry batches.
+        This SPATIAL view is a real Three.js scene inside the Canva app iframe. Orbit, pan, zoom,
+        object selection, transform controls, playback and timeline scrubbing operate on the same
+        HoloScene contract used by the authenticated render backend. Transparent source silhouettes
+        are extruded in-browser and in Blender exports; GLB, glTF, MP4, transparent WebM and PNG
+        sequence output become available when the production render backend is configured.
       </p>
     </div>
   );

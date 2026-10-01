@@ -163,6 +163,31 @@ export function traceAlphaContours(
   );
 }
 
+export function usefulAlphaContours(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  epsilon = 1.15,
+  maxContours = 32,
+  minimumRelativeArea = 0.002,
+): readonly (readonly Point2[])[] {
+  const contours = traceAlphaContours(mask, width, height);
+  if (!contours.length) return Object.freeze([]);
+
+  const largest = Math.abs(signedArea(contours[0]!));
+  const minimumArea = Math.max(2, largest * minimumRelativeArea);
+  const useful: (readonly Point2[])[] = [];
+
+  for (const contour of contours) {
+    if (Math.abs(signedArea(contour)) < minimumArea) continue;
+    const simplified = simplifyClosedContour(contour, epsilon);
+    if (simplified.length >= 3) useful.push(simplified);
+    if (useful.length >= maxContours) break;
+  }
+
+  return Object.freeze(useful);
+}
+
 export function largestAlphaContour(
   mask: Uint8Array,
   width: number,
@@ -190,6 +215,24 @@ export function normalizeContour(
         x: (point.x / width - 0.5) * targetWidth,
         y: (0.5 - point.y / height) * targetHeight,
       }),
+    ),
+  );
+}
+
+
+export function normalizeContours(
+  contours: readonly (readonly Point2[])[],
+  width: number,
+  height: number,
+  targetWidth = 2.3,
+): readonly (readonly Point2[])[] {
+  if (width <= 0 || height <= 0) {
+    throw new Error("Source dimensions must be positive.");
+  }
+
+  return Object.freeze(
+    contours.map((contour) =>
+      normalizeContour(contour, width, height, targetWidth),
     ),
   );
 }

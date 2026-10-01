@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Shape } from "three";
 
 import {
-  largestAlphaContour,
-  normalizeContour,
+  normalizeContours,
+  usefulAlphaContours,
   type Point2,
 } from "./alpha-contour";
 
 export type AlphaShapeResult = Readonly<{
   shape: Shape | null;
+  shapes: readonly Shape[];
   width: number;
   height: number;
   status: "idle" | "loading" | "ready" | "fallback" | "error";
@@ -16,6 +17,7 @@ export type AlphaShapeResult = Readonly<{
 
 const EMPTY: AlphaShapeResult = Object.freeze({
   shape: null,
+  shapes: Object.freeze([]),
   width: 2.3,
   height: 1.45,
   status: "idle",
@@ -87,6 +89,7 @@ export function useAlphaShape(url?: string): AlphaShapeResult {
           setResult(
             Object.freeze({
               shape: null,
+              shapes: Object.freeze([]),
               width: targetWidth,
               height: targetHeight,
               status: "fallback",
@@ -95,16 +98,22 @@ export function useAlphaShape(url?: string): AlphaShapeResult {
           return;
         }
 
-        const contour = largestAlphaContour(mask, width, height, 1.15);
-        const normalized = normalizeContour(contour, width, height, targetWidth);
-        const shape = contourToShape(normalized);
+        const contours = usefulAlphaContours(mask, width, height, 1.15, 32, 0.002);
+        const normalized = normalizeContours(contours, width, height, targetWidth);
+        const shapes = Object.freeze(
+          normalized
+            .map((contour) => contourToShape(contour))
+            .filter((shape): shape is Shape => shape !== null),
+        );
+        const shape = shapes[0] ?? null;
 
         setResult(
           Object.freeze({
             shape,
+            shapes,
             width: targetWidth,
             height: targetHeight,
-            status: shape ? "ready" : "fallback",
+            status: shapes.length ? "ready" : "fallback",
           }),
         );
       } catch {
