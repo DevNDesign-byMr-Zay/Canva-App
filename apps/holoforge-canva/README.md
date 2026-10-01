@@ -119,9 +119,10 @@ The Canva bundle obtains a fresh Canva user token and submits a validated HoloSc
 Current backend behavior:
 
 - HoloScene JSON is always a real server-side artifact;
-- GLB, glTF, MP4 and PNG-sequence routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- GLB, glTF, transparent VP9 WebM, MP4 and PNG-sequence routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
 - Blender absence fails closed and those formats are not advertised by `/health`;
-- USDZ, alpha-WebM and light-field quilt remain disabled until dedicated adapters generate those actual formats;
+- alpha-WebM is rendered as transparent RGBA PNG frames and encoded with FFmpeg/libvpx-vp9; the production smoke decodes and extracts the resulting alpha plane;
+- USDZ and light-field quilt remain disabled until dedicated adapters generate those actual formats;
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally does not bundle Blender yet. A production renderer can point `BLENDER_BIN` at an installed Blender binary or later move the worker into a dedicated render container without changing the API contract.
@@ -137,9 +138,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `mp4`, and `png-sequence` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, and `png-sequence` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
 
-A separate opt-in GitHub Action, **HoloForge Render Image**, performs the expensive production-image build and generates a real GLB with `render_smoke.py`. It is intentionally not part of every pull request because the official Blender Linux archive is hundreds of megabytes.
+The **HoloForge Render Image** workflow performs the expensive production-image build only for render-worker pull requests or an explicit manual dispatch. Its smoke generates a real GLB and transparent VP9 WebM, then extracts the encoded alpha plane to prove transparency survived the pipeline.
 
 ## Development
 
