@@ -90,8 +90,8 @@ describe("HoloForge export client", () => {
     expect(isWorkerExportImplemented("webm-alpha")).toBe(true);
     expect(isWorkerExportImplemented("mp4")).toBe(true);
     expect(isWorkerExportImplemented("png-sequence")).toBe(true);
+    expect(isWorkerExportImplemented("lightfield-quilt")).toBe(true);
     expect(isWorkerExportImplemented("usdz")).toBe(false);
-    expect(isWorkerExportImplemented("lightfield-quilt")).toBe(false);
   });
 
   it("keeps embedded image sources portable without network access", async () => {
