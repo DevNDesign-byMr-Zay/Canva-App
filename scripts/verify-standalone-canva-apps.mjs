@@ -41,6 +41,9 @@ const APPS = {
       "src/intents/design_editor/export/export-contract.test.ts",
       "src/intents/design_editor/export/scene-download.ts",
       "src/intents/design_editor/export/scene-download.test.ts",
+      "src/intents/design_editor/export/scene-import.ts",
+      "src/intents/design_editor/export/scene-import.test.ts",
+      "src/intents/design_editor/export/SceneImportControl.tsx",
       "src/intents/design_editor/export/ExportPanel.tsx",
       "src/intents/design_editor/export/export-client.ts",
       "src/intents/design_editor/geometry/alpha-contour.ts",
@@ -533,12 +536,41 @@ for (const marker of [
   "WORKER READY",
   "DEVICE ADAPTER NOT IMPLEMENTED",
   "downloadHoloScene",
+  "portable source assets",
   "createBackendExport",
   "waitForExport",
   "downloadBackendExport",
 ]) {
   if (!holoExportPanel.includes(marker)) {
     fail(`holoforge: export UI marker missing: ${marker}`);
+  }
+}
+
+const holoSceneImport = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/scene-import.ts"),
+);
+for (const marker of [
+  "parseHoloSceneJson",
+  "readHoloSceneFile",
+  "validateHoloScene",
+  "isPortableImageUrl",
+  "deepFreeze",
+]) {
+  if (!holoSceneImport.includes(marker)) {
+    fail(`holoforge: scene import marker missing: ${marker}`);
+  }
+}
+
+const holoSceneImportControl = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/SceneImportControl.tsx"),
+);
+for (const marker of [
+  "HOLOSCENE PROJECT",
+  "readHoloSceneFile",
+  "onImported",
+]) {
+  if (!holoSceneImportControl.includes(marker)) {
+    fail(`holoforge: scene import control marker missing: ${marker}`);
   }
 }
 
