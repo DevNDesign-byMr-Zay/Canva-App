@@ -188,9 +188,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `usdz`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `usdz`, `png-still`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
+The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent RGBA PNG still, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
 
 ## Development
 
