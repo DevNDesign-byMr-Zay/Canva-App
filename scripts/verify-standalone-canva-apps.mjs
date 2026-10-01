@@ -66,6 +66,8 @@ const APPS = {
       "backend/Dockerfile.render",
       "backend/docker-compose.render.yml",
       "backend/render_smoke.py",
+      "backend/source_geometry.py",
+      "backend/test_source_geometry.py",
       "backend/.env.example",
       "backend/README.md",
       "backend/test_app.py",
@@ -290,6 +292,36 @@ for (const marker of [
 ]) {
   if (!holoBlenderWorker.includes(marker)) {
     fail(`holoforge: alpha WebM worker marker missing: ${marker}`);
+  }
+}
+
+const holoBackendGeometry = readText(
+  full(APPS.holoforge.root, "backend/source_geometry.py"),
+);
+for (const marker of [
+  "trace_alpha_contours",
+  "useful_contours",
+  "normalize_contours",
+  "minimum_relative_area",
+]) {
+  if (!holoBackendGeometry.includes(marker)) {
+    fail(`holoforge: backend source-geometry marker missing: ${marker}`);
+  }
+}
+
+const holoBlenderWorker = readText(
+  full(APPS.holoforge.root, "backend/blender_worker.py"),
+);
+for (const marker of [
+  "source_alpha_geometry",
+  "create_extruded_contour_object",
+  "holoforge_geometry",
+  "alpha-extruded",
+  "plate-fallback",
+  "attach_source_face",
+]) {
+  if (!holoBlenderWorker.includes(marker)) {
+    fail(`holoforge: Blender source-geometry marker missing: ${marker}`);
   }
 }
 
