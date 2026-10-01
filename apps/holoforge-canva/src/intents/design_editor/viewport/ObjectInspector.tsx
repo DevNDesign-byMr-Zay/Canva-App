@@ -84,7 +84,7 @@ export function ObjectInspector({
     <div className="hf-object-inspector">
       <div className="hf-inspector-head">
         <div>
-          <span>03 · SELECTED OBJECT</span>
+          <span>OBJECT TRANSFORM</span>
           <strong>{object.name}</strong>
         </div>
         <b>{object.geometry.type.toUpperCase()}</b>
