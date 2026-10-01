@@ -9,11 +9,11 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - per-user/per-brand job and artifact ownership;
 - bounded TTL-backed job/artifact repositories;
 - actual server-side HoloScene JSON artifacts;
-- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, and PNG-sequence exports;
+- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
-The service does not pretend that USDZ or light-field quilt generation are complete. Those require dedicated conversion/device adapters and remain unavailable until implemented. Transparent WebM is now a real worker output: Blender renders RGBA frames and FFmpeg/libvpx-vp9 encodes them with an alpha plane.
+The service does not pretend that USDZ generation is complete. USDZ remains unavailable until a real converter exists. Transparent WebM is a real worker output: Blender renders RGBA frames and FFmpeg/libvpx-vp9 encodes them with an alpha plane. Light-field quilt is also a real worker output: Blender renders one camera view per quilt tile and FFmpeg assembles those views into a single quilt PNG.
 
 ## API
 
@@ -57,6 +57,7 @@ gltf
 webm-alpha
 mp4
 png-sequence
+lightfield-quilt
 ```
 
 Run an isolated real-GLB worker smoke inside the image with:
@@ -65,4 +66,31 @@ Run an isolated real-GLB worker smoke inside the image with:
 python render_smoke.py
 ```
 
-This smoke invokes Blender headlessly, requires a non-empty `.glb`, renders a transparent VP9 `.webm`, verifies the VP9 stream, and extracts a real alpha plane from the encoded WebM with FFmpeg.
+This smoke invokes Blender headlessly, requires a non-empty `.glb`, renders a transparent VP9 `.webm`, verifies the VP9 stream and alpha plane, then renders a 45-view 5×9 quilt and verifies both its final dimensions and the 45 discrete source views.
+
+
+## Light-field quilt contract
+
+The v1 quilt renderer accepts a bounded quilt layout:
+
+```json
+{
+  "columns": 5,
+  "rows": 9,
+  "views": 45,
+  "viewAspect": 1.8,
+  "viewConeDegrees": 40
+}
+```
+
+The Canva client uses that 45-view profile as its generic default at 3600×3600. The backend also accepts compatible custom layouts when:
+
+- `views == columns * rows`;
+- output width/height divide evenly by the requested grid;
+- declared `viewAspect` matches the actual tile geometry;
+- `viewConeDegrees` stays inside the server bounds;
+- v1 is requested as a still quilt rather than an animated quilt.
+
+The worker rotates the authored camera around the scene target across the requested horizontal view cone, renders every discrete view, and assembles the PNG in the canonical left-to-right / bottom-to-top view order. The filename carries a `_qs{columns}x{rows}a{aspect}` quilt suffix.
+
+This produces the multi-view content. It intentionally does not hard-code a physical display's lenticular/interlacing calibration; that belongs to the target display runtime or a future device-specific adapter.
