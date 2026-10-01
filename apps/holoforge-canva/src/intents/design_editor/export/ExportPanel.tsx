@@ -131,7 +131,7 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
     <section className="hf-export-panel" aria-label="HoloForge export profiles">
       <div className="hf-export-head">
         <div>
-          <span>05 · EXPORT / DEPLOY</span>
+          <span>06 · EXPORT / DEPLOY</span>
           <strong>{capability.label}</strong>
         </div>
         <b className={actionable ? "is-ready" : ""}>

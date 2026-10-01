@@ -4,6 +4,8 @@ import {
 } from "../animation/keyframe-model";
 import type {
   HoloAnimationPreset,
+  HoloCamera,
+  HoloEnvironment,
   HoloScene,
   HoloTimeline,
   SceneTransform,
@@ -27,6 +29,17 @@ export type HoloSceneAction =
         scale: Partial<SceneTransform["scale"]>;
       }>;
     }>
+  | Readonly<{ type: "patch_environment"; environment: Partial<HoloEnvironment> }>
+  | Readonly<{
+      type: "patch_camera";
+      camera: Partial<{
+        position: Partial<HoloCamera["position"]>;
+        target: Partial<HoloCamera["target"]>;
+        fov: number;
+        near: number;
+        far: number;
+      }>;
+    }>
   | Readonly<{ type: "set_time"; currentTimeMs: number }>
   | Readonly<{ type: "set_playing"; playing: boolean }>
   | Readonly<{
@@ -45,6 +58,10 @@ export type HoloSceneAction =
       timeMs: number;
     }>
   | Readonly<{ type: "clear_animation"; objectId: string }>;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 function replaceTimeline(scene: HoloScene, timeline: HoloTimeline): HoloScene {
   return Object.freeze({ ...scene, timeline });
@@ -83,6 +100,64 @@ export function holoSceneReducer(
       return Object.freeze({
         ...state,
         scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
+
+    case "patch_environment": {
+      const current = state.scene.environment;
+      const next = Object.freeze({
+        ...current,
+        ...action.environment,
+        ambientIntensity:
+          action.environment.ambientIntensity === undefined
+            ? current.ambientIntensity
+            : clamp(action.environment.ambientIntensity, 0, 5),
+        keyLightIntensity:
+          action.environment.keyLightIntensity === undefined
+            ? current.keyLightIntensity
+            : clamp(action.environment.keyLightIntensity, 0, 8),
+        rimLightIntensity:
+          action.environment.rimLightIntensity === undefined
+            ? current.rimLightIntensity
+            : clamp(action.environment.rimLightIntensity, 0, 8),
+      });
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, environment: next }),
+      });
+    }
+
+    case "patch_camera": {
+      const current = state.scene.camera;
+      const requestedNear =
+        action.camera.near === undefined
+          ? current.near
+          : clamp(action.camera.near, 0.001, 10);
+      const requestedFar =
+        action.camera.far === undefined
+          ? current.far
+          : clamp(action.camera.far, requestedNear + 0.01, 10000);
+      const next = Object.freeze({
+        ...current,
+        ...action.camera,
+        position: Object.freeze({
+          ...current.position,
+          ...action.camera.position,
+        }),
+        target: Object.freeze({
+          ...current.target,
+          ...action.camera.target,
+        }),
+        fov:
+          action.camera.fov === undefined
+            ? current.fov
+            : clamp(action.camera.fov, 15, 110),
+        near: requestedNear,
+        far: requestedFar,
+      });
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, camera: next }),
       });
     }
 

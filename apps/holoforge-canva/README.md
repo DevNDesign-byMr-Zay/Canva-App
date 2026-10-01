@@ -79,6 +79,12 @@ The SPATIAL workspace now owns a real editable HoloScene session instead of rebu
 
 Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
 
+## Live scene controls
+
+The SPATIAL workspace now exposes real scene-level controls backed by HoloScene state rather than visual-only UI. Operators can change the stage background, toggle the floor grid, tune ambient/key/rim light intensity, adjust perspective field of view, edit camera position/target coordinates, and jump between bounded FRONT / HERO / CLOSE camera presets.
+
+These edits are immutable scene updates and persist through the app-level spatial session, so the same environment and camera state is serialized into HoloScene JSON and submitted to the production render backend.
+
 ## Export and deployment profiles
 
 HoloForge exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can create it locally.

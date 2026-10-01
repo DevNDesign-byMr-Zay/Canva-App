@@ -31,6 +31,52 @@ describe("HoloScene reducer", () => {
     expect(next.scene.objects[0]?.transform.position.z).toBe(1.4);
   });
 
+  it("patches scene lighting without mutating the source environment", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const next = holoSceneReducer(state, {
+      type: "patch_environment",
+      environment: {
+        background: "#101827",
+        ambientIntensity: 1.25,
+        keyLightIntensity: 3.5,
+        rimLightIntensity: 2.4,
+        floorGrid: false,
+      },
+    });
+
+    expect(scene.environment.background).toBe("#020307");
+    expect(next.scene.environment).toMatchObject({
+      background: "#101827",
+      ambientIntensity: 1.25,
+      keyLightIntensity: 3.5,
+      rimLightIntensity: 2.4,
+      floorGrid: false,
+    });
+  });
+
+  it("patches camera vectors and clamps unsafe lens values", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const next = holoSceneReducer(state, {
+      type: "patch_camera",
+      camera: {
+        position: { x: 2.25, y: 1.25, z: 4.65 },
+        target: { y: 0.1 },
+        fov: 500,
+        near: -4,
+        far: 0,
+      },
+    });
+
+    expect(scene.camera.position.x).toBe(0);
+    expect(next.scene.camera.position).toEqual({ x: 2.25, y: 1.25, z: 4.65 });
+    expect(next.scene.camera.target.y).toBe(0.1);
+    expect(next.scene.camera.fov).toBe(110);
+    expect(next.scene.camera.near).toBe(0.001);
+    expect(next.scene.camera.far).toBeCloseTo(0.011);
+  });
+
   it("clamps timeline changes to scene duration", () => {
     const state = createHoloSceneState(fixture());
     const next = holoSceneReducer(state, {
