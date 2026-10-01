@@ -1342,3 +1342,81 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   font-size:6.7px;
   line-height:1.45;
 }
+
+
+/* HoloScene project round-trip */
+.hf-scene-import {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  margin:8px 0 12px;
+  padding:10px 11px;
+  border:1px solid rgba(156,115,255,.16);
+  border-radius:14px;
+  background:linear-gradient(135deg,rgba(156,115,255,.045),rgba(99,239,255,.035));
+}
+.hf-scene-import.is-dragging {
+  border-color:rgba(99,239,255,.42);
+  background:linear-gradient(135deg,rgba(99,239,255,.08),rgba(156,115,255,.09));
+  box-shadow:0 0 0 1px rgba(99,239,255,.08), inset 0 0 22px rgba(99,239,255,.035);
+}
+.hf-scene-import > div {
+  min-width:0;
+}
+.hf-scene-import > div > span {
+  display:block;
+  margin-bottom:2px;
+  color:#a08aff;
+  font-size:6.6px;
+  font-weight:900;
+  letter-spacing:.15em;
+}
+.hf-scene-import > div > strong {
+  display:block;
+  color:#edf4fd;
+  font-size:8.4px;
+}
+.hf-scene-import > div > small {
+  display:block;
+  margin-top:3px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#6f788b;
+  font-size:6.4px;
+  line-height:1.35;
+}
+.hf-scene-import > label {
+  position:relative;
+  overflow:hidden;
+  padding:7px 9px;
+  border:1px solid rgba(156,115,255,.28);
+  border-radius:999px;
+  background:rgba(4,6,10,.56);
+  color:#e1d9ff;
+  font:inherit;
+  font-size:6.6px;
+  font-weight:900;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+.hf-scene-import > label:hover:not(.is-busy) {
+  color:#fff;
+  border-color:rgba(99,239,255,.34);
+}
+.hf-scene-import > label.is-busy {
+  opacity:.52;
+  cursor:wait;
+}
+.hf-scene-import input {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  white-space:nowrap;
+  border:0;
+}

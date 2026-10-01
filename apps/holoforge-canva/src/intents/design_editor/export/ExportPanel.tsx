@@ -84,9 +84,11 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
 
     try {
       if (capability.format === "scene-json") {
-        downloadHoloScene(scene);
+        setStatus("Materializing a portable HoloScene project…");
+        setProgress(15);
+        const fileName = await downloadHoloScene(scene);
         setProgress(100);
-        setStatus("HoloScene download prepared.");
+        setStatus(fileName + " saved with portable source assets.");
         return;
       }
 
@@ -227,7 +229,8 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
       {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
 
       <p className="hf-export-boundary">
-        Scene JSON is generated locally. Static transparent PNG, GLB, glTF,
+        Scene JSON is generated locally and materializes source imagery into the
+        project file so it can be reopened after temporary Canva URLs expire. Static transparent PNG, GLB, glTF,
         transparent VP9 WebM, MP4, PNG sequences and multi-view quilt PNGs use
         the authenticated HoloForge render backend when configured. PNG Still
         renders the authored timeline frame and inserts the finished result

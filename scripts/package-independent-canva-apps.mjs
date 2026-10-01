@@ -255,6 +255,26 @@ for (const app of APPS) {
       }
     }
 
+    const sceneImport = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "scene-import.ts"),
+      "utf8",
+    );
+    for (const marker of ["parseHoloSceneJson", "validateHoloScene", "isPortableImageUrl", "deepFreeze"]) {
+      if (!sceneImport.includes(marker)) {
+        throw new Error(`HoloForge scene import missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneImportControl = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "SceneImportControl.tsx"),
+      "utf8",
+    );
+    for (const marker of ["readHoloSceneFile", 'accept=".json,.holoscene,application/json"', "onImported"]) {
+      if (!sceneImportControl.includes(marker)) {
+        throw new Error(`HoloForge scene import control missing packaged marker: ${marker}`);
+      }
+    }
+
     const keyframes = await readFile(
       join(destination, "src", "intents", "design_editor", "animation", "keyframe-model.ts"),
       "utf8",
@@ -369,6 +389,12 @@ for (const app of APPS) {
           "src/intents/design_editor/export/export-contract.test.ts",
           "src/intents/design_editor/export/scene-download.ts",
           "src/intents/design_editor/export/scene-download.test.ts",
+          "src/intents/design_editor/export/scene-import.ts",
+          "src/intents/design_editor/export/scene-import.test.ts",
+          "src/intents/design_editor/export/SceneImportControl.tsx",
+          "src/intents/design_editor/export/scene-import.ts",
+          "src/intents/design_editor/export/scene-import.test.ts",
+          "src/intents/design_editor/export/SceneImportControl.tsx",
           "src/intents/design_editor/export/ExportPanel.tsx",
           "src/intents/design_editor/export/export-client.ts",
           "src/intents/design_editor/geometry/alpha-contour.ts",
