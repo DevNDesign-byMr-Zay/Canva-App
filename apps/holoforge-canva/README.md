@@ -79,6 +79,12 @@ The SPATIAL workspace now owns a real editable HoloScene session instead of rebu
 
 Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
 
+## Live material and geometry editing
+
+The selected SPATIAL object can now be edited after scene creation without rebuilding the material plan. HoloForge exposes real HoloScene-backed visibility, material-family, opacity, reflection, emission, metalness, roughness, transmission, IOR, spectral shift, diffraction, shimmer, scanline, thickness, bevel-size and bevel-segment controls.
+
+Material and geometry edits are bounded before entering the renderer contract, persist through studio-tab navigation, update the live Three.js object immediately, and serialize into the same HoloScene submitted to Blender exports. Raster source faces now honor the edited object opacity instead of remaining visually opaque over the holographic mesh.
+
 ## Live scene controls
 
 The SPATIAL workspace now exposes real scene-level controls backed by HoloScene state rather than visual-only UI. Operators can change the stage background, toggle the floor grid, tune ambient/key/rim light intensity, adjust perspective field of view, edit camera position/target coordinates, and jump between bounded FRONT / HERO / CLOSE camera presets.

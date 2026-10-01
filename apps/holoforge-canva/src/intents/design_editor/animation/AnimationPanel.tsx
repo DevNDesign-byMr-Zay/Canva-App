@@ -39,7 +39,7 @@ export function AnimationPanel({
     <section className="hf-animation-panel" aria-label="HoloForge animation controls">
       <div className="hf-animation-head">
         <div>
-          <span>05 · TIME / MOTION</span>
+          <span>06 · TIME / MOTION</span>
           <strong>{object.animationPreset.toUpperCase()}</strong>
         </div>
         <b>{(currentTimeMs / 1000).toFixed(2)}s</b>

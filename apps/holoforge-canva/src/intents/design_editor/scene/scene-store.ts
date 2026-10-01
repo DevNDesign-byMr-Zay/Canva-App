@@ -10,7 +10,7 @@ import type {
   HoloTimeline,
   SceneTransform,
 } from "./holo-scene";
-import { patchHoloObject } from "./holo-object";
+import { patchHoloObject, type HoloObjectPatch } from "./holo-object";
 
 export type HoloSceneState = Readonly<{
   scene: HoloScene;
@@ -20,6 +20,11 @@ export type HoloSceneState = Readonly<{
 export type HoloSceneAction =
   | Readonly<{ type: "replace_scene"; scene: HoloScene }>
   | Readonly<{ type: "select_object"; objectId: string | null }>
+  | Readonly<{
+      type: "patch_object";
+      objectId: string;
+      patch: HoloObjectPatch;
+    }>
   | Readonly<{
       type: "patch_transform";
       objectId: string;
@@ -90,6 +95,18 @@ export function holoSceneReducer(
 
     case "select_object":
       return Object.freeze({ ...state, selectedObjectId: action.objectId });
+
+    case "patch_object": {
+      const objects = state.scene.objects.map((object) =>
+        object.id === action.objectId
+          ? patchHoloObject(object, action.patch)
+          : object,
+      );
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
 
     case "patch_transform": {
       const objects = state.scene.objects.map((object) =>
