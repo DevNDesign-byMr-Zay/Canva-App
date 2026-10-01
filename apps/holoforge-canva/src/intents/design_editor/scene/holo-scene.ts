@@ -1,8 +1,9 @@
 import type { HolographicEffectPlan } from "../holographic/effect-plan";
-import type {
-  CreationType,
-  MaterialFamily,
-  MotionMode,
+import {
+  getPresetById,
+  type CreationType,
+  type MaterialFamily,
+  type MotionMode,
 } from "../holographic/material-contract";
 
 export type Vec3 = Readonly<{ x: number; y: number; z: number }>;
@@ -224,27 +225,7 @@ function defaultTransform(plan: HolographicEffectPlan): SceneTransform {
 }
 
 function familyForPlan(plan: HolographicEffectPlan): MaterialFamily {
-  const familyLayer = plan.layers.find((layer) => layer.property === "family");
-  if (typeof familyLayer?.value === "string") {
-    return familyLayer.value as MaterialFamily;
-  }
-
-  switch (plan.presetId) {
-    case "aurora-glass":
-      return "glass";
-    case "prism-foil":
-      return "foil";
-    case "spectral-pearl":
-      return "pearl";
-    case "neon-haze":
-      return "neon";
-    case "crystal-frost":
-      return "crystal";
-    case "holo-gold":
-      return "iridescent";
-    default:
-      return "metal";
-  }
+  return getPresetById(plan.presetId)?.family ?? "metal";
 }
 
 export function createHoloScene(
