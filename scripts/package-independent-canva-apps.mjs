@@ -11,7 +11,7 @@ const APPS = Object.freeze([
     id: "holoforge-canva",
     displayName: "HoloForge",
     packageName: "holoforge-canva-app",
-    includeBackend: false,
+    includeBackend: true,
     includeReference: false,
   },
   {
@@ -96,7 +96,9 @@ ${displayName} is packaged as an independent Canva app with its own app.js and c
 
 function packageContents(app) {
   const backend = app.includeBackend
-    ? "- backend/                 -> DepthPop authenticated processing service, tests, Dockerfile, requirements and env template\n"
+    ? app.id === "holoforge-canva"
+      ? "- backend/                 -> HoloForge authenticated render/export service, Blender worker, tests, Dockerfile, requirements and env template\n"
+      : "- backend/                 -> DepthPop authenticated processing service, tests, Dockerfile, requirements and env template\n"
     : "";
   const reference = app.includeReference
     ? "- reference/               -> exact Drive UI/router provenance used to rebuild DepthPop\n"
@@ -348,6 +350,7 @@ for (const app of APPS) {
           "src/intents/design_editor/export/scene-download.ts",
           "src/intents/design_editor/export/scene-download.test.ts",
           "src/intents/design_editor/export/ExportPanel.tsx",
+          "src/intents/design_editor/export/export-client.ts",
           "src/intents/design_editor/geometry/alpha-contour.ts",
           "src/intents/design_editor/geometry/alpha-contour.test.ts",
           "src/intents/design_editor/geometry/use-alpha-shape.ts",
@@ -397,15 +400,27 @@ for (const app of APPS) {
   }
 
   if (app.includeBackend) {
-    for (const required of [
+    const backendRequired = [
       "backend/app.py",
       "backend/Dockerfile",
       "backend/requirements.txt",
       "backend/test_app.py",
       "backend/.env.example",
-    ]) {
+      ...(app.id === "holoforge-canva"
+        ? [
+            "backend/auth.py",
+            "backend/models.py",
+            "backend/repositories.py",
+            "backend/renderers.py",
+            "backend/export_service.py",
+            "backend/blender_worker.py",
+            "backend/test_models.py",
+          ]
+        : []),
+    ];
+    for (const required of backendRequired) {
       if (!files.includes(required)) {
-        throw new Error(`DepthPop package is missing required backend file: ${required}`);
+        throw new Error(`${app.displayName} package is missing required backend file: ${required}`);
       }
     }
   }
