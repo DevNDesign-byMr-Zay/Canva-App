@@ -110,6 +110,14 @@ The manifest requires:
 
 Private asset read is required so HoloForge can resolve an image already selected in Canva and create a derived treatment from it.
 
+## HQ export geometry
+
+The browser editor and the Blender export worker now share the same source-geometry intent.
+
+For transparent raster logos/graphics, the production worker analyzes the source alpha channel and exports an actually extruded silhouette mesh rather than a rectangular block. Multiple disconnected visible contour components can remain part of the exported silhouette. The original transparent source face is retained over the holographic mesh so the exported asset preserves the uploaded graphic's identity.
+
+Opaque sources deliberately remain a holographic plate fallback until a later semantic/vision geometry pipeline can justify a different mesh. This keeps the exported geometry honest instead of fabricating 3D structure from a flat opaque image.
+
 ## Render/export backend
 
 HoloForge now has its own authenticated FastAPI render boundary under `backend/`.
