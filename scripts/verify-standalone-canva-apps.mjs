@@ -32,10 +32,15 @@ const APPS = {
       "src/intents/design_editor/scene/scene-store.ts",
       "src/intents/design_editor/scene/scene-store.test.ts",
       "src/intents/design_editor/materials/HoloMaterial.tsx",
+      "src/intents/design_editor/materials/SpectralHoloMaterial.tsx",
+      "src/intents/design_editor/geometry/alpha-contour.ts",
+      "src/intents/design_editor/geometry/alpha-contour.test.ts",
+      "src/intents/design_editor/geometry/use-alpha-shape.ts",
       "src/intents/design_editor/viewport/HoloCamera.tsx",
       "src/intents/design_editor/viewport/HoloObject.tsx",
       "src/intents/design_editor/viewport/HoloScene.tsx",
       "src/intents/design_editor/viewport/HoloViewport.tsx",
+      "src/intents/design_editor/viewport/ObjectInspector.tsx",
       "src/intents/design_editor/viewport/StageEnvironment.tsx",
       "src/intents/design_editor/use-canva-image-selection.ts",
       "src/assets/holoforge-logo.svg",
@@ -298,12 +303,72 @@ for (const marker of [
   "<Canvas",
   "<OrbitControls",
   "<HoloScene",
+  "<ObjectInspector",
+  "transformMode",
   "WEBGL LIVE",
   "AUTO ORBIT",
   "HoloForge timeline",
 ]) {
   if (!holoViewport.includes(marker)) {
     fail(`holoforge: WebGL viewport marker missing: ${marker}`);
+  }
+}
+
+const holoSceneView = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloScene.tsx"),
+);
+for (const marker of [
+  "<TransformControls",
+  'mode={mode}',
+  "onTransformCommit",
+  "onTransformingChange",
+]) {
+  if (!holoSceneView.includes(marker)) {
+    fail(`holoforge: 3D transform-gizmo marker missing: ${marker}`);
+  }
+}
+
+const holoAlphaContour = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/geometry/alpha-contour.ts"),
+);
+for (const marker of [
+  "traceAlphaContours",
+  "largestAlphaContour",
+  "normalizeContour",
+  "boundaryEdges",
+]) {
+  if (!holoAlphaContour.includes(marker)) {
+    fail(`holoforge: alpha silhouette marker missing: ${marker}`);
+  }
+}
+
+const holoObjectView = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloObject.tsx"),
+);
+for (const marker of [
+  "useAlphaShape",
+  "<extrudeGeometry",
+  "forwardRef<Group",
+  "alphaShape.shape",
+]) {
+  if (!holoObjectView.includes(marker)) {
+    fail(`holoforge: extruded source-object marker missing: ${marker}`);
+  }
+}
+
+const spectralMaterial = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/materials/SpectralHoloMaterial.tsx"),
+);
+for (const marker of [
+  "ShaderMaterial",
+  "uSpectralShift",
+  "uDiffraction",
+  "fresnel",
+  "spectral(",
+  "uTime",
+]) {
+  if (!spectralMaterial.includes(marker)) {
+    fail(`holoforge: spectral shader marker missing: ${marker}`);
   }
 }
 
@@ -426,7 +491,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + native file picker + canonical HoloScene + real Three.js/R3F SPATIAL viewport + app-element/derived-image execution");
+console.log(" - HoloForge: independent app + real WebGL scene + transform gizmos + alpha-silhouette extrusion + spectral shader + Canva forge routes");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");
