@@ -106,6 +106,7 @@ Current capability state:
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
 - **GLB / glTF** — real headless-Blender exports with authored geometry, transforms, materials, camera state and animation/keyframe conversion.
 - **USDZ** — real Blender-generated USDZ package for the `ios-ar` profile. The first shipping contract is static while GLB/glTF/video remain the qualified animation paths.
+- **PNG Still** — real transparent render of the currently authored timeline frame, with direct insertion back into Canva.
 - **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
 - **MP4 / PNG Sequence** — real Blender-worker render outputs.
 - **Light-field Quilt** — real multi-view PNG quilt output. The generic compatibility profile renders 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
@@ -153,7 +154,7 @@ The Canva bundle obtains a fresh Canva user token and submits a validated HoloSc
 Current backend behavior:
 
 - HoloScene JSON is always a real server-side artifact;
-- GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- GLB, glTF, USDZ, transparent PNG still, transparent VP9 WebM, MP4, PNG-sequence and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
 - Blender absence fails closed and those formats are not advertised by `/health`;
 - transparent WebM is rendered as RGBA PNG frames and encoded with FFmpeg/libvpx-vp9, with the production smoke extracting the encoded alpha plane;
 - light-field quilts freeze the authored scene at the selected timeline time, render discrete camera views across the requested cone, and assemble those views into one quilt PNG;
@@ -163,6 +164,12 @@ Current backend behavior:
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally stays lightweight. Production rendering uses the dedicated Blender image.
+
+### Render current scene into Canva
+
+The SPATIAL export panel now includes **PNG Still**. It freezes the HoloScene at the current timeline position, renders the full authored camera, lighting, multi-object composition, geometry and materials through Blender, and inserts the resulting transparent PNG directly into the active Canva design.
+
+This is intentionally different from the CREATE-tab forge route: CREATE can produce a lightweight static Canva-safe treatment from the original material plan, while PNG Still captures the edited SPATIAL scene after transforms, duplicated objects, camera changes, material edits and lighting changes.
 
 ### Production Blender image
 
