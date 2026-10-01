@@ -9,7 +9,7 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - per-user/per-brand job and artifact ownership;
 - bounded TTL-backed job/artifact repositories;
 - actual server-side HoloScene JSON artifacts;
-- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, and PNG-sequence exports;
+- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
@@ -87,6 +87,7 @@ gltf
 webm-alpha
 mp4
 png-sequence
+lightfield-quilt
 ```
 
 Run an isolated real-GLB worker smoke inside the image with:
@@ -96,3 +97,17 @@ python render_smoke.py
 ```
 
 This smoke invokes Blender headlessly, requires a non-empty `.glb`, renders a transparent VP9 `.webm`, verifies the VP9 stream, and extracts a real alpha plane from the encoded WebM with FFmpeg.
+
+
+## Light-field quilt contract
+
+The v1 renderer accepts a bounded quilt layout containing `columns`, `rows`, `views`, `viewAspect`, and `viewConeDegrees`.
+
+The Canva client defaults to a generic 45-view 5×9 profile over a 40° camera cone at 3600×3600. The backend also accepts compatible custom layouts when:
+
+- `views == columns * rows`;
+- output width and height divide evenly by the requested grid;
+- declared `viewAspect` matches the actual tile geometry;
+- the quilt is rendered as a still multi-view frame (`includeAnimation=false`).
+
+The worker freezes the authored HoloScene at the selected timeline time, renders discrete camera views across the requested cone, then assembles them into one PNG quilt. This is real multi-view source content. Display-specific lenticular/light-field interlacing and calibration remain outside the generic HoloForge contract.

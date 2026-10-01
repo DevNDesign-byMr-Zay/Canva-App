@@ -49,6 +49,7 @@ const IMPLEMENTED_WORKER_FORMATS = new Set<HoloExportFormat>([
   "webm-alpha",
   "mp4",
   "png-sequence",
+  "lightfield-quilt",
 ]);
 
 export function backendOrigin(): string {

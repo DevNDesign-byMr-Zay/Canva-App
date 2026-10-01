@@ -75,19 +75,21 @@ The timeline playback loop updates scene time rather than hiding animation state
 
 ## Export and deployment profiles
 
-HoloForge now exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can already create it.
+HoloForge exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can create it locally.
 
 Current capability state:
 
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
-- **GLB / glTF** — render-worker contract defined; not marked ready until production geometry/animation conversion is implemented.
-- **USDZ** — render-worker contract defined for AR-oriented delivery.
-- **WebM Alpha / MP4 / PNG Sequence** — render-worker contracts defined for transparent/composited animation pipelines.
-- **Light-field Quilt** — device-adapter contract defined and intentionally requires an explicit columns/rows/views/aspect profile. HoloForge does not assume one universal hologram-display layout.
+- **GLB / glTF** — real headless-Blender exports with authored geometry, transforms, materials, camera state and animation/keyframe conversion.
+- **USDZ** — contract remains defined but disabled until a real USD/USDZ conversion lane is implemented.
+- **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
+- **MP4 / PNG Sequence** — real Blender-worker render outputs.
+- **Light-field Quilt** — real multi-view PNG quilt output. The generic compatibility profile renders 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
 
-Every format has a declared MIME type, extension, execution boundary, animation capability, and readiness flag. The UI lets users inspect planned formats while disabling the actual export action until the runtime can generate a valid file.
+Every format has a declared MIME type, extension, execution boundary and animation capability. A quilt is multi-view display content, not a claim that one optical calibration works for every physical display. Device-specific lenticular/light-field calibration and interlacing remain the responsibility of the target display runtime or a later device adapter.
 
-This boundary is deliberate: HoloForge will not create fake GLB, USDZ, or WebM files by renaming JSON or a preview image.
+This boundary is deliberate: HoloForge will not create fake GLB, USDZ, WebM or quilt files by renaming JSON or a preview image.
+
 ## Image source behavior
 
 HoloForge can use either:
@@ -120,24 +122,27 @@ Opaque sources deliberately remain a holographic plate fallback until a later se
 
 ## Render/export backend
 
-HoloForge now has its own authenticated FastAPI render boundary under `backend/`.
+HoloForge has its own authenticated FastAPI render boundary under `backend/`.
 
 The Canva bundle obtains a fresh Canva user token and submits a validated HoloScene/export request to the backend. Export jobs and artifacts are isolated by Canva `userId` + `brandId`, are bounded by TTL/capacity controls, and require authentication for status and download.
 
 Current backend behavior:
 
 - HoloScene JSON is always a real server-side artifact;
-- GLB, glTF, transparent VP9 WebM, MP4 and PNG-sequence routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
 - Blender absence fails closed and those formats are not advertised by `/health`;
-- alpha-WebM is rendered as transparent RGBA PNG frames and encoded with FFmpeg/libvpx-vp9; the production smoke decodes and extracts the resulting alpha plane;
-- USDZ and light-field quilt remain disabled until dedicated adapters generate those actual formats;
+- transparent WebM is rendered as RGBA PNG frames and encoded with FFmpeg/libvpx-vp9, with the production smoke extracting the encoded alpha plane;
+- light-field quilts freeze the authored scene at the selected timeline time, render discrete camera views across the requested cone, and assemble those views into one quilt PNG;
+- HoloScene materials are normalized through the spectral renderer before Blender receives them, so exported foil/iridescent/pearl/neon materials retain angle-reactive spectrum behavior instead of flattening to one RGB value;
+- transparent raster sources can be alpha-traced and extruded into real silhouette geometry, while unsuitable opaque sources fall back honestly to a plate;
+- USDZ remains disabled until a dedicated converter generates a real target file;
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
-The normal API container intentionally does not bundle Blender yet. A production renderer can point `BLENDER_BIN` at an installed Blender binary or later move the worker into a dedicated render container without changing the API contract.
+The normal API container intentionally stays lightweight. Production rendering uses the dedicated Blender image.
 
 ### Production Blender image
 
-`backend/Dockerfile.render` is the render-capable deployment image. It pins Blender **4.5.14 LTS**, downloads the official Linux x64 archive plus Blender's matching SHA-256 manifest, verifies the archive before extraction, and exposes the same FastAPI service with `BLENDER_BIN=/opt/blender/blender`.
+`backend/Dockerfile.render` pins Blender **4.5.14 LTS**, downloads the official Linux x64 archive plus Blender's matching SHA-256 manifest, verifies the archive before extraction, and exposes the same FastAPI service with `BLENDER_BIN=/opt/blender/blender`.
 
 Use:
 
@@ -146,9 +151,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, and `png-sequence` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the expensive production-image build only for render-worker pull requests or an explicit manual dispatch. Its smoke generates a real GLB and transparent VP9 WebM, then extracts the encoded alpha plane to prove transparency survived the pipeline.
+The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
 
 ## Development
 

@@ -50,10 +50,23 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
     (workerImplemented && backendConfigured);
 
   const requestPreview = useMemo(() => {
-    if (format === "lightfield-quilt") {
-      return "DEVICE PROFILE REQUIRED";
-    }
     const request = buildExportRequest(scene, format);
+    if (format === "lightfield-quilt" && request.quilt) {
+      return (
+        request.resolution.width +
+        "×" +
+        request.resolution.height +
+        " · " +
+        request.quilt.columns +
+        "×" +
+        request.quilt.rows +
+        " · " +
+        request.quilt.views +
+        " VIEWS · " +
+        request.quilt.viewConeDegrees +
+        "°"
+      );
+    }
     return (
       request.resolution.width +
       "×" +
@@ -201,14 +214,15 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
       {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
 
       <p className="hf-export-boundary">
-        Scene JSON is generated locally. GLB, glTF, transparent VP9 WebM, MP4 and
-        PNG sequences use the authenticated HoloForge render backend when configured.
-        USDZ and light-field quilts remain unavailable until dedicated adapters
-        generate the actual target files.
+        Scene JSON is generated locally. GLB, glTF, transparent VP9 WebM, MP4,
+        PNG sequences and multi-view quilt PNGs use the authenticated HoloForge
+        render backend when configured. Quilt output is display-ready content,
+        but optical interlacing still belongs to the connected display runtime.
+        USDZ remains unavailable until its dedicated converter exists.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 5 WORKER IMPLEMENTED
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 6 WORKER IMPLEMENTED
       </span>
     </section>
   );

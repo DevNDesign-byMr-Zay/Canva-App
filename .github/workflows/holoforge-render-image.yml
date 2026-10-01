@@ -46,7 +46,7 @@ jobs:
           docker run --rm holoforge-render:smoke \
             /opt/blender/blender --background --version
 
-      - name: Generate real GLB and alpha WebM smoke artifacts
+      - name: Generate real GLB alpha WebM and quilt smoke artifacts
         run: |
           docker run --rm holoforge-render:smoke \
             python render_smoke.py
@@ -66,6 +66,7 @@ jobs:
               grep -q '"webm-alpha"' /tmp/holoforge-render-health.json
               grep -q '"mp4"' /tmp/holoforge-render-health.json
               grep -q '"png-sequence"' /tmp/holoforge-render-health.json
+              grep -q '"lightfield-quilt"' /tmp/holoforge-render-health.json
               exit 0
             fi
             sleep 1
