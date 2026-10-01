@@ -124,6 +124,65 @@ describe("HoloScene reducer", () => {
     expect(patched.geometry.bevelSegments).toBe(8);
   });
 
+  it("duplicates scene objects with unique ids and selects the duplicate", () => {
+    const scene = fixture();
+    let state = createHoloSceneState(scene);
+    const sourceId = scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    expect(state.scene.objects).toHaveLength(2);
+    expect(state.scene.objects[1]?.id).toBe(sourceId + "-copy-01");
+    expect(state.scene.objects[1]?.name).toContain("COPY");
+    expect(state.scene.objects[1]?.transform.position.x).toBeCloseTo(
+      scene.objects[0]!.transform.position.x + 0.18,
+    );
+    expect(state.selectedObjectId).toBe(sourceId + "-copy-01");
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    expect(state.scene.objects.map((object) => object.id)).toEqual([
+      sourceId,
+      sourceId + "-copy-02",
+      sourceId + "-copy-01",
+    ]);
+  });
+
+  it("reorders and removes objects while preserving a valid selection", () => {
+    const scene = fixture();
+    let state = createHoloSceneState(scene);
+    const sourceId = scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    const duplicateId = state.selectedObjectId!;
+    state = holoSceneReducer(state, {
+      type: "move_object",
+      objectId: duplicateId,
+      direction: "backward",
+    });
+    expect(state.scene.objects[0]?.id).toBe(duplicateId);
+
+    state = holoSceneReducer(state, {
+      type: "remove_object",
+      objectId: duplicateId,
+    });
+    expect(state.scene.objects).toHaveLength(1);
+    expect(state.selectedObjectId).toBe(sourceId);
+
+    const unchanged = holoSceneReducer(state, {
+      type: "remove_object",
+      objectId: sourceId,
+    });
+    expect(unchanged).toBe(state);
+  });
+
   it("clamps timeline changes to scene duration", () => {
     const state = createHoloSceneState(fixture());
     const next = holoSceneReducer(state, {
