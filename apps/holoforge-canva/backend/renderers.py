@@ -114,10 +114,18 @@ class BlenderRenderer:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        timeout_env = (
+            "HOLOFORGE_QUILT_TIMEOUT_SECONDS"
+            if request.format == "lightfield-quilt"
+            else "HOLOFORGE_RENDER_TIMEOUT_SECONDS"
+        )
+        timeout_default = "1800" if request.format == "lightfield-quilt" else "600"
+        render_timeout = max(30, int(os.getenv(timeout_env, timeout_default)))
+
         try:
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=max(30, int(os.getenv("HOLOFORGE_RENDER_TIMEOUT_SECONDS", "600"))),
+                timeout=render_timeout,
             )
         except TimeoutError:
             process.kill()
