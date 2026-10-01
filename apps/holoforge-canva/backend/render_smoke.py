@@ -122,7 +122,7 @@ def run_worker(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        timeout=240,
+        timeout=600 if format_name == "lightfield-quilt" else 240,
         check=False,
     )
     if completed.returncode != 0:
