@@ -510,3 +510,125 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
 .hf-webgl-fallback span {
   font-size: 8px;
 }
+
+
+.hf-object-inspector {
+  display:grid;
+  gap:8px;
+  padding:9px;
+  border-top:1px solid rgba(255,255,255,.06);
+  background:linear-gradient(180deg,rgba(8,10,16,.95),rgba(4,5,9,.98));
+}
+.hf-object-inspector.is-empty {
+  text-align:center;
+  padding:12px;
+  color:#6f7788;
+}
+.hf-object-inspector.is-empty strong {
+  color:#dfe5ef;
+  font-size:8px;
+  letter-spacing:.10em;
+}
+.hf-object-inspector.is-empty span {
+  font-size:7px;
+  line-height:1.4;
+}
+.hf-inspector-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.hf-inspector-head span {
+  display:block;
+  margin-bottom:2px;
+  color:#6f7788;
+  font-size:6.5px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.hf-inspector-head strong {
+  display:block;
+  max-width:190px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#eef6ff;
+  font-size:8px;
+}
+.hf-inspector-head > b {
+  padding:4px 6px;
+  border:1px solid rgba(99,239,255,.16);
+  border-radius:999px;
+  color:#78efff;
+  font-size:6.2px;
+  letter-spacing:.08em;
+}
+.hf-transform-mode {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+}
+.hf-transform-mode button {
+  padding:6px 5px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;
+  background:rgba(255,255,255,.02);
+  color:#778092;
+  font:inherit;
+  font-size:6.8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+.hf-transform-mode button.is-active {
+  color:#fff;
+  border-color:rgba(99,239,255,.34);
+  background:linear-gradient(135deg,rgba(99,239,255,.08),rgba(156,115,255,.10));
+}
+.hf-transform-fields {
+  display:grid;
+  gap:7px;
+}
+.hf-transform-group {
+  display:grid;
+  gap:4px;
+}
+.hf-transform-group > span {
+  color:#646d7f;
+  font-size:6.4px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.hf-transform-group > div {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+}
+.hf-transform-group label {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:4px;
+  padding:4px 5px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:7px;
+  background:rgba(255,255,255,.02);
+}
+.hf-transform-group label b {
+  color:#65eaff;
+  font-size:6px;
+}
+.hf-transform-group input {
+  width:100%;
+  min-width:0;
+  padding:0;
+  border:0;
+  outline:none;
+  background:transparent;
+  color:#dfe5ef;
+  font:inherit;
+  font-size:7px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}

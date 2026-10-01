@@ -2,10 +2,18 @@ import React from "react";
 import { DoubleSide } from "three";
 
 import type { HoloMaterialSpec } from "../scene/holo-scene";
+import { SpectralHoloMaterial } from "./SpectralHoloMaterial";
 
 export function HoloMaterial({ spec }: { spec: HoloMaterialSpec }) {
   const glassLike = spec.family === "glass" || spec.family === "crystal";
-  const spectral = spec.family === "iridescent" || spec.family === "foil";
+  const spectral =
+    spec.family === "iridescent" ||
+    spec.family === "foil" ||
+    spec.family === "neon";
+
+  if (spectral) {
+    return <SpectralHoloMaterial spec={spec} />;
+  }
 
   return (
     <meshPhysicalMaterial

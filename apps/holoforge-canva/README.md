@@ -12,7 +12,7 @@ The Canva panel follows one deliberate pipeline:
 
 - **SOURCE** binds either one raster image already selected in Canva or a PNG/JPEG/WebP uploaded through HoloForge.
 - **CREATE** selects a creation type, material preset and material parameters.
-- **SPATIAL** is a real Three.js / React Three Fiber WebGL scene with orbit, pan, zoom, object selection, playback, auto-orbit, and timeline scrubbing.
+- **SPATIAL** is a real Three.js / React Three Fiber WebGL scene with orbit, pan, zoom, object selection, translate/rotate/scale gizmos, numeric transform editing, playback, auto-orbit, and timeline scrubbing.
 - **VERIFY** records the actual Canva output route and forge result.
 
 ## Creation types
@@ -41,6 +41,23 @@ The current SPATIAL editor uses:
 The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
 
 The WebGL foundation deliberately does **not** claim that full SVG/alpha contour extrusion, custom diffraction shaders, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those are later geometry/material/export batches.
+
+## Object manipulation and source geometry
+
+The current WebGL editor now separates the object's authored transform from its preview animation. This is important because moving, rotating, or scaling the object must not fight the shimmer/sweep/pulse animation loop.
+
+A selected hologram exposes:
+
+- world-space move controls;
+- local rotation and scale controls;
+- a compact numeric X/Y/Z inspector;
+- orbit controls that temporarily disable while the object gizmo is being dragged.
+
+For uploaded transparent raster sources, HoloForge analyzes the alpha channel in the browser, traces the largest silhouette contour, simplifies it, normalizes it into scene space, and uses that contour as an extruded 3D shell. Fully opaque or technically unsuitable inputs intentionally fall back to a rectangular holographic plate instead of inventing fake geometry.
+
+Iridescent, foil, and neon material families now use a dedicated animated spectral shader with view-angle Fresnel response, spectral color shift, diffraction, scan-line modulation, shimmer, reflection contribution, and time-driven emission. Glass/crystal/metal families continue through the physical-material path.
+
+This remains a client-side authoring foundation. High-quality production mesh reconstruction and export rendering remain separate backend batches.
 
 ## Image source behavior
 
