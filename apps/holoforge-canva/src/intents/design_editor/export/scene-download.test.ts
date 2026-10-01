@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HoloScene } from "../scene/holo-scene";
+import { serializeHoloScene } from "./export-contract";
+import { parseHoloSceneJson } from "./scene-import";
 import {
   preparePortableHoloScene,
   sceneDownloadName,
@@ -82,12 +84,16 @@ describe("HoloScene download", () => {
     );
   });
 
-  it("preserves already embedded source imagery without network access", async () => {
+  it("stores a shared embedded raster once and restores it on project open", async () => {
     const scene = portableScene();
     const prepared = await preparePortableHoloScene(scene);
 
     expect(prepared.source.previewUrl).toBe("data:image/png;base64,AAAA");
-    expect(prepared.objects[0]?.geometry.sourceUrl).toBe(
+    expect(prepared.objects[0]?.geometry.sourceUrl).toBeUndefined();
+
+    const reopened = parseHoloSceneJson(serializeHoloScene(prepared));
+    expect(reopened.source.previewUrl).toBe("data:image/png;base64,AAAA");
+    expect(reopened.objects[0]?.geometry.sourceUrl).toBe(
       "data:image/png;base64,AAAA",
     );
   });
