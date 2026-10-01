@@ -320,15 +320,31 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
   const errors: string[] = [];
   if (scene.schemaVersion !== 1) errors.push("schemaVersion must be 1");
   if (!scene.id.trim()) errors.push("scene id is required");
+  if (scene.id.length > 200) errors.push("scene id exceeds 200 characters");
+  if ((scene.source.assetId?.length ?? 0) > 512) {
+    errors.push("source asset id exceeds 512 characters");
+  }
+  if ((scene.source.text?.length ?? 0) > 96) {
+    errors.push("source text exceeds 96 characters");
+  }
   if (!scene.objects.length) errors.push("scene requires at least one object");
   if (scene.objects.length > 128) errors.push("scene supports at most 128 objects");
 
   const ids = new Set<string>();
   for (const object of scene.objects) {
     if (!object.id.trim()) errors.push("object id is required");
+    if (object.id.length > 160) {
+      errors.push(`object ${object.id.slice(0, 32)} id exceeds 160 characters`);
+    }
     if (ids.has(object.id)) errors.push(`duplicate object id: ${object.id}`);
     ids.add(object.id);
     if (!object.name.trim()) errors.push(`object ${object.id} requires a name`);
+    if (object.name.length > 256) {
+      errors.push(`object ${object.id} name exceeds 256 characters`);
+    }
+    if ((object.sourceText?.length ?? 0) > 96) {
+      errors.push(`object ${object.id} source text exceeds 96 characters`);
+    }
 
     if (
       !finiteVec3(object.transform.position) ||
@@ -346,6 +362,9 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
     }
 
     const material = object.material;
+    if (material.baseColor.length > 128 || material.emissionColor.length > 128) {
+      errors.push(`object ${object.id} material color strings exceed 128 characters`);
+    }
     const normalizedMaterialFields: ReadonlyArray<
       readonly [string, number, number, number]
     > = [
