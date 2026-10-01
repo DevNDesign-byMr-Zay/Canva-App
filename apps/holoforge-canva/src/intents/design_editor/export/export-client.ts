@@ -32,6 +32,12 @@ export type ExportJobResponse = Readonly<{
   error?: string | null;
 }>;
 
+export type ExportArtifactBlob = Readonly<{
+  blob: Blob;
+  fileName: string;
+  mimeType: string;
+}>;
+
 export type ExportStatusResponse = Readonly<{
   exportId: string;
   status: ExportJobState;
@@ -50,6 +56,7 @@ const IMPLEMENTED_WORKER_FORMATS = new Set<HoloExportFormat>([
   "webm-alpha",
   "mp4",
   "png-sequence",
+  "png-still",
   "lightfield-quilt",
 ]);
 
@@ -220,9 +227,9 @@ export async function waitForExport(
   throw new Error("HoloForge export timed out while waiting for the render worker.");
 }
 
-export async function downloadBackendExport(
+export async function fetchBackendExportBlob(
   exportId: string,
-): Promise<string> {
+): Promise<ExportArtifactBlob> {
   const status = await readExportStatus(exportId);
   if (status.status !== "complete" || !status.downloadUrl) {
     throw new Error(status.error || "HoloForge export is not ready to download.");
@@ -235,10 +242,21 @@ export async function downloadBackendExport(
   const blob = await response.blob();
   if (!blob.size) throw new Error("HoloForge export artifact was empty.");
 
-  const url = URL.createObjectURL(blob);
+  return Object.freeze({
+    blob,
+    fileName: status.fileName || "holoforge-export",
+    mimeType: status.mimeType || blob.type || "application/octet-stream",
+  });
+}
+
+export async function downloadBackendExport(
+  exportId: string,
+): Promise<string> {
+  const artifact = await fetchBackendExportBlob(exportId);
+  const url = URL.createObjectURL(artifact.blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = status.fileName || "holoforge-export";
+  anchor.download = artifact.fileName;
   anchor.rel = "noopener";
   anchor.style.display = "none";
   document.body.append(anchor);
@@ -250,5 +268,5 @@ export async function downloadBackendExport(
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  return status.fileName || "holoforge-export";
+  return artifact.fileName;
 }

@@ -229,7 +229,7 @@ for (const app of APPS) {
       join(destination, "src", "intents", "design_editor", "export", "export-contract.ts"),
       "utf8",
     );
-    for (const marker of ['"scene-json"', '"glb"', '"usdz"', '"webm-alpha"', '"lightfield-quilt"', "GENERIC_45_VIEW_QUILT", "viewConeDegrees", "render-worker", "device-adapter"]) {
+    for (const marker of ['"scene-json"', '"glb"', '"usdz"', '"png-still"', '"webm-alpha"', '"lightfield-quilt"', '"still-image"', "GENERIC_45_VIEW_QUILT", "viewConeDegrees", "render-worker", "device-adapter"]) {
       if (!exportContract.includes(marker)) {
         throw new Error(`HoloForge export contract missing packaged marker: ${marker}`);
       }
@@ -239,9 +239,39 @@ for (const app of APPS) {
       join(source, "backend", "blender_worker.py"),
       "utf8",
     );
-    for (const marker of ['format_name == "usdz"', 'format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
+    for (const marker of ['format_name == "usdz"', 'format_name == "png-still"', 'format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
       if (!blenderWorker.includes(marker)) {
         throw new Error(`HoloForge light-field worker missing packaged marker: ${marker}`);
+      }
+    }
+
+    const canvaRasterInsert = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "canva-raster-insert.ts"),
+      "utf8",
+    );
+    for (const marker of ["fetchBackendExportBlob", "await asset.whenUploaded()", "addElementAtPoint"]) {
+      if (!canvaRasterInsert.includes(marker)) {
+        throw new Error(`HoloForge Canva PNG insertion missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneImport = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "scene-import.ts"),
+      "utf8",
+    );
+    for (const marker of ["parseHoloSceneJson", "validateHoloScene", "isPortableImageUrl", "deepFreeze"]) {
+      if (!sceneImport.includes(marker)) {
+        throw new Error(`HoloForge scene import missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneImportControl = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "SceneImportControl.tsx"),
+      "utf8",
+    );
+    for (const marker of ["readHoloSceneFile", 'accept=".json,.holoscene,application/json"', "onImported"]) {
+      if (!sceneImportControl.includes(marker)) {
+        throw new Error(`HoloForge scene import control missing packaged marker: ${marker}`);
       }
     }
 
@@ -359,6 +389,12 @@ for (const app of APPS) {
           "src/intents/design_editor/export/export-contract.test.ts",
           "src/intents/design_editor/export/scene-download.ts",
           "src/intents/design_editor/export/scene-download.test.ts",
+          "src/intents/design_editor/export/scene-import.ts",
+          "src/intents/design_editor/export/scene-import.test.ts",
+          "src/intents/design_editor/export/SceneImportControl.tsx",
+          "src/intents/design_editor/export/scene-import.ts",
+          "src/intents/design_editor/export/scene-import.test.ts",
+          "src/intents/design_editor/export/SceneImportControl.tsx",
           "src/intents/design_editor/export/ExportPanel.tsx",
           "src/intents/design_editor/export/export-client.ts",
           "src/intents/design_editor/geometry/alpha-contour.ts",

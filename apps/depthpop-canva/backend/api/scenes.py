@@ -8,8 +8,8 @@ from typing import Awaitable, Callable
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from auth import verify_canva_user, VerifiedCanvaUser
 from models.job import DepthJob
-from models.object import DepthObject
-from models.scene import CameraConfig, DepthScene, TimelineConfig
+from models.object import DepthObject, DepthObjectPatch
+from models.scene import CameraConfig, DepthScene, DepthScenePatch, TimelineConfig
 from services.compositor import composite_scene
 from services.persistence import job_repo, scene_asset_repo, scene_repo
 from services.scene_builder import SceneBuilderService
@@ -117,16 +117,16 @@ async def create_scene(
     from app import _public_url
 
     async def build_url(data: bytes, mime: str) -> str:
-        key = hashlib.sha256(data).hexdigest()[:32]
+        random_asset_id = f"asset_{uuid.uuid4().hex}"
         await scene_asset_repo.save_asset(
-            asset_id=key,
+            asset_id=random_asset_id,
             scene_id=scene_id,
             user_id=user.user_id,
             brand_id=user.brand_id,
             data=data,
             mime_type=mime,
         )
-        return _public_url(request, f"/api/v1/assets/{key}")
+        return _public_url(request, f"/api/v1/assets/{random_asset_id}")
 
     await job_repo.update_job_stage(
         job_id, stage="queued", status="queued", progress=0.0, user_id=user.user_id, brand_id=user.brand_id
@@ -165,27 +165,30 @@ async def get_scene(
 @router.patch("/scenes/{scene_id}")
 async def patch_scene(
     scene_id: str,
-    payload: dict,
+    patch: DepthScenePatch,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
     scene = await scene_repo.get_scene(scene_id)
     if not scene or (scene.userId and scene.userId != user.user_id) or (scene.brandId and scene.brandId != user.brand_id):
         raise HTTPException(status_code=404, detail="Scene not found")
 
-    for forbidden in ("userId", "brandId", "sourceAssetId", "schemaVersion", "reconstructedPlate"):
-        if forbidden in payload:
-            raise HTTPException(status_code=422, detail=f"Cannot modify immutable field '{forbidden}'")
-
     updated_scene = scene.model_copy(deep=True)
 
-    if "objects" in payload and isinstance(payload["objects"], list):
-        obj_map = {o["id"]: o for o in payload["objects"] if isinstance(o, dict) and "id" in o}
+    if patch.objects is not None:
+        obj_map = {obj_patch.id: obj_patch for obj_patch in patch.objects}
         new_objects = []
         for orig_obj in updated_scene.objects:
             if orig_obj.id in obj_map:
-                patch = obj_map[orig_obj.id]
+                obj_patch = obj_map[orig_obj.id]
+                patch_dump = obj_patch.model_dump(exclude_unset=True, by_alias=True)
                 merged = orig_obj.model_dump(by_alias=True)
-                merged.update(patch)
+                for k, v in patch_dump.items():
+                    if k == "transform" and isinstance(v, dict):
+                        merged_transform = orig_obj.transform.model_dump(by_alias=True)
+                        merged_transform.update(v)
+                        merged["transform"] = merged_transform
+                    else:
+                        merged[k] = v
                 merged["assets"] = orig_obj.assets.model_dump(by_alias=True)
                 merged["depth"] = orig_obj.depth.model_dump(by_alias=True)
                 merged["confidence"] = orig_obj.confidence
@@ -195,11 +198,17 @@ async def patch_scene(
                 new_objects.append(orig_obj)
         updated_scene.objects = new_objects
 
-    if "camera" in payload and isinstance(payload["camera"], dict):
-        updated_scene.camera = CameraConfig.model_validate(payload["camera"])
+    if patch.camera is not None:
+        cam_dump = patch.camera.model_dump(exclude_unset=True)
+        cam_dict = updated_scene.camera.model_dump()
+        cam_dict.update(cam_dump)
+        updated_scene.camera = CameraConfig.model_validate(cam_dict)
 
-    if "timeline" in payload and isinstance(payload["timeline"], dict):
-        updated_scene.timeline = TimelineConfig.model_validate(payload["timeline"])
+    if patch.timeline is not None:
+        time_dump = patch.timeline.model_dump(exclude_unset=True)
+        time_dict = updated_scene.timeline.model_dump(by_alias=True)
+        time_dict.update(time_dump)
+        updated_scene.timeline = TimelineConfig.model_validate(time_dict)
 
     updated_scene.updatedAt = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     await scene_repo.save_scene(updated_scene)
@@ -212,7 +221,8 @@ async def create_scene_composite(
     scene_id: str,
     request: Request,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
-) -> dict:
+) -> Response:
+    """Render and return the composite PNG bytes directly."""
     scene = await scene_repo.get_scene(scene_id)
     if not scene or (scene.userId and scene.userId != user.user_id) or (scene.brandId and scene.brandId != user.brand_id):
         raise HTTPException(status_code=404, detail="Scene not found")
@@ -225,25 +235,12 @@ async def create_scene_composite(
         return asset.data
 
     composite_png = await composite_scene(scene, asset_fetcher)
-    comp_key = hashlib.sha256(composite_png).hexdigest()[:32]
-    await scene_asset_repo.save_asset(
-        asset_id=comp_key,
-        scene_id=scene_id,
-        user_id=user.user_id,
-        brand_id=user.brand_id,
-        data=composite_png,
-        mime_type="image/png",
+
+    return Response(
+        content=composite_png,
+        media_type="image/png",
+        headers={"Cache-Control": "private, no-cache"},
     )
-
-    from app import _public_url
-    comp_url = _public_url(request, f"/api/v1/assets/{comp_key}")
-
-    return {
-        "ok": True,
-        "url": comp_url,
-        "mimeType": "image/png",
-        "sceneId": scene_id,
-    }
 
 
 @router.get("/assets/{asset_id}")

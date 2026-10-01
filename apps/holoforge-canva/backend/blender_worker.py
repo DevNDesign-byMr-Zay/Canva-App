@@ -536,6 +536,24 @@ elif format_name == "usdz":
     )
     if not target.is_file() or target.stat().st_size <= 0:
         raise RuntimeError("Blender produced no USDZ artifact")
+elif format_name == "png-still":
+    target = output_dir / (stem + "-still.png")
+    timeline = scene_data["timeline"]
+    current_frame = 1 + round(
+        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
+        * float(timeline["fps"])
+    )
+    current_frame = max(scene.frame_start, min(scene.frame_end, current_frame))
+    scene.frame_set(current_frame)
+    scene.render.filepath = str(target)
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = (
+        "RGBA" if request.get("transparentBackground") else "RGB"
+    )
+    scene.render.image_settings.color_depth = "8"
+    bpy.ops.render.render(write_still=True)
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise RuntimeError("Blender produced no static PNG artifact")
 elif format_name == "webm-alpha":
     frames = output_dir / "webm-alpha-frames"
     frames.mkdir(exist_ok=True)

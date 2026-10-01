@@ -26,7 +26,7 @@ All six visible creation types are functional:
 - **Chrome** — re-editable holographic chrome app element.
 - **Light FX** — re-editable photonic ring/beam overlay.
 
-Material controls for color shift, depth, reflection, glow, grain, angle and transparency now normalize into a versioned `HoloScene` and drive real WebGL material/geometry state. Motion remains preview-time scene behavior until the later animation/export backend batch.
+Material controls for color shift, depth, reflection, glow, grain, angle and transparency normalize into a versioned `HoloScene` and drive real WebGL material/geometry state. Motion presets and custom transform keyframes are serialized into the same scene contract and are consumed by the production Blender export paths when the selected format supports animation.
 
 ## WebGL scene foundation
 
@@ -40,7 +40,7 @@ The current SPATIAL editor uses:
 
 The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
 
-The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, and serializable transform keyframes. It still does **not** claim that full vector mesh reconstruction, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those remain later backend/export batches.
+The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, serializable transform keyframes, real Blender-backed GLB/glTF/USDZ/video/PNG/light-field export paths, and a render-to-Canva PNG route. Device-specific optical interlacing remains outside the generic HoloForge export contract, and full vector-mesh reconstruction remains a later geometry specialization.
 
 ## Object manipulation and source geometry
 
@@ -57,7 +57,7 @@ For uploaded transparent raster sources, HoloForge analyzes the alpha channel in
 
 Iridescent, foil, and neon material families now use a dedicated animated spectral shader with view-angle Fresnel response, spectral color shift, diffraction, scan-line modulation, shimmer, reflection contribution, and time-driven emission. Glass/crystal/metal families continue through the physical-material path.
 
-This remains a client-side authoring foundation. High-quality production mesh reconstruction and export rendering remain separate backend batches.
+The browser editor remains the authoring surface, while production rendering is handled by the authenticated Blender worker. Raster source silhouettes are reconstructed from alpha contours in both the browser and worker; richer vector/mesh reconstruction can extend that geometry layer without changing the HoloScene contract.
 
 ## 4D animation authoring
 
@@ -78,6 +78,12 @@ The timeline playback loop updates scene time rather than hiding animation state
 The SPATIAL workspace now owns a real editable HoloScene session instead of rebuilding the scene every time the operator changes tabs. Transform edits, authored poses, animation presets and manually scrubbed timeline state are lifted back into the app-level studio scene and restored when CREATE / SPATIAL / VERIFY navigation unmounts and remounts the viewport.
 
 Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
+
+## HoloScene project round-trip
+
+HoloScene JSON is now a real editable project format rather than a one-way diagnostic export. Operators can reopen a previously downloaded HoloScene file and return directly to SPATIAL with its objects, materials, geometry, transforms, camera, environment, timeline, animation presets and authored keyframes restored.
+
+Project saves first materialize temporary Canva raster URLs into embedded image data, so a downloaded HoloScene does not depend on an expiring Canva source URL. Imports are bounded to 25 MB, parsed locally, restricted to embedded PNG/JPEG/WebP source imagery, checked against the v1 runtime structure, passed through semantic HoloScene validation, and recursively frozen before entering studio state. Remote image/mesh references, invalid JSON, malformed scene shapes, duplicate object IDs, unsafe camera/material/geometry values and out-of-range keyframes fail before studio state is changed.
 
 ## Multi-object scene composition
 
@@ -106,6 +112,7 @@ Current capability state:
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
 - **GLB / glTF** — real headless-Blender exports with authored geometry, transforms, materials, camera state and animation/keyframe conversion.
 - **USDZ** — real Blender-generated USDZ package for the `ios-ar` profile. The first shipping contract is static while GLB/glTF/video remain the qualified animation paths.
+- **PNG Still** — real transparent render of the currently authored timeline frame, with direct insertion back into Canva.
 - **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
 - **MP4 / PNG Sequence** — real Blender-worker render outputs.
 - **Light-field Quilt** — real multi-view PNG quilt output. The generic compatibility profile renders 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
@@ -153,7 +160,7 @@ The Canva bundle obtains a fresh Canva user token and submits a validated HoloSc
 Current backend behavior:
 
 - HoloScene JSON is always a real server-side artifact;
-- GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- GLB, glTF, USDZ, transparent PNG still, transparent VP9 WebM, MP4, PNG-sequence and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
 - Blender absence fails closed and those formats are not advertised by `/health`;
 - transparent WebM is rendered as RGBA PNG frames and encoded with FFmpeg/libvpx-vp9, with the production smoke extracting the encoded alpha plane;
 - light-field quilts freeze the authored scene at the selected timeline time, render discrete camera views across the requested cone, and assemble those views into one quilt PNG;
@@ -163,6 +170,12 @@ Current backend behavior:
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally stays lightweight. Production rendering uses the dedicated Blender image.
+
+### Render current scene into Canva
+
+The SPATIAL export panel now includes **PNG Still**. It freezes the HoloScene at the current timeline position, renders the full authored camera, lighting, multi-object composition, geometry and materials through Blender, and inserts the resulting transparent PNG directly into the active Canva design.
+
+This is intentionally different from the CREATE-tab forge route: CREATE can produce a lightweight static Canva-safe treatment from the original material plan, while PNG Still captures the edited SPATIAL scene after transforms, duplicated objects, camera changes, material edits and lighting changes.
 
 ### Production Blender image
 
@@ -175,9 +188,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `usdz`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `usdz`, `png-still`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
+The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent RGBA PNG still, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
 
 ## Development
 

@@ -14,6 +14,7 @@ ExportFormat = Literal[
     "webm-alpha",
     "mp4",
     "png-sequence",
+    "png-still",
     "lightfield-quilt",
 ]
 ExportProfile = Literal[
@@ -22,6 +23,7 @@ ExportProfile = Literal[
     "ios-ar",
     "transparent-video",
     "image-sequence",
+    "still-image",
     "lightfield-quilt",
     "custom",
 ]
@@ -255,6 +257,7 @@ class HoloExportRequest(BaseModel):
             "webm-alpha": "transparent-video",
             "mp4": "transparent-video",
             "png-sequence": "image-sequence",
+            "png-still": "still-image",
             "lightfield-quilt": "lightfield-quilt",
         }[self.format]
         if self.profile != expected:
@@ -267,6 +270,8 @@ class HoloExportRequest(BaseModel):
             raise ValueError(f"{self.format} requires includeAnimation=true in render-worker v1")
         if self.format == "webm-alpha" and not self.transparentBackground:
             raise ValueError("webm-alpha requires transparentBackground=true")
+        if self.format == "png-still" and self.includeAnimation:
+            raise ValueError("png-still requires includeAnimation=false")
         if self.format == "lightfield-quilt":
             if self.includeAnimation:
                 raise ValueError("lightfield-quilt v1 is a still quilt and requires includeAnimation=false")

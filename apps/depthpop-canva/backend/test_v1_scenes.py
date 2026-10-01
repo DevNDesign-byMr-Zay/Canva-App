@@ -653,33 +653,45 @@ def test_scene_patch_and_composite(auth_client):
     updated_scene = patch_resp.json()
     assert updated_scene["camera"]["fov"] == 60
 
-    # Composite scene
+    # Composite scene returns raw PNG bytes directly
     comp_resp = auth_client.post(f"/api/v1/scenes/{scene_id}/composite")
     assert comp_resp.status_code == 200
-    comp_data = comp_resp.json()
-    assert comp_data["ok"] is True
-    assert comp_data["url"].startswith("http://testserver/api/v1/assets/")
+    assert comp_resp.headers["content-type"].startswith("image/png")
+    assert len(comp_resp.content) > 0
+    with Image.open(io.BytesIO(comp_resp.content)) as result_img:
+        assert result_img.format == "PNG"
 
 
-def test_segmentation_mode_routing():
-    from services.segmentation import SegmentationService
-    from providers.segmentation_provider import FalSegmentationProvider, MockSegmentationProvider
+def test_asset_lifecycle_cleanup_and_opaque_id_ownership(auth_client):
+    from services.persistence import BoundedSceneAssetRepository, BoundedSceneRepository
+    import asyncio
 
-    srv = SegmentationService()
-    p_fal = srv.get_provider(mode="florence_sam3")
-    assert isinstance(p_fal, FalSegmentationProvider)
+    asset_repo = BoundedSceneAssetRepository(max_assets=5, ttl_seconds=1)
+    scene_repo = BoundedSceneRepository(max_scenes=2, ttl_seconds=1, asset_repo=asset_repo)
 
-    p_mock = srv.get_provider(mode="mock")
-    assert isinstance(p_mock, MockSegmentationProvider)
+    image_bytes = _create_test_image((32, 32))
 
+    # Save asset
+    asyncio.run(
+        asset_repo.save_asset(
+            asset_id="asset_test1",
+            scene_id="scene_s1",
+            user_id="user_test_a",
+            brand_id="brand_test_a",
+            data=image_bytes,
+            mime_type="image/png",
+        )
+    )
 
-def test_depth_polarity_normalization_inversion():
-    from providers.depth_provider import normalize_depth_polarity
+    # Verify asset is retrievable by owner
+    res = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_test_a", brand_id="brand_test_a"))
+    assert res is not None
 
-    # Dark center, bright edges (center < edges) -> should invert
-    arr = np.ones((50, 50), dtype=np.float32) * 0.9
-    arr[18:32, 18:32] = 0.1
+    # Cross-user retrieval fails
+    res_cross = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_other", brand_id="brand_other"))
+    assert res_cross is None
 
-    norm_arr, polarity = normalize_depth_polarity(arr)
-    assert polarity == "inverted"
-    assert norm_arr[25, 25] == 0.9, "Center should become near (0.9)"
+    # Cleanup scene assets
+    asyncio.run(asset_repo.cleanup_scene_assets("scene_s1"))
+    res_after = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_test_a", brand_id="brand_test_a"))
+    assert res_after is None

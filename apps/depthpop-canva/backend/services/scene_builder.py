@@ -50,14 +50,14 @@ class SceneBuilderService:
         with Image.open(io.BytesIO(image_bytes)) as img:
             width, height = img.size
 
-        # 2. Segmenting objects (respecting segmentation_mode)
+        # 2. Segmenting objects
         if stage_reporter:
             await stage_reporter("segmenting_objects", 0.25)
         segmented_objs = await self.seg_service.segment_objects(
             image_bytes, max_objects=max_objects, mode=segmentation_mode
         )
 
-        # 3. Estimating depth (respecting depth_quality)
+        # 3. Estimating depth
         if stage_reporter:
             await stage_reporter("estimating_depth", 0.50)
         depth_map = await self.depth_service.estimate_depth(image_bytes, quality=depth_quality)

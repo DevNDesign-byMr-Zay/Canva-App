@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from models.object import DepthObject, Vector3
+from models.object import DepthObject, DepthObjectPatch, Vector3
 
 
 class ReconstructedPlate(BaseModel):
@@ -18,12 +18,28 @@ class CameraConfig(BaseModel):
     fov: float = Field(50.0, ge=1.0, le=180.0)
 
 
+class CameraConfigPatch(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    position: Vector3 | None = None
+    target: Vector3 | None = None
+    fov: float | None = Field(None, ge=1.0, le=180.0)
+
+
 class TimelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     durationMs: int = Field(0, ge=0, alias="durationMs")
     fps: int = Field(30, ge=1, le=120)
     currentTimeMs: int = Field(0, ge=0, alias="currentTimeMs")
+
+
+class TimelineConfigPatch(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    durationMs: int | None = Field(None, ge=0, alias="durationMs")
+    fps: int | None = Field(None, ge=1, le=120)
+    currentTimeMs: int | None = Field(None, ge=0, alias="currentTimeMs")
 
 
 class DepthScene(BaseModel):
@@ -52,3 +68,11 @@ class DepthScene(BaseModel):
                 raise ValueError(f"Duplicate object ID '{obj.id}' found in DepthScene")
             seen_ids.add(obj.id)
         return objects
+
+
+class DepthScenePatch(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    objects: list[DepthObjectPatch] | None = None
+    camera: CameraConfigPatch | None = None
+    timeline: TimelineConfigPatch | None = None

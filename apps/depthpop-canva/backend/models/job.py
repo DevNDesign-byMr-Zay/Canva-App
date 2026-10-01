@@ -25,7 +25,7 @@ class DepthJob(BaseModel):
     brandId: str = Field(..., alias="brandId")
     status: JobStatus
     stage: JobStage
-    progress: float = Field(0.0, ge=0.0, le=1.0)
+    progress: float = 0.0
     sceneId: str | None = Field(None, alias="sceneId")
     error: str | None = None
     createdAt: str = Field(..., alias="createdAt")

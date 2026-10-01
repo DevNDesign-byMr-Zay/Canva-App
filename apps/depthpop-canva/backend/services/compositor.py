@@ -71,8 +71,8 @@ async def composite_scene(
                 pos_y = int(obj_cy - scaled.height / 2.0)
 
                 canvas.alpha_composite(scaled, (pos_x, pos_y))
-        except Exception:
-            pass
+        except Exception as exc:
+            raise RuntimeError(f"Compositor failed to process object '{obj.id}': {exc}") from exc
 
     out_buf = io.BytesIO()
     canvas.save(out_buf, format="PNG", optimize=True)

@@ -15,6 +15,8 @@ SemanticType = Literal[
     "unknown",
 ]
 
+ExtractionQuality = Literal["mask", "bbox_fallback"]
+
 
 class Vector3(BaseModel):
     x: float = 0.0
@@ -70,6 +72,7 @@ class DepthObject(BaseModel):
     id: str = Field(..., min_length=1)
     label: str = Field(..., min_length=1)
     semanticType: SemanticType = Field(..., alias="semanticType")
+    extractionQuality: ExtractionQuality = Field("mask", alias="extractionQuality")
     confidence: float = Field(..., ge=0.0, le=1.0)
     bbox: BBox
     assets: ObjectAssets
@@ -81,3 +84,16 @@ class DepthObject(BaseModel):
     locked: bool = False
     order: int = Field(..., ge=0)
     animationTracks: list[Any] = Field(default_factory=list, alias="animationTracks")
+
+
+class DepthObjectPatch(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    id: str = Field(..., min_length=1)
+    label: str | None = Field(None, min_length=1)
+    transform: ObjectTransform | None = None
+    opacity: float | None = Field(None, ge=0.0, le=1.0)
+    feather: float | None = Field(None, ge=0.0, le=100.0)
+    visible: bool | None = None
+    locked: bool | None = None
+    order: int | None = Field(None, ge=0)

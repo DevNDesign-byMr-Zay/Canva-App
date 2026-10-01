@@ -43,7 +43,6 @@ def _detect_image_mime(image_bytes: bytes) -> str:
 
 
 def normalize_depth_polarity(depth01: np.ndarray) -> tuple[np.ndarray, str]:
-    """Normalize depth array to canonical DepthPop convention (0.0 = FAR, 1.0 = NEAR)."""
     height, width = depth01.shape
     if height < 4 or width < 4:
         return depth01, "normal"
@@ -66,7 +65,7 @@ def normalize_depth_polarity(depth01: np.ndarray) -> tuple[np.ndarray, str]:
 
 
 class FalDepthProvider:
-    """Wrapped FAL Depth Anything v2 provider with canonical polarity normalization and quality levels."""
+    """Wrapped FAL Depth Anything v2 provider with canonical polarity normalization and quality routing."""
 
     def __init__(self, fal_key: str | None = None):
         self.fal_key = fal_key or os.getenv("FAL_KEY", "").strip()
@@ -79,7 +78,6 @@ class FalDepthProvider:
             )
 
         mime = _detect_image_mime(image)
-        # Quality-dependent image preprocessing resolution
         if quality == "standard":
             with Image.open(io.BytesIO(image)) as src_img:
                 src_img.thumbnail((512, 512), Image.Resampling.BILINEAR)
