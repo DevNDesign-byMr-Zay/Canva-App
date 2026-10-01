@@ -14,6 +14,7 @@ import {
   capabilityFor,
   type HoloExportFormat,
 } from "./export-contract";
+import { insertBackendPngIntoCanva } from "./canva-raster-insert";
 import { downloadHoloScene } from "./scene-download";
 
 const GROUPS = [
@@ -27,7 +28,7 @@ const GROUPS = [
   },
   {
     label: "RENDER",
-    formats: ["webm-alpha", "mp4", "png-sequence"] as const,
+    formats: ["png-still", "webm-alpha", "mp4", "png-sequence"] as const,
   },
   {
     label: "DISPLAY",
@@ -101,6 +102,16 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
         setProgress(job.percent);
         setStatus(job.message);
       });
+
+      if (format === "png-still") {
+        const fileName = await insertBackendPngIntoCanva(
+          created.exportId,
+          "HoloForge Scene Render",
+        );
+        setProgress(100);
+        setStatus(fileName + " rendered and inserted into Canva.");
+        return;
+      }
 
       const fileName = await downloadBackendExport(created.exportId);
       setProgress(100);
@@ -192,7 +203,9 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
             ? "DOWNLOAD " + capability.label.toUpperCase()
             : workerImplemented
               ? backendConfigured
-                ? "RENDER " + capability.label.toUpperCase()
+                ? format === "png-still"
+                  ? "RENDER + INSERT PNG"
+                  : "RENDER " + capability.label.toUpperCase()
                 : "CONFIGURE RENDER BACKEND"
               : capability.execution === "device-adapter"
                 ? "DEVICE ADAPTER NOT IMPLEMENTED"
@@ -214,15 +227,17 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
       {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
 
       <p className="hf-export-boundary">
-        Scene JSON is generated locally. GLB, glTF, transparent VP9 WebM, MP4,
-        PNG sequences and multi-view quilt PNGs use the authenticated HoloForge
-        render backend when configured. Quilt output is display-ready content,
+        Scene JSON is generated locally. Static transparent PNG, GLB, glTF,
+        transparent VP9 WebM, MP4, PNG sequences and multi-view quilt PNGs use
+        the authenticated HoloForge render backend when configured. PNG Still
+        renders the authored timeline frame and inserts the finished result
+        directly back into Canva. Quilt output is display-ready content,
         but optical interlacing still belongs to the connected display runtime.
         USDZ is generated directly by Blender's USDZ exporter; optical interlacing remains specific to each light-field display runtime.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 7 WORKER IMPLEMENTED
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 8 WORKER IMPLEMENTED
       </span>
     </section>
   );
