@@ -26,6 +26,17 @@ const APPS = {
       "src/intents/design_editor/holographic/effect-plan.ts",
       "src/intents/design_editor/holographic/forge-support.ts",
       "src/intents/design_editor/holographic/material-contract.ts",
+      "src/intents/design_editor/scene/holo-scene.ts",
+      "src/intents/design_editor/scene/holo-scene.test.ts",
+      "src/intents/design_editor/scene/holo-object.ts",
+      "src/intents/design_editor/scene/scene-store.ts",
+      "src/intents/design_editor/scene/scene-store.test.ts",
+      "src/intents/design_editor/materials/HoloMaterial.tsx",
+      "src/intents/design_editor/viewport/HoloCamera.tsx",
+      "src/intents/design_editor/viewport/HoloObject.tsx",
+      "src/intents/design_editor/viewport/HoloScene.tsx",
+      "src/intents/design_editor/viewport/HoloViewport.tsx",
+      "src/intents/design_editor/viewport/StageEnvironment.tsx",
       "src/intents/design_editor/use-canva-image-selection.ts",
       "src/assets/holoforge-logo.svg",
     ],
@@ -129,7 +140,11 @@ for (const [name, spec] of Object.entries(APPS)) {
         fail(`${name}: package.json is missing ${scriptName} script`);
       }
     }
-    for (const dependency of ["@canva/asset", "@canva/design"]) {
+    const requiredDependencies =
+      name === "holoforge"
+        ? ["@canva/asset", "@canva/design", "three", "@react-three/fiber", "@react-three/drei"]
+        : ["@canva/asset", "@canva/design"];
+    for (const dependency of requiredDependencies) {
       if (!pkg?.dependencies?.[dependency]) {
         fail(`${name}: package.json is missing ${dependency} required for test-image upload/add-to-design`);
       }
@@ -266,10 +281,51 @@ for (const marker of [
   "<LocalImageUpload",
   'productName="HoloForge"',
   "executeHolographicEffectPlan",
+  "createHoloScene",
+  "<HoloViewport",
 ]) {
   if (!holoApp.includes(marker)) {
     fail(`holoforge: runtime/UI marker missing: ${marker}`);
   }
+}
+
+const holoViewport = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloViewport.tsx"),
+);
+for (const marker of [
+  'from "@react-three/fiber"',
+  'from "@react-three/drei"',
+  "<Canvas",
+  "<OrbitControls",
+  "<HoloScene",
+  "WEBGL LIVE",
+  "AUTO ORBIT",
+  "HoloForge timeline",
+]) {
+  if (!holoViewport.includes(marker)) {
+    fail(`holoforge: WebGL viewport marker missing: ${marker}`);
+  }
+}
+
+const holoSceneContract = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/scene/holo-scene.ts"),
+);
+for (const marker of [
+  "schemaVersion: 1",
+  "export type HoloScene",
+  "export type HoloObject",
+  "export type HoloMaterialSpec",
+  "export type HoloTimeline",
+  "createHoloScene",
+  "validateHoloScene",
+]) {
+  if (!holoSceneContract.includes(marker)) {
+    fail(`holoforge: canonical scene contract marker missing: ${marker}`);
+  }
+}
+
+if (holoApp.includes("hf-hologram") || holoApp.includes("hf-holo-plane")) {
+  fail("holoforge: app.tsx still references the retired CSS pseudo-3D renderer");
 }
 
 const holoSelection = readText(
@@ -370,7 +426,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + native file picker + selected-image binding + six functional hologram creation modes + app-element/derived-image execution");
+console.log(" - HoloForge: independent app + native file picker + canonical HoloScene + real Three.js/R3F SPATIAL viewport + app-element/derived-image execution");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");

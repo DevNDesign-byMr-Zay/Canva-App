@@ -12,7 +12,7 @@ The Canva panel follows one deliberate pipeline:
 
 - **SOURCE** binds either one raster image already selected in Canva or a PNG/JPEG/WebP uploaded through HoloForge.
 - **CREATE** selects a creation type, material preset and material parameters.
-- **SPATIAL** previews the depth/material intent before committing it.
+- **SPATIAL** is a real Three.js / React Three Fiber WebGL scene with orbit, pan, zoom, object selection, playback, auto-orbit, and timeline scrubbing.
 - **VERIFY** records the actual Canva output route and forge result.
 
 ## Creation types
@@ -26,7 +26,21 @@ All six visible creation types are functional:
 - **Chrome** — re-editable holographic chrome app element.
 - **Light FX** — re-editable photonic ring/beam overlay.
 
-Material controls for color shift, depth, reflection, glow, grain, angle and transparency affect the forged static output. Motion mode is intentionally a preview behavior because the committed Canva output is static.
+Material controls for color shift, depth, reflection, glow, grain, angle and transparency now normalize into a versioned `HoloScene` and drive real WebGL material/geometry state. Motion remains preview-time scene behavior until the later animation/export backend batch.
+
+## WebGL scene foundation
+
+HoloForge now keeps a versioned scene contract under `src/intents/design_editor/scene/`.
+
+The current SPATIAL editor uses:
+
+- `three`
+- `@react-three/fiber`
+- `@react-three/drei`
+
+The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
+
+The WebGL foundation deliberately does **not** claim that full SVG/alpha contour extrusion, custom diffraction shaders, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those are later geometry/material/export batches.
 
 ## Image source behavior
 

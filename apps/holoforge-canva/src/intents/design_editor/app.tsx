@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { CreatePanel } from "./create/create-panel";
 import { canvaAppOwnedEffectAdapter } from "./holographic/app-owned-effect-adapter";
@@ -9,7 +9,9 @@ import {
 } from "./holographic/effect-executor";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
 import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
+import { createHoloScene } from "./scene/holo-scene";
 import { useCanvaImageSelection } from "./use-canva-image-selection";
+import { HoloViewport } from "./viewport/HoloViewport";
 
 import "./app.css";
 
@@ -73,77 +75,50 @@ function SpatialPreview({
   plan: HolographicEffectPlan | null;
   sourcePreviewUrl: string | null;
 }) {
-  if (!plan) {
+  const scene = useMemo(
+    () => (plan ? createHoloScene(plan, sourcePreviewUrl) : null),
+    [plan, sourcePreviewUrl],
+  );
+
+  if (!plan || !scene) {
     return (
       <div className="hf-empty-state">
         <span className="hf-empty-orb" />
         <strong>No hologram staged yet</strong>
-        <p>Build a material in CREATE, then preview it here before forging it into Canva.</p>
+        <p>Build a material in CREATE, then preview it in the real WebGL studio before forging it into Canva.</p>
       </div>
     );
   }
 
   const p = plan.parameters;
-  const showSource = Boolean(plan.sourceImageRef && sourcePreviewUrl);
 
   return (
     <div className="hf-spatial-panel">
-      <div className="hf-stage">
-        <div
-          className={
-            "hf-hologram preset-" +
-            plan.presetId +
-            " creation-" +
-            plan.creationType +
-            " motion-" +
-            p.motionMode
-          }
-          style={
-            {
-              "--hf-rx": `${66 - p.depth * 0.12}deg`,
-              "--hf-rz": `${-18 + p.angle / 36}deg`,
-              "--hf-glow-size": `${10 + p.glow * 0.32}px`,
-              "--hf-reflect-opacity": String(0.16 + p.reflection * 0.006),
-              "--hf-material-opacity": String(0.32 + (100 - p.transparency) * 0.0052),
-            } as React.CSSProperties
-          }
-        >
-          <span className="hf-holo-plane hf-holo-plane-back" />
-          <span className="hf-holo-plane hf-holo-plane-mid" />
-          <span className="hf-holo-plane hf-holo-plane-front">
-            {showSource && (
-              <img
-                src={sourcePreviewUrl ?? undefined}
-                className="hf-source-preview-image"
-                alt="Current HoloForge source"
-              />
-            )}
-            {plan.creationType === "holo_text" && (
-              <b className="hf-spatial-text">{plan.sourceText || "HOLOFORGE"}</b>
-            )}
-            {plan.creationType === "light_fx" && <i className="hf-spatial-light-ring" />}
-          </span>
-          <span className="hf-holo-scan" />
-        </div>
-      </div>
+      <HoloViewport scene={scene} />
+
       <div className="hf-preview-meta">
         <div>
           <span>ACTIVE MATERIAL</span>
           <strong>{plan.presetName}</strong>
         </div>
         <div>
-          <span>OUTPUT</span>
-          <strong>{plan.sourceImageRef ? "RASTER FORGE" : "APP ELEMENT"}</strong>
+          <span>SCENE</span>
+          <strong>WEBGL · X/Y/Z + TIME</strong>
         </div>
       </div>
+
       <div className="hf-metric-grid">
         <div><span>Shift</span><strong>{p.colorShift}%</strong></div>
         <div><span>Depth</span><strong>{p.depth}%</strong></div>
         <div><span>Reflect</span><strong>{p.reflection}%</strong></div>
         <div><span>Glow</span><strong>{p.glow}%</strong></div>
       </div>
+
       <p className="hf-boundary-copy">
-        Depth, color shift, reflection, glow, grain, angle and transparency drive the forged static material. Motion mode remains a live preview behavior because Canva app elements do not preserve HoloForge animation playback.
+        This SPATIAL view is now a real Three.js scene inside the Canva app iframe. Orbit, pan, zoom,
+        object selection, playback and timeline scrubbing operate on the HoloScene contract. Mesh
+        generation, custom shaders and production 3D exports are intentionally reserved for the next
+        backend/geometry batches.
       </p>
     </div>
   );
