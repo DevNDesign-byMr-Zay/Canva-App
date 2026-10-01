@@ -14,6 +14,9 @@ from pathlib import Path
 
 import bpy
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from source_geometry import normalize_contours, useful_contours
+
 args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 if len(args) != 1:
     raise SystemExit("usage: blender --background --python blender_worker.py -- JOB_JSON")
@@ -127,6 +130,157 @@ def decode_data_image(url: str, stem: str) -> Path | None:
     return path
 
 
+def source_alpha_geometry(
+    image,
+    *,
+    max_side: int = 192,
+    alpha_threshold: float = 0.08,
+):
+    source_width, source_height = int(image.size[0]), int(image.size[1])
+    if source_width <= 0 or source_height <= 0:
+        return None
+
+    scale = min(1.0, max_side / max(source_width, source_height))
+    width = max(2, round(source_width * scale))
+    height = max(2, round(source_height * scale))
+
+    analysis = image.copy()
+    try:
+        analysis.scale(width, height)
+        pixels = list(analysis.pixels[:])
+        if len(pixels) < width * height * 4:
+            return None
+
+        mask = bytearray(width * height)
+        opaque = 0
+        for index in range(width * height):
+            alpha = float(pixels[index * 4 + 3])
+            if alpha >= alpha_threshold:
+                mask[index] = 1
+                opaque += 1
+
+        coverage = opaque / max(1, width * height)
+        if coverage <= 0.002 or coverage >= 0.985:
+            return None
+
+        contours = useful_contours(
+            mask,
+            width,
+            height,
+            epsilon=1.15,
+            max_contours=32,
+            minimum_relative_area=0.002,
+        )
+        if not contours:
+            return None
+
+        normalized = normalize_contours(
+            contours,
+            width,
+            height,
+            target_width=2.3,
+        )
+        return {
+            "contours": normalized,
+            "width": 2.3,
+            "height": 2.3 * (source_height / source_width),
+            "coverage": coverage,
+        }
+    finally:
+        bpy.data.images.remove(analysis)
+
+
+def create_extruded_contour_object(
+    item: dict,
+    alpha_geometry: dict,
+    *,
+    thickness: float,
+):
+    curve = bpy.data.curves.new(item["id"] + "-silhouette", type="CURVE")
+    curve.dimensions = "2D"
+    curve.resolution_u = 2
+    curve.render_resolution_u = 2
+    curve.fill_mode = "BOTH"
+    curve.extrude = max(0.01, thickness * 0.5)
+    curve.bevel_depth = min(
+        max(0.0, float(item["geometry"].get("bevelSize", 0.0))),
+        max(0.0, thickness * 0.20),
+    )
+    curve.bevel_resolution = max(
+        0,
+        min(4, int(item["geometry"].get("bevelSegments", 2))),
+    )
+
+    for contour in alpha_geometry["contours"]:
+        if len(contour) < 3:
+            continue
+        spline = curve.splines.new("POLY")
+        spline.points.add(len(contour) - 1)
+        for point, source in zip(spline.points, contour):
+            point.co = (source.x, source.y, 0.0, 1.0)
+        spline.use_cyclic_u = True
+
+    if not curve.splines:
+        bpy.data.curves.remove(curve)
+        return None
+
+    obj = bpy.data.objects.new(item["id"] + "-silhouette", curve)
+    scene.collection.objects.link(obj)
+    obj["holoforge_geometry"] = "alpha-extruded"
+    obj["holoforge_alpha_coverage"] = float(alpha_geometry["coverage"])
+
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    obj = bpy.context.view_layer.objects.active
+    if obj is not None:
+        obj.name = item["id"]
+        obj["holoforge_geometry"] = "alpha-extruded"
+        obj["holoforge_alpha_coverage"] = float(alpha_geometry["coverage"])
+    return obj
+
+
+def attach_source_face(
+    parent,
+    image,
+    alpha_geometry: dict,
+    *,
+    thickness: float,
+):
+    material = bpy.data.materials.new(parent.name + "-source-face")
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes.get("Principled BSDF")
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    if principled:
+        links.new(texture.outputs["Color"], principled.inputs["Base Color"])
+        if texture.outputs.get("Alpha"):
+            links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
+        principled.inputs["Roughness"].default_value = 0.28
+        if "Emission Color" in principled.inputs:
+            links.new(texture.outputs["Color"], principled.inputs["Emission Color"])
+        if "Emission Strength" in principled.inputs:
+            principled.inputs["Emission Strength"].default_value = 0.12
+    material.surface_render_method = "DITHERED"
+
+    bpy.ops.mesh.primitive_plane_add(
+        size=2.0,
+        location=(0.0, 0.0, max(0.012, thickness + 0.014)),
+    )
+    face = bpy.context.object
+    face.name = parent.name + "-source-face"
+    face.scale = (
+        float(alpha_geometry["width"]) / 2.0,
+        float(alpha_geometry["height"]) / 2.0,
+        1.0,
+    )
+    face.data.materials.append(material)
+    face.parent = parent
+    return face
+
+
 def apply_transform(obj, transform: dict):
     position = transform["position"]
     rotation = transform["rotation"]
@@ -200,22 +354,51 @@ def create_object(item: dict):
         source_url = geometry.get("sourceUrl") or scene_data.get("source", {}).get("previewUrl")
         image_path = decode_data_image(source_url, item["id"]) if source_url else None
         if image_path:
-            bpy.ops.mesh.primitive_cube_add(scale=(1.15, 0.72, max(0.015, thickness / 2)))
-            obj = bpy.context.object
             image = bpy.data.images.load(str(image_path))
-            material = material_for(item["material"])
-            nodes = material.node_tree.nodes
-            links = material.node_tree.links
-            texture = nodes.new("ShaderNodeTexImage")
-            texture.image = image
-            principled = nodes.get("Principled BSDF")
-            if principled:
-                links.new(texture.outputs["Color"], principled.inputs["Base Color"])
-                if texture.outputs.get("Alpha"):
-                    links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
-            animate_material(material, item)
-            obj.data.materials.append(material)
-            material = None
+            alpha_geometry = source_alpha_geometry(image)
+
+            if alpha_geometry:
+                obj = create_extruded_contour_object(
+                    item,
+                    alpha_geometry,
+                    thickness=thickness,
+                )
+                if obj is None:
+                    alpha_geometry = None
+
+            if alpha_geometry:
+                material = material_for(item["material"])
+                animate_material(material, item)
+                obj.data.materials.append(material)
+                attach_source_face(
+                    obj,
+                    image,
+                    alpha_geometry,
+                    thickness=thickness,
+                )
+                material = None
+            else:
+                source_width, source_height = int(image.size[0]), int(image.size[1])
+                aspect = source_height / max(1, source_width)
+                plate_height = max(0.35, min(2.2, 2.3 * aspect))
+                bpy.ops.mesh.primitive_cube_add(
+                    scale=(1.15, plate_height / 2.0, max(0.015, thickness / 2))
+                )
+                obj = bpy.context.object
+                obj["holoforge_geometry"] = "plate-fallback"
+                material = material_for(item["material"])
+                nodes = material.node_tree.nodes
+                links = material.node_tree.links
+                texture = nodes.new("ShaderNodeTexImage")
+                texture.image = image
+                principled = nodes.get("Principled BSDF")
+                if principled:
+                    links.new(texture.outputs["Color"], principled.inputs["Base Color"])
+                    if texture.outputs.get("Alpha"):
+                        links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
+                animate_material(material, item)
+                obj.data.materials.append(material)
+                material = None
         elif kind in {"glass", "chrome", "holo_logo", "holo_graphic"}:
             bpy.ops.mesh.primitive_cube_add(scale=(1.15, 0.72, max(0.015, thickness / 2)))
             obj = bpy.context.object
