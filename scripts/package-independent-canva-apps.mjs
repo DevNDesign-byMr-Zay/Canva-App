@@ -417,6 +417,8 @@ for (const app of APPS) {
             "backend/Dockerfile.render",
             "backend/docker-compose.render.yml",
             "backend/render_smoke.py",
+            "backend/source_geometry.py",
+            "backend/test_source_geometry.py",
             "backend/test_models.py",
           ]
         : []),
