@@ -218,11 +218,11 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
         PNG sequences and multi-view quilt PNGs use the authenticated HoloForge
         render backend when configured. Quilt output is display-ready content,
         but optical interlacing still belongs to the connected display runtime.
-        USDZ remains unavailable until its dedicated converter exists.
+        USDZ is generated directly by Blender's USDZ exporter; optical interlacing remains specific to each light-field display runtime.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 6 WORKER IMPLEMENTED
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 7 WORKER IMPLEMENTED
       </span>
     </section>
   );
