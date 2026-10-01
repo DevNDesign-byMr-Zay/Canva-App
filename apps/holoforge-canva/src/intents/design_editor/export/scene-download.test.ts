@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@canva/user", () => ({
+  auth: {
+    getCanvaUserToken: vi.fn(async () => "test-token"),
+  },
+}));
 import type { HoloScene } from "../scene/holo-scene";
 import { serializeHoloScene } from "./export-contract";
 import { parseHoloSceneJson } from "./scene-import";
