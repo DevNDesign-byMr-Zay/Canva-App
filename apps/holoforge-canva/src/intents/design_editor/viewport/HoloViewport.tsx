@@ -13,6 +13,7 @@ import { AnimationPanel } from "../animation/AnimationPanel";
 import { ExportPanel } from "../export/ExportPanel";
 import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
+import { MaterialInspector } from "./MaterialInspector";
 import { ObjectInspector, type TransformMode } from "./ObjectInspector";
 import { SceneControls } from "./SceneControls";
 import { StageEnvironment } from "./StageEnvironment";
@@ -204,6 +205,18 @@ export function HoloViewport({
             type: "patch_transform",
             objectId: selected.id,
             transform,
+          });
+        }}
+      />
+
+      <MaterialInspector
+        object={selected}
+        onPatchObject={(patch) => {
+          if (!selected) return;
+          dispatchPersistent({
+            type: "patch_object",
+            objectId: selected.id,
+            patch,
           });
         }}
       />
