@@ -85,6 +85,17 @@ class GeometrySpec(BaseModel):
     bevelSegments: int = Field(ge=0, le=32)
     meshUrl: str | None = None
 
+    @field_validator("sourceUrl", "meshUrl")
+    @classmethod
+    def embedded_asset_only(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if not value.startswith("data:"):
+            raise ValueError("backend geometry assets must be embedded data URLs")
+        if len(value) > 20 * 1024 * 1024:
+            raise ValueError("embedded geometry asset exceeds 20 MB")
+        return value
+
 
 class MaterialSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -251,6 +262,8 @@ class HoloExportRequest(BaseModel):
             raise ValueError("lightfield-quilt requires quilt options")
         if self.format != "lightfield-quilt" and self.quilt is not None:
             raise ValueError("quilt options are only valid for lightfield-quilt")
+        if self.format in {"mp4", "png-sequence"} and not self.includeAnimation:
+            raise ValueError(f"{self.format} requires includeAnimation=true in render-worker v1")
         return self
 
 
