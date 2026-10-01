@@ -37,16 +37,40 @@ describe("HoloForge export contract", () => {
     expect(capabilityFor("glb").execution).toBe("render-worker");
   });
 
-  it("requires an explicit device layout for light-field quilt output", () => {
-    expect(() => buildExportRequest(scene(), "lightfield-quilt")).toThrow(
-      /explicit device\/profile layout/i,
-    );
+  it("builds a bounded generic 45-view quilt request", () => {
+    const request = buildExportRequest(scene(), "lightfield-quilt");
 
-    expect(
-      buildExportRequest(scene(), "lightfield-quilt", {
-        quilt: { columns: 5, rows: 9, views: 45, viewAspect: 1.6 },
-      }).quilt,
-    ).toEqual({ columns: 5, rows: 9, views: 45, viewAspect: 1.6 });
+    expect(request).toMatchObject({
+      format: "lightfield-quilt",
+      profile: "lightfield-quilt",
+      includeAnimation: false,
+      resolution: { width: 3600, height: 3600 },
+      transparentBackground: true,
+      quilt: {
+        columns: 5,
+        rows: 9,
+        views: 45,
+        viewAspect: 1.8,
+        viewConeDegrees: 40,
+      },
+    });
+    expect(capabilityFor("lightfield-quilt").execution).toBe("render-worker");
+  });
+
+  it("allows an explicit custom quilt layout override", () => {
+    const request = buildExportRequest(scene(), "lightfield-quilt", {
+      resolution: { width: 1200, height: 800 },
+      quilt: {
+        columns: 3,
+        rows: 2,
+        views: 6,
+        viewAspect: 1,
+        viewConeDegrees: 30,
+      },
+    });
+
+    expect(request.quilt?.views).toBe(6);
+    expect(request.quilt?.viewConeDegrees).toBe(30);
   });
 
   it("serializes the actual HoloScene instead of a flattened preview recipe", () => {
