@@ -37,6 +37,61 @@ describe("HoloScene contract", () => {
     });
   });
 
+  it("accepts time-sorted keyframe tracks inside the scene contract", () => {
+    const plan = createEffectPlan({
+      creationType: "chrome",
+      presetId: "iridescent-chrome",
+    });
+    const scene = createHoloScene(plan);
+    const object = scene.objects[0]!;
+    const animated = {
+      ...scene,
+      objects: [{
+        ...object,
+        animationPreset: "custom" as const,
+        animationTracks: [{
+          id: "track-position",
+          property: "position" as const,
+          keyframes: [
+            {id:"position-0",timeMs:0,value:{x:0,y:0,z:0},easing:"linear" as const},
+            {id:"position-1000",timeMs:1000,value:{x:1,y:0,z:0},easing:"ease-in-out" as const},
+          ],
+        }],
+      }],
+    };
+
+    expect(validateHoloScene(animated)).toEqual([]);
+  });
+
+  it("rejects keyframes outside the scene timeline", () => {
+    const plan = createEffectPlan({
+      creationType: "chrome",
+      presetId: "iridescent-chrome",
+    });
+    const scene = createHoloScene(plan);
+    const object = scene.objects[0]!;
+    const invalid = {
+      ...scene,
+      objects: [{
+        ...object,
+        animationTracks: [{
+          id: "track-position",
+          property: "position" as const,
+          keyframes: [
+            {
+              id:"position-late",
+              timeMs:scene.timeline.durationMs + 1,
+              value:{x:0,y:0,z:0},
+              easing:"linear" as const,
+            },
+          ],
+        }],
+      }],
+    };
+
+    expect(validateHoloScene(invalid).join(" ")).toMatch(/outside the timeline/i);
+  });
+
   it("keeps material values normalized for WebGL", () => {
     const plan = createEffectPlan({
       creationType: "glass",

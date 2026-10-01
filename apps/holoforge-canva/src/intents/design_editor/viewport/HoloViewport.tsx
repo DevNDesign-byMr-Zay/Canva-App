@@ -8,6 +8,7 @@ import {
   createHoloSceneState,
   holoSceneReducer,
 } from "../scene/scene-store";
+import { AnimationPanel } from "../animation/AnimationPanel";
 import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
 import { ObjectInspector, type TransformMode } from "./ObjectInspector";
@@ -39,6 +40,29 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
 
   const selected =
     state.scene.objects.find((object) => object.id === state.selectedObjectId) ?? null;
+
+  useEffect(() => {
+    if (!state.scene.timeline.playing) return;
+
+    let frame = 0;
+    let lastPaint = 0;
+    const duration = Math.max(1, state.scene.timeline.durationMs);
+    const anchorTime = performance.now() - state.scene.timeline.currentTimeMs;
+
+    const tick = (now: number) => {
+      if (now - lastPaint >= 32) {
+        dispatch({
+          type: "set_time",
+          currentTimeMs: (now - anchorTime) % duration,
+        });
+        lastPaint = now;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [state.scene.timeline.playing, state.scene.timeline.durationMs]);
 
   return (
     <div className="hf-webgl-shell">
@@ -86,7 +110,10 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
               }
               onTransformingChange={(active) => {
                 setTransforming(active);
-                if (active) setAutoOrbit(false);
+                if (active) {
+                  setAutoOrbit(false);
+                  dispatch({ type: "set_playing", playing: false });
+                }
               }}
             />
           </Suspense>
@@ -150,11 +177,49 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         }}
         onPatchTransform={(transform) => {
           if (!selected) return;
+          dispatch({ type: "set_playing", playing: false });
           dispatch({
             type: "patch_transform",
             objectId: selected.id,
             transform,
           });
+        }}
+      />
+
+      <AnimationPanel
+        object={selected}
+        currentTimeMs={state.scene.timeline.currentTimeMs}
+        durationMs={state.scene.timeline.durationMs}
+        onPresetChange={(preset) => {
+          if (!selected) return;
+          dispatch({
+            type: "set_animation_preset",
+            objectId: selected.id,
+            preset,
+          });
+        }}
+        onAddPose={() => {
+          if (!selected) return;
+          dispatch({ type: "set_playing", playing: false });
+          dispatch({
+            type: "upsert_transform_pose",
+            objectId: selected.id,
+            timeMs: state.scene.timeline.currentTimeMs,
+          });
+        }}
+        onRemovePose={() => {
+          if (!selected) return;
+          dispatch({
+            type: "remove_transform_pose",
+            objectId: selected.id,
+            timeMs: state.scene.timeline.currentTimeMs,
+          });
+        }}
+        onClearAnimation={() => {
+          if (!selected) return;
+          dispatch({ type: "clear_animation", objectId: selected.id });
+          dispatch({ type: "set_playing", playing: false });
+          dispatch({ type: "set_time", currentTimeMs: 0 });
         }}
       />
 
@@ -167,19 +232,20 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
           max={state.scene.timeline.durationMs}
           step={1000 / state.scene.timeline.fps}
           value={state.scene.timeline.currentTimeMs}
-          onChange={(event) =>
+          onChange={(event) => {
+            dispatch({ type: "set_playing", playing: false });
             dispatch({
               type: "set_time",
               currentTimeMs: Number(event.currentTarget.value),
-            })
-          }
+            });
+          }}
         />
         <span>{(state.scene.timeline.durationMs / 1000).toFixed(1)}s</span>
       </div>
 
       <p className="hf-webgl-help">
-        Select the object, then MOVE / ROTATE / SCALE with the 3D gizmo or numeric inspector.
-        Drag empty space to orbit · wheel/pinch to zoom · right-drag to pan.
+        Select the object, MOVE / ROTATE / SCALE it, scrub time, then ADD POSE to author real
+        transform keyframes. Drag empty space to orbit · wheel/pinch to zoom · right-drag to pan.
       </p>
     </div>
   );

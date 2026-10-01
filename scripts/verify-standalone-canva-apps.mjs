@@ -33,6 +33,9 @@ const APPS = {
       "src/intents/design_editor/scene/scene-store.test.ts",
       "src/intents/design_editor/materials/HoloMaterial.tsx",
       "src/intents/design_editor/materials/SpectralHoloMaterial.tsx",
+      "src/intents/design_editor/animation/keyframe-model.ts",
+      "src/intents/design_editor/animation/keyframe-model.test.ts",
+      "src/intents/design_editor/animation/AnimationPanel.tsx",
       "src/intents/design_editor/geometry/alpha-contour.ts",
       "src/intents/design_editor/geometry/alpha-contour.test.ts",
       "src/intents/design_editor/geometry/use-alpha-shape.ts",
@@ -304,7 +307,9 @@ for (const marker of [
   "<OrbitControls",
   "<HoloScene",
   "<ObjectInspector",
+  "<AnimationPanel",
   "transformMode",
+  "requestAnimationFrame",
   "WEBGL LIVE",
   "AUTO ORBIT",
   "HoloForge timeline",
@@ -372,6 +377,36 @@ for (const marker of [
   }
 }
 
+const holoKeyframes = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/animation/keyframe-model.ts"),
+);
+for (const marker of [
+  "upsertTransformPose",
+  "removePoseAtTime",
+  "sampleTransformTracks",
+  "poseTimes",
+  "ease-in-out",
+]) {
+  if (!holoKeyframes.includes(marker)) {
+    fail(`holoforge: keyframe animation marker missing: ${marker}`);
+  }
+}
+
+const holoAnimationPanel = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/animation/AnimationPanel.tsx"),
+);
+for (const marker of [
+  "ADD POSE",
+  "REMOVE POSE",
+  "TIME / MOTION",
+  "onPresetChange",
+  "onClearAnimation",
+]) {
+  if (!holoAnimationPanel.includes(marker)) {
+    fail(`holoforge: animation authoring UI marker missing: ${marker}`);
+  }
+}
+
 const holoSceneContract = readText(
   full(APPS.holoforge.root, "src/intents/design_editor/scene/holo-scene.ts"),
 );
@@ -381,6 +416,8 @@ for (const marker of [
   "export type HoloObject",
   "export type HoloMaterialSpec",
   "export type HoloTimeline",
+  "export type HoloAnimationTrack",
+  "export type HoloKeyframe",
   "createHoloScene",
   "validateHoloScene",
 ]) {
@@ -491,7 +528,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + real WebGL scene + transform gizmos + alpha-silhouette extrusion + spectral shader + Canva forge routes");
+console.log(" - HoloForge: independent app + real WebGL scene + transforms + alpha extrusion + spectral shader + serializable keyframe animation + Canva forge routes");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");

@@ -40,7 +40,7 @@ The current SPATIAL editor uses:
 
 The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
 
-The WebGL foundation deliberately does **not** claim that full SVG/alpha contour extrusion, custom diffraction shaders, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those are later geometry/material/export batches.
+The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, and serializable transform keyframes. It still does **not** claim that full vector mesh reconstruction, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those remain later backend/export batches.
 
 ## Object manipulation and source geometry
 
@@ -58,6 +58,20 @@ For uploaded transparent raster sources, HoloForge analyzes the alpha channel in
 Iridescent, foil, and neon material families now use a dedicated animated spectral shader with view-angle Fresnel response, spectral color shift, diffraction, scan-line modulation, shimmer, reflection contribution, and time-driven emission. Glass/crystal/metal families continue through the physical-material path.
 
 This remains a client-side authoring foundation. High-quality production mesh reconstruction and export rendering remain separate backend batches.
+
+## 4D animation authoring
+
+HoloForge now treats time as scene data instead of only playing decorative CSS/WebGL motion presets.
+
+Each `HoloObject` can carry serializable transform animation tracks for:
+
+- position;
+- rotation;
+- scale.
+
+The SPATIAL studio supports built-in motion presets plus a **CUSTOM** mode. In custom mode, the user can scrub the timeline, move/rotate/scale the object, and add a synchronized transform pose at the current time. HoloForge stores those values as keyframes in the scene contract and interpolates between them with explicit easing.
+
+The timeline playback loop updates scene time rather than hiding animation state inside the renderer. That makes the authored motion suitable for later conversion into GLB animation clips, Blender keyframes, or rendered video without reverse-engineering the preview.
 
 ## Image source behavior
 

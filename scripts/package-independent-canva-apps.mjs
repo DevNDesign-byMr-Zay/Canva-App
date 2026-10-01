@@ -187,7 +187,7 @@ for (const app of APPS) {
       join(destination, "src", "intents", "design_editor", "viewport", "HoloViewport.tsx"),
       "utf8",
     );
-    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "<ObjectInspector", "WEBGL LIVE"]) {
+    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "<ObjectInspector", "<AnimationPanel", "requestAnimationFrame", "WEBGL LIVE"]) {
       if (!webglViewport.includes(marker)) {
         throw new Error(`HoloForge WebGL studio missing packaged marker: ${marker}`);
       }
@@ -220,6 +220,16 @@ for (const app of APPS) {
     for (const marker of ["ShaderMaterial", "uSpectralShift", "uDiffraction", "fresnel"]) {
       if (!spectral.includes(marker)) {
         throw new Error(`HoloForge spectral material missing packaged marker: ${marker}`);
+      }
+    }
+
+    const keyframes = await readFile(
+      join(destination, "src", "intents", "design_editor", "animation", "keyframe-model.ts"),
+      "utf8",
+    );
+    for (const marker of ["upsertTransformPose", "sampleTransformTracks", "poseTimes"]) {
+      if (!keyframes.includes(marker)) {
+        throw new Error(`HoloForge keyframe engine missing packaged marker: ${marker}`);
       }
     }
 
@@ -320,6 +330,9 @@ for (const app of APPS) {
           "src/intents/design_editor/scene/scene-store.ts",
           "src/intents/design_editor/materials/HoloMaterial.tsx",
           "src/intents/design_editor/materials/SpectralHoloMaterial.tsx",
+          "src/intents/design_editor/animation/keyframe-model.ts",
+          "src/intents/design_editor/animation/keyframe-model.test.ts",
+          "src/intents/design_editor/animation/AnimationPanel.tsx",
           "src/intents/design_editor/geometry/alpha-contour.ts",
           "src/intents/design_editor/geometry/alpha-contour.test.ts",
           "src/intents/design_editor/geometry/use-alpha-shape.ts",

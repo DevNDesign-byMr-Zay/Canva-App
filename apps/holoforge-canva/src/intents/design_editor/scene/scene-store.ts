@@ -1,4 +1,13 @@
-import type { HoloScene, HoloTimeline, SceneTransform } from "./holo-scene";
+import {
+  removePoseAtTime,
+  upsertTransformPose,
+} from "../animation/keyframe-model";
+import type {
+  HoloAnimationPreset,
+  HoloScene,
+  HoloTimeline,
+  SceneTransform,
+} from "./holo-scene";
 import { patchHoloObject } from "./holo-object";
 
 export type HoloSceneState = Readonly<{
@@ -19,7 +28,23 @@ export type HoloSceneAction =
       }>;
     }>
   | Readonly<{ type: "set_time"; currentTimeMs: number }>
-  | Readonly<{ type: "set_playing"; playing: boolean }>;
+  | Readonly<{ type: "set_playing"; playing: boolean }>
+  | Readonly<{
+      type: "set_animation_preset";
+      objectId: string;
+      preset: HoloAnimationPreset;
+    }>
+  | Readonly<{
+      type: "upsert_transform_pose";
+      objectId: string;
+      timeMs: number;
+    }>
+  | Readonly<{
+      type: "remove_transform_pose";
+      objectId: string;
+      timeMs: number;
+    }>
+  | Readonly<{ type: "clear_animation"; objectId: string }>;
 
 function replaceTimeline(scene: HoloScene, timeline: HoloTimeline): HoloScene {
   return Object.freeze({ ...scene, timeline });
@@ -83,6 +108,72 @@ export function holoSceneReducer(
           Object.freeze({ ...state.scene.timeline, playing: action.playing }),
         ),
       });
+
+    case "set_animation_preset": {
+      const objects = state.scene.objects.map((object) =>
+        object.id === action.objectId
+          ? Object.freeze({ ...object, animationPreset: action.preset })
+          : object,
+      );
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
+
+    case "upsert_transform_pose": {
+      const objects = state.scene.objects.map((object) =>
+        object.id === action.objectId
+          ? Object.freeze({
+              ...object,
+              animationPreset: "custom" as const,
+              animationTracks: upsertTransformPose(
+                object.animationTracks,
+                object.transform,
+                action.timeMs,
+              ),
+            })
+          : object,
+      );
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
+
+    case "remove_transform_pose": {
+      const objects = state.scene.objects.map((object) =>
+        object.id === action.objectId
+          ? Object.freeze({
+              ...object,
+              animationTracks: removePoseAtTime(
+                object.animationTracks,
+                action.timeMs,
+              ),
+            })
+          : object,
+      );
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
+
+    case "clear_animation": {
+      const objects = state.scene.objects.map((object) =>
+        object.id === action.objectId
+          ? Object.freeze({
+              ...object,
+              animationPreset: "static" as const,
+              animationTracks: Object.freeze([]),
+            })
+          : object,
+      );
+      return Object.freeze({
+        ...state,
+        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+      });
+    }
 
     default:
       return state;

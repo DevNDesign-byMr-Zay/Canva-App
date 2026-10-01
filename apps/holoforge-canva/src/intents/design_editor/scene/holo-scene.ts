@@ -53,6 +53,22 @@ export type HoloAnimationPreset =
   | "orbit"
   | "custom";
 
+export type HoloAnimationEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type HoloAnimationProperty = "position" | "rotation" | "scale";
+
+export type HoloKeyframe = Readonly<{
+  id: string;
+  timeMs: number;
+  value: Vec3;
+  easing: HoloAnimationEasing;
+}>;
+
+export type HoloAnimationTrack = Readonly<{
+  id: string;
+  property: HoloAnimationProperty;
+  keyframes: readonly HoloKeyframe[];
+}>;
+
 export type HoloObject = Readonly<{
   id: string;
   name: string;
@@ -61,6 +77,7 @@ export type HoloObject = Readonly<{
   material: HoloMaterialSpec;
   transform: SceneTransform;
   animationPreset: HoloAnimationPreset;
+  animationTracks: readonly HoloAnimationTrack[];
   sourceText?: string;
   visible: boolean;
 }>;
@@ -258,6 +275,7 @@ export function createHoloScene(
         material: materialFromPlan(plan, family),
         transform: defaultTransform(plan),
         animationPreset: motionToAnimation(plan.parameters.motionMode),
+        animationTracks: Object.freeze([]),
         sourceText: plan.sourceText,
         visible: true,
       }),
@@ -303,6 +321,19 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
     }
     if (object.geometry.thickness < 0) {
       errors.push(`object ${object.id} thickness must be non-negative`);
+    }
+    for (const track of object.animationTracks) {
+      if (!track.id.trim()) errors.push(`object ${object.id} animation track id is required`);
+      let previousTime = -1;
+      for (const keyframe of track.keyframes) {
+        if (keyframe.timeMs < 0 || keyframe.timeMs > scene.timeline.durationMs) {
+          errors.push(`object ${object.id} keyframe ${keyframe.id} is outside the timeline`);
+        }
+        if (keyframe.timeMs < previousTime) {
+          errors.push(`object ${object.id} keyframes must be time-sorted`);
+        }
+        previousTime = keyframe.timeMs;
+      }
     }
   }
 

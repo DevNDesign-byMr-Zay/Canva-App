@@ -15,6 +15,7 @@ import {
   type Group,
 } from "three";
 
+import { sampleTransformTracks } from "../animation/keyframe-model";
 import { useAlphaShape } from "../geometry/use-alpha-shape";
 import { HoloMaterial } from "../materials/HoloMaterial";
 import type { HoloObject as HoloObjectSpec } from "../scene/holo-scene";
@@ -99,14 +100,43 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
   const alphaShape = useAlphaShape(object.geometry.sourceUrl);
   const baseScale = object.transform.scale;
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const target = animated.current;
     if (!target || !object.visible) return;
 
-    const time = playing ? clock.getElapsedTime() : currentTimeMs / 1000;
+    const time = currentTimeMs / 1000;
     target.position.set(0, 0, 0);
     target.rotation.set(0, 0, 0);
     target.scale.set(1, 1, 1);
+
+    if (object.animationPreset === "custom" && object.animationTracks.length > 0) {
+      const sampled = sampleTransformTracks(object.animationTracks, currentTimeMs);
+
+      if (sampled.position) {
+        target.position.set(
+          sampled.position.x - object.transform.position.x,
+          sampled.position.y - object.transform.position.y,
+          sampled.position.z - object.transform.position.z,
+        );
+      }
+      if (sampled.rotation) {
+        target.rotation.set(
+          sampled.rotation.x - object.transform.rotation.x,
+          sampled.rotation.y - object.transform.rotation.y,
+          sampled.rotation.z - object.transform.rotation.z,
+        );
+      }
+      if (sampled.scale) {
+        target.scale.set(
+          sampled.scale.x / Math.max(0.0001, object.transform.scale.x),
+          sampled.scale.y / Math.max(0.0001, object.transform.scale.y),
+          sampled.scale.z / Math.max(0.0001, object.transform.scale.z),
+        );
+      }
+      return;
+    }
+
+    if (!playing && object.animationPreset !== "static") return;
 
     switch (object.animationPreset) {
       case "shimmer":
