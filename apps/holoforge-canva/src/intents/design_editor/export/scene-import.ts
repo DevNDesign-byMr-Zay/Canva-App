@@ -300,6 +300,39 @@ function isHoloSceneShape(value: unknown): value is HoloScene {
   );
 }
 
+function restoreSharedRasterSource(scene: HoloScene): HoloScene {
+  const sharedSource = scene.source.previewUrl;
+  if (!sharedSource) return scene;
+
+  let changed = false;
+  const objects = scene.objects.map((object) => {
+    if (
+      object.geometry.sourceUrl !== undefined ||
+      object.geometry.type !== "plane" ||
+      (object.creationType !== "holo_logo" &&
+        object.creationType !== "holo_graphic")
+    ) {
+      return object;
+    }
+
+    changed = true;
+    return {
+      ...object,
+      geometry: {
+        ...object.geometry,
+        sourceUrl: sharedSource,
+      },
+    };
+  });
+
+  return changed
+    ? {
+        ...scene,
+        objects,
+      }
+    : scene;
+}
+
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -329,12 +362,13 @@ export function parseHoloSceneJson(text: string): HoloScene {
     throw new Error("File does not match the HoloScene v1 structure.");
   }
 
-  const errors = validateHoloScene(parsed);
+  const restored = restoreSharedRasterSource(parsed);
+  const errors = validateHoloScene(restored);
   if (errors.length) {
     throw new Error("HoloScene validation failed: " + errors.join("; "));
   }
 
-  return deepFreeze(parsed);
+  return deepFreeze(restored);
 }
 
 export async function readHoloSceneFile(file: File): Promise<HoloScene> {
