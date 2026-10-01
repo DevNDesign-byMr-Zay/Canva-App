@@ -39,6 +39,25 @@ describe("HoloScene import", () => {
     ).toThrow(/does not match the HoloScene v1 structure/i);
   });
 
+  it("rejects remote source URLs so reopened projects stay self-contained", () => {
+    const parsed = JSON.parse(fixtureJson());
+    parsed.source.previewUrl = "https://example.com/source.png";
+    parsed.objects[0].geometry.sourceUrl = "https://example.com/source.png";
+
+    expect(() => parseHoloSceneJson(JSON.stringify(parsed))).toThrow(
+      /does not match the HoloScene v1 structure/i,
+    );
+  });
+
+  it("rejects external mesh URLs from imported projects", () => {
+    const parsed = JSON.parse(fixtureJson());
+    parsed.objects[0].geometry.meshUrl = "https://example.com/model.glb";
+
+    expect(() => parseHoloSceneJson(JSON.stringify(parsed))).toThrow(
+      /does not match the HoloScene v1 structure/i,
+    );
+  });
+
   it("rejects duplicate object ids through semantic validation", () => {
     const parsed = JSON.parse(fixtureJson());
     parsed.objects.push({
