@@ -79,6 +79,12 @@ The SPATIAL workspace now owns a real editable HoloScene session instead of rebu
 
 Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
 
+## HoloScene project round-trip
+
+HoloScene JSON is now a real editable project format rather than a one-way diagnostic export. Operators can reopen a previously downloaded HoloScene file and return directly to SPATIAL with its objects, materials, geometry, transforms, camera, environment, timeline, animation presets and authored keyframes restored.
+
+Imports are bounded to 25 MB, parsed locally, checked against the v1 runtime structure, passed through semantic HoloScene validation, and recursively frozen before entering studio state. Invalid JSON, malformed scene shapes, duplicate object IDs and out-of-range keyframes fail with an explicit import message instead of partially mutating the current scene.
+
 ## Multi-object scene composition
 
 The SPATIAL workspace now treats HoloScene as a real object stack instead of a single disposable preview. Operators can select, duplicate, hide/show, reorder and remove holographic objects while preserving unique object IDs and a valid scene selection.
