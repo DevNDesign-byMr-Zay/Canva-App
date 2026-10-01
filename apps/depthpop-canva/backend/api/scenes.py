@@ -4,11 +4,16 @@ import asyncio
 import uuid
 from typing import Callable
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from auth import verify_canva_user, VerifiedCanvaUser
 from models.job import DepthJob
 from services.persistence import job_repo, scene_repo
 from services.scene_builder import SceneBuilderService
+from services.upload import validate_and_read_upload
 
 router = APIRouter(prefix="/api/v1/scenes", tags=["scenes"])
+
+SUPPORTED_SEGMENTATION_MODES = {"auto", "florence_sam3", "mock"}
+SUPPORTED_DEPTH_QUALITIES = {"high", "standard"}
 
 
 async def run_scene_decomposition_job(
@@ -20,22 +25,26 @@ async def run_scene_decomposition_job(
     segmentation_mode: str,
     depth_quality: str,
     inpaint: bool,
+    user_id: str,
+    brand_id: str,
     builder_service: SceneBuilderService | None = None,
 ) -> None:
     builder = builder_service or SceneBuilderService()
+    current_stage = "queued"
+
+    async def report_stage(stage_name: str, progress_val: float) -> None:
+        nonlocal current_stage
+        current_stage = stage_name
+        await job_repo.update_job_stage(
+            job_id,
+            stage=stage_name,
+            status="processing",
+            progress=progress_val,
+            user_id=user_id,
+            brand_id=brand_id,
+        )
+
     try:
-        await job_repo.update_job_stage(job_id, stage="decoding", status="processing", progress=0.1)
-
-        await job_repo.update_job_stage(job_id, stage="segmenting_objects", progress=0.25)
-
-        await job_repo.update_job_stage(job_id, stage="estimating_depth", progress=0.50)
-
-        await job_repo.update_job_stage(job_id, stage="extracting_objects", progress=0.70)
-
-        await job_repo.update_job_stage(job_id, stage="reconstructing_plate", progress=0.85)
-
-        await job_repo.update_job_stage(job_id, stage="building_scene", progress=0.95)
-
         scene = await builder.build_scene(
             image_bytes=raw_image_bytes,
             source_asset_id=source_asset_id,
@@ -44,8 +53,10 @@ async def run_scene_decomposition_job(
             segmentation_mode=segmentation_mode,
             depth_quality=depth_quality,
             inpaint=inpaint,
+            stage_reporter=report_stage,
         )
 
+        scene = scene.model_copy(update={"userId": user_id, "brandId": brand_id})
         await scene_repo.save_scene(scene)
 
         await job_repo.update_job_stage(
@@ -54,14 +65,18 @@ async def run_scene_decomposition_job(
             status="complete",
             scene_id=scene.id,
             progress=1.0,
+            user_id=user_id,
+            brand_id=brand_id,
         )
     except Exception as exc:
         await job_repo.update_job_stage(
             job_id,
-            stage="error",
+            stage=current_stage if current_stage != "queued" else "error",
             status="error",
             error=str(exc),
             progress=1.0,
+            user_id=user_id,
+            brand_id=brand_id,
         )
 
 
@@ -74,26 +89,34 @@ async def create_scene(
     segmentation_mode: str = Form("auto"),
     depth_quality: str = Form("high"),
     inpaint: bool = Form(True),
+    user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    # Read and validate image
-    raw_bytes = await image.read()
-    if not raw_bytes:
-        raise HTTPException(status_code=400, detail="Uploaded image is empty")
+    if segmentation_mode not in SUPPORTED_SEGMENTATION_MODES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported segmentation_mode '{segmentation_mode}'. Supported: {sorted(SUPPORTED_SEGMENTATION_MODES)}",
+        )
+    if depth_quality not in SUPPORTED_DEPTH_QUALITIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported depth_quality '{depth_quality}'. Supported: {sorted(SUPPORTED_DEPTH_QUALITIES)}",
+        )
+
+    raw_bytes, detected_mime = await validate_and_read_upload(image)
 
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     asset_id = f"asset_{uuid.uuid4().hex[:8]}"
 
-    # URL Builder for caching generated cutouts, masks, thumbnails, plates
     from app import _cache_put, _public_url
 
     def build_url(data: bytes, mime: str) -> str:
         key = _cache_put(data, mime)
         return _public_url(request, f"/cache/image/{key}")
 
-    # Initialize job in queued state
-    await job_repo.update_job_stage(job_id, stage="queued", status="queued", progress=0.0)
+    await job_repo.update_job_stage(
+        job_id, stage="queued", status="queued", progress=0.0, user_id=user.user_id, brand_id=user.brand_id
+    )
 
-    # Schedule background task
     background_tasks.add_task(
         run_scene_decomposition_job,
         job_id=job_id,
@@ -104,15 +127,20 @@ async def create_scene(
         segmentation_mode=segmentation_mode,
         depth_quality=depth_quality,
         inpaint=inpaint,
+        user_id=user.user_id,
+        brand_id=user.brand_id,
     )
 
     return {"jobId": job_id, "status": "queued"}
 
 
 @router.get("/{scene_id}")
-async def get_scene(scene_id: str) -> dict:
+async def get_scene(
+    scene_id: str,
+    user: VerifiedCanvaUser = Depends(verify_canva_user),
+) -> dict:
     scene = await scene_repo.get_scene(scene_id)
-    if not scene:
+    if not scene or (scene.userId and scene.userId != user.user_id) or (scene.brandId and scene.brandId != user.brand_id):
         raise HTTPException(status_code=404, detail="Scene not found")
 
     return scene.model_dump(mode="json", by_alias=True)

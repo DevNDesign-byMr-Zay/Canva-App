@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import math
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SemanticType = Literal[
     "person",
@@ -20,12 +21,26 @@ class Vector3(BaseModel):
     y: float = 0.0
     z: float = 0.0
 
+    @field_validator("x", "y", "z")
+    @classmethod
+    def check_finite(cls, v: float) -> float:
+        if not math.isfinite(v):
+            raise ValueError("Vector3 coordinates must be finite float numbers")
+        return v
+
 
 class BBox(BaseModel):
     x: float
     y: float
-    width: float
-    height: float
+    width: float = Field(..., gt=0.0)
+    height: float = Field(..., gt=0.0)
+
+    @field_validator("x", "y", "width", "height")
+    @classmethod
+    def check_finite(cls, v: float) -> float:
+        if not math.isfinite(v):
+            raise ValueError("BBox values must be finite float numbers")
+        return v
 
 
 class ObjectAssets(BaseModel):
@@ -37,10 +52,10 @@ class ObjectAssets(BaseModel):
 
 
 class ObjectDepthStats(BaseModel):
-    mean: float
-    median: float
-    min: float
-    max: float
+    mean: float = Field(..., ge=0.0, le=1.0)
+    median: float = Field(..., ge=0.0, le=1.0)
+    min: float = Field(..., ge=0.0, le=1.0)
+    max: float = Field(..., ge=0.0, le=1.0)
 
 
 class ObjectTransform(BaseModel):
@@ -52,17 +67,17 @@ class ObjectTransform(BaseModel):
 class DepthObject(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str
-    label: str
+    id: str = Field(..., min_length=1)
+    label: str = Field(..., min_length=1)
     semanticType: SemanticType = Field(..., alias="semanticType")
-    confidence: float
+    confidence: float = Field(..., ge=0.0, le=1.0)
     bbox: BBox
     assets: ObjectAssets
     depth: ObjectDepthStats
     transform: ObjectTransform = Field(default_factory=ObjectTransform)
-    opacity: float = 1.0
-    feather: float = 0.0
+    opacity: float = Field(1.0, ge=0.0, le=1.0)
+    feather: float = Field(0.0, ge=0.0, le=100.0)
     visible: bool = True
     locked: bool = False
-    order: int
+    order: int = Field(..., ge=0)
     animationTracks: list[Any] = Field(default_factory=list, alias="animationTracks")

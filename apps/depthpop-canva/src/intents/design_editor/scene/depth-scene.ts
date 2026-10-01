@@ -88,17 +88,50 @@ export interface DepthScene {
   updatedAt: string;
 }
 
+export function isDepthObject(obj: unknown): obj is DepthObject {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Partial<DepthObject>;
+  return (
+    typeof o.id === "string" &&
+    o.id.length > 0 &&
+    typeof o.label === "string" &&
+    typeof o.semanticType === "string" &&
+    typeof o.confidence === "number" &&
+    o.confidence >= 0 &&
+    o.confidence <= 1 &&
+    typeof o.bbox === "object" &&
+    o.bbox !== null &&
+    typeof o.bbox.width === "number" &&
+    o.bbox.width > 0 &&
+    typeof o.assets === "object" &&
+    o.assets !== null &&
+    typeof o.assets.cutoutUrl === "string" &&
+    typeof o.depth === "object" &&
+    o.depth !== null &&
+    typeof o.depth.mean === "number" &&
+    o.depth.mean >= 0 &&
+    o.depth.mean <= 1 &&
+    typeof o.transform === "object" &&
+    o.transform !== null
+  );
+}
+
 export function isDepthScene(obj: unknown): obj is DepthScene {
   if (typeof obj !== "object" || obj === null) return false;
   const scene = obj as Partial<DepthScene>;
   return (
     scene.schemaVersion === 1 &&
     typeof scene.id === "string" &&
+    scene.id.length > 0 &&
     typeof scene.sourceAssetId === "string" &&
     typeof scene.width === "number" &&
+    scene.width > 0 &&
     typeof scene.height === "number" &&
+    scene.height > 0 &&
     Array.isArray(scene.objects) &&
+    scene.objects.every(isDepthObject) &&
     typeof scene.reconstructedPlate === "object" &&
-    scene.reconstructedPlate !== null
+    scene.reconstructedPlate !== null &&
+    typeof scene.reconstructedPlate.imageUrl === "string"
   );
 }

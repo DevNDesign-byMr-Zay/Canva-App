@@ -21,6 +21,8 @@ class DepthJob(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     jobId: str = Field(..., alias="jobId")
+    userId: str = Field(..., alias="userId")
+    brandId: str = Field(..., alias="brandId")
     status: JobStatus
     stage: JobStage
     progress: float = 0.0

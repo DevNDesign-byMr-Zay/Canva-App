@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import time
 import uuid
-from typing import Callable
+from typing import Awaitable, Callable
 import numpy as np
 from PIL import Image
 from models.object import DepthObject
@@ -17,6 +17,8 @@ from services.depth import DepthService
 from services.inpainting import InpaintingService
 from services.object_builder import build_depth_object
 from services.segmentation import SegmentationService
+
+StageReporter = Callable[[str, float], Awaitable[None]]
 
 
 class SceneBuilderService:
@@ -39,18 +41,29 @@ class SceneBuilderService:
         segmentation_mode: str = "auto",
         depth_quality: str = "high",
         inpaint: bool = True,
+        stage_reporter: StageReporter | None = None,
     ) -> DepthScene:
-        # 1. Decode Image & Normalize
+        # 1. Decoding
+        if stage_reporter:
+            await stage_reporter("decoding", 0.10)
+
         with Image.open(io.BytesIO(image_bytes)) as img:
             width, height = img.size
 
-        # 2. Segmentation
+        # 2. Segmenting objects
+        if stage_reporter:
+            await stage_reporter("segmenting_objects", 0.25)
         segmented_objs = await self.seg_service.segment_objects(image_bytes, max_objects=max_objects)
 
-        # 3. Depth Estimation
+        # 3. Estimating depth
+        if stage_reporter:
+            await stage_reporter("estimating_depth", 0.50)
         depth_map = await self.depth_service.estimate_depth(image_bytes)
 
-        # 4. Build Individual Objects & Ensure ID Uniqueness
+        # 4. Extracting objects
+        if stage_reporter:
+            await stage_reporter("extracting_objects", 0.70)
+
         raw_objects: list[DepthObject] = []
         id_counts: dict[str, int] = {}
 
@@ -68,7 +81,7 @@ class SceneBuilderService:
             )
             raw_objects.append(obj)
 
-        # Ensure absolute uniqueness across all IDs
+        # ID Uniqueness
         seen_ids: set[str] = set()
         final_objects: list[DepthObject] = []
         for obj in raw_objects:
@@ -84,15 +97,16 @@ class SceneBuilderService:
                 obj = obj.model_copy(update={"id": new_id})
             final_objects.append(obj)
 
-        # 5. Order Objects by Measured Depth (Z-Order based on depth statistics)
-        # Higher median depth value = further away (larger z-distance / lower z-order)
+        # Order by measured depth
         final_objects.sort(key=lambda o: o.depth.median, reverse=True)
         for idx, obj in enumerate(final_objects):
             obj.order = idx
 
-        # 6. Reconstructed Background Plate
+        # 5. Reconstructing plate
+        if stage_reporter:
+            await stage_reporter("reconstructing_plate", 0.85)
+
         if inpaint and final_objects:
-            # Combine all object masks into union mask
             union_mask = np.zeros((height, width), dtype=bool)
             for seg_obj in segmented_objs:
                 if seg_obj.mask_array is not None and seg_obj.mask_array.shape == (height, width):
@@ -109,7 +123,10 @@ class SceneBuilderService:
 
         depth_map_url = depth_map.provider_url or url_builder(depth_map.raw_depth, "image/png")
 
-        # 7. Construct DepthScene
+        # 6. Building scene
+        if stage_reporter:
+            await stage_reporter("building_scene", 0.95)
+
         scene_id = f"scene_{uuid.uuid4().hex[:12]}"
         now_str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 

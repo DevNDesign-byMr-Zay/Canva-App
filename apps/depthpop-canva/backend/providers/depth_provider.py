@@ -25,6 +25,21 @@ class DepthProvider(Protocol):
     async def estimate(self, image: bytes) -> DepthMap: ...
 
 
+def _detect_image_mime(image_bytes: bytes) -> str:
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            fmt = (img.format or "").upper()
+            if fmt == "PNG":
+                return "image/png"
+            if fmt in ("JPEG", "JPG"):
+                return "image/jpeg"
+            if fmt == "WEBP":
+                return "image/webp"
+    except Exception:
+        pass
+    return "image/png"
+
+
 class FalDepthProvider:
     """Wrapped FAL Depth Anything v2 provider."""
 
@@ -33,11 +48,12 @@ class FalDepthProvider:
 
     async def estimate(self, image: bytes) -> DepthMap:
         if not self.fal_key:
-            raise HTTPException(status_code=503, detail="FAL_KEY is not configured")
+            raise HTTPException(
+                status_code=503,
+                detail="Production depth provider is not configured. Set FAL_KEY or DEPTH_PROVIDER=mock for test environment.",
+            )
 
-        with Image.open(io.BytesIO(image)) as probe:
-            mime = "image/png" if probe.format == "PNG" else "image/jpeg"
-
+        mime = _detect_image_mime(image)
         data_url = f"data:{mime};base64," + base64.b64encode(image).decode("ascii")
 
         try:
@@ -125,17 +141,23 @@ class MockDepthProvider:
     """Deterministic depth provider for testing / local execution."""
 
     async def estimate(self, image: bytes) -> DepthMap:
+        env = os.getenv("ENVIRONMENT", "").lower()
+        mode = os.getenv("DEPTH_PROVIDER", "").lower()
+        if env == "production" or (env != "test" and mode != "mock" and "PYTEST_CURRENT_TEST" not in os.environ):
+            raise HTTPException(
+                status_code=503,
+                detail="Mock depth provider is allowed only when ENVIRONMENT=test or DEPTH_PROVIDER=mock",
+            )
+
         with Image.open(io.BytesIO(image)) as img:
             width, height = img.size
 
-        # Create smooth gradient depth map (foreground center = closer/0.2, background edges = further/0.8)
         yy, xx = np.indices((height, width))
         cy, cx = height / 2.0, width / 2.0
         dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
         max_dist = np.sqrt(cx**2 + cy**2) or 1.0
         norm_dist = np.clip(dist / max_dist, 0.0, 1.0)
 
-        # Depth array where 0.1 is close, 0.9 is far
         depth_array = (0.2 + 0.6 * norm_dist).astype(np.float32)
         depth_img = Image.fromarray((depth_array * 255).astype(np.uint8), mode="L")
 

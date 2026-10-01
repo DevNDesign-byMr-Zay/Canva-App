@@ -1,6 +1,6 @@
 from services.persistence import (
-    InMemoryJobRepository,
-    InMemorySceneRepository,
+    BoundedJobRepository,
+    BoundedSceneRepository,
     JobRepository,
     SceneRepository,
     job_repo,
@@ -11,12 +11,13 @@ from services.depth import DepthService, get_depth_provider
 from services.inpainting import InpaintingService
 from services.object_builder import build_depth_object
 from services.scene_builder import SceneBuilderService
+from services.upload import validate_and_read_upload
 
 __all__ = [
     "SceneRepository",
     "JobRepository",
-    "InMemorySceneRepository",
-    "InMemoryJobRepository",
+    "BoundedSceneRepository",
+    "BoundedJobRepository",
     "scene_repo",
     "job_repo",
     "SegmentationService",
@@ -26,4 +27,5 @@ __all__ = [
     "InpaintingService",
     "build_depth_object",
     "SceneBuilderService",
+    "validate_and_read_upload",
 ]

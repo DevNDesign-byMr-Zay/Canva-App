@@ -1,9 +1,11 @@
 from providers.segmentation_provider import (
+    FalSegmentationProvider,
     MockSegmentationProvider,
-    ProductionSegmentationError,
-    ProductionSegmentationProvider,
     SegmentedObject,
     SegmentationProvider,
+    map_label_to_semantic_type,
+    parse_florence2_response,
+    parse_sam3_response,
 )
 from providers.depth_provider import (
     DepthMap,
@@ -19,9 +21,11 @@ from providers.inpaint_provider import (
 __all__ = [
     "SegmentedObject",
     "SegmentationProvider",
-    "ProductionSegmentationError",
-    "ProductionSegmentationProvider",
+    "FalSegmentationProvider",
     "MockSegmentationProvider",
+    "map_label_to_semantic_type",
+    "parse_florence2_response",
+    "parse_sam3_response",
     "DepthMap",
     "DepthProvider",
     "FalDepthProvider",

@@ -17,30 +17,15 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+// prettier-ignore
 export function normalizeDepthPopSettings(
   settings: Partial<DepthPopSettings> = {},
 ): DepthPopSettings {
   return Object.freeze({
-    depthStrength: Number(
-      clamp(
-        settings.depthStrength ?? DEFAULT_DEPTHPOP_SETTINGS.depthStrength,
-        0.05,
-        0.75,
-      ).toFixed(2),
-    ),
-    depthBlur: Math.round(
-      clamp(settings.depthBlur ?? DEFAULT_DEPTHPOP_SETTINGS.depthBlur, 0, 100),
-    ),
-    depthFidelity: Number(
-      clamp(
-        settings.depthFidelity ?? DEFAULT_DEPTHPOP_SETTINGS.depthFidelity,
-        0.05,
-        1,
-      ).toFixed(2),
-    ),
-    steps: Math.round(
-      clamp(settings.steps ?? DEFAULT_DEPTHPOP_SETTINGS.steps, 8, 50),
-    ),
+    depthStrength: Number(clamp(settings.depthStrength ?? DEFAULT_DEPTHPOP_SETTINGS.depthStrength, 0.05, 0.75).toFixed(2)),
+    depthBlur: Math.round(clamp(settings.depthBlur ?? DEFAULT_DEPTHPOP_SETTINGS.depthBlur, 0, 100)),
+    depthFidelity: Number(clamp(settings.depthFidelity ?? DEFAULT_DEPTHPOP_SETTINGS.depthFidelity, 0.05, 1).toFixed(2)),
+    steps: Math.round(clamp(settings.steps ?? DEFAULT_DEPTHPOP_SETTINGS.steps, 8, 50)),
   });
 }
 

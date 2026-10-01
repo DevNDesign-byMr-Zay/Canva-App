@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 from providers.segmentation_provider import (
+    FalSegmentationProvider,
     MockSegmentationProvider,
-    ProductionSegmentationError,
-    ProductionSegmentationProvider,
     SegmentedObject,
     SegmentationProvider,
 )
@@ -12,26 +11,21 @@ from providers.segmentation_provider import (
 
 def get_segmentation_provider() -> SegmentationProvider:
     mode = os.getenv("SEGMENTATION_PROVIDER", "auto").lower().strip()
-    if mode == "production":
-        return ProductionSegmentationProvider(
-            endpoint=os.getenv("SEGMENTATION_ENDPOINT"),
-            api_key=os.getenv("SEGMENTATION_API_KEY"),
-        )
+    if mode == "fal":
+        return FalSegmentationProvider()
     if mode == "mock":
         return MockSegmentationProvider()
 
-    # auto mode: check if production credentials exist, otherwise fail-closed in production, mock in tests
-    endpoint = os.getenv("SEGMENTATION_ENDPOINT", "").strip()
-    api_key = os.getenv("SEGMENTATION_API_KEY", "").strip()
-    if endpoint and api_key:
-        return ProductionSegmentationProvider(endpoint=endpoint, api_key=api_key)
-
+    # auto mode: check if FAL_KEY exists or if running in pytest/test
+    fal_key = os.getenv("FAL_KEY", "").strip()
     is_pytest = "PYTEST_CURRENT_TEST" in os.environ or os.getenv("ENVIRONMENT") == "test"
+
+    if fal_key:
+        return FalSegmentationProvider()
     if is_pytest:
         return MockSegmentationProvider()
 
-    # Fail closed in production if no segmentation provider is configured
-    return ProductionSegmentationProvider()
+    return FalSegmentationProvider()
 
 
 class SegmentationService:
