@@ -1,12 +1,13 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import React, { Suspense, useEffect, useReducer, useState } from "react";
+import React, { Suspense, useEffect, useReducer, useRef, useState } from "react";
 import { SRGBColorSpace } from "three";
 
 import type { HoloScene as HoloSceneSpec } from "../scene/holo-scene";
 import {
   createHoloSceneState,
   holoSceneReducer,
+  type HoloSceneAction,
 } from "../scene/scene-store";
 import { AnimationPanel } from "../animation/AnimationPanel";
 import { ExportPanel } from "../export/ExportPanel";
@@ -24,12 +25,19 @@ function WebGLFallback() {
   );
 }
 
-export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
+export function HoloViewport({
+  scene,
+  onSceneChange,
+}: {
+  scene: HoloSceneSpec;
+  onSceneChange?: (scene: HoloSceneSpec) => void;
+}) {
   const [state, dispatch] = useReducer(
     holoSceneReducer,
     scene,
     createHoloSceneState,
   );
+  const persistNextScene = useRef(false);
   const [autoOrbit, setAutoOrbit] = useState(false);
   const [controlsRevision, setControlsRevision] = useState(0);
   const [transformMode, setTransformMode] = useState<TransformMode>("rotate");
@@ -38,6 +46,17 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
   useEffect(() => {
     dispatch({ type: "replace_scene", scene });
   }, [scene]);
+
+  const dispatchPersistent = (action: HoloSceneAction) => {
+    persistNextScene.current = true;
+    dispatch(action);
+  };
+
+  useEffect(() => {
+    if (!persistNextScene.current) return;
+    persistNextScene.current = false;
+    onSceneChange?.(state.scene);
+  }, [state.scene, onSceneChange]);
 
   const selected =
     state.scene.objects.find((object) => object.id === state.selectedObjectId) ?? null;
@@ -103,7 +122,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
                 dispatch({ type: "select_object", objectId })
               }
               onTransformCommit={(objectId, transform) =>
-                dispatch({
+                dispatchPersistent({
                   type: "patch_transform",
                   objectId,
                   transform,
@@ -149,12 +168,13 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         </button>
         <button
           type="button"
-          onClick={() =>
-            dispatch({
-              type: "set_playing",
-              playing: !state.scene.timeline.playing,
-            })
-          }
+          onClick={() => {
+            if (state.scene.timeline.playing) {
+              dispatchPersistent({ type: "set_playing", playing: false });
+            } else {
+              dispatch({ type: "set_playing", playing: true });
+            }
+          }}
         >
           {state.scene.timeline.playing ? "PAUSE FX" : "PLAY FX"}
         </button>
@@ -179,7 +199,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         onPatchTransform={(transform) => {
           if (!selected) return;
           dispatch({ type: "set_playing", playing: false });
-          dispatch({
+          dispatchPersistent({
             type: "patch_transform",
             objectId: selected.id,
             transform,
@@ -193,7 +213,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         durationMs={state.scene.timeline.durationMs}
         onPresetChange={(preset) => {
           if (!selected) return;
-          dispatch({
+          dispatchPersistent({
             type: "set_animation_preset",
             objectId: selected.id,
             preset,
@@ -202,7 +222,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         onAddPose={() => {
           if (!selected) return;
           dispatch({ type: "set_playing", playing: false });
-          dispatch({
+          dispatchPersistent({
             type: "upsert_transform_pose",
             objectId: selected.id,
             timeMs: state.scene.timeline.currentTimeMs,
@@ -210,7 +230,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         }}
         onRemovePose={() => {
           if (!selected) return;
-          dispatch({
+          dispatchPersistent({
             type: "remove_transform_pose",
             objectId: selected.id,
             timeMs: state.scene.timeline.currentTimeMs,
@@ -218,7 +238,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
         }}
         onClearAnimation={() => {
           if (!selected) return;
-          dispatch({ type: "clear_animation", objectId: selected.id });
+          dispatchPersistent({ type: "clear_animation", objectId: selected.id });
           dispatch({ type: "set_playing", playing: false });
           dispatch({ type: "set_time", currentTimeMs: 0 });
         }}
@@ -237,7 +257,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
           value={state.scene.timeline.currentTimeMs}
           onChange={(event) => {
             dispatch({ type: "set_playing", playing: false });
-            dispatch({
+            dispatchPersistent({
               type: "set_time",
               currentTimeMs: Number(event.currentTarget.value),
             });
