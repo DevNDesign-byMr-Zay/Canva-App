@@ -125,31 +125,6 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
 .hf-capability-note { margin-top:10px; color:#777f90; font-size:8.5px; line-height:1.45; }
 .hf-capability-note p { margin:0; }
 
-.hf-stage { height:225px; display:grid; place-items:center; perspective:620px; border-radius:18px; overflow:hidden; background:radial-gradient(circle at 50% 46%,rgba(109,85,255,.18),rgba(4,6,10,.18) 36%,#020306 78%); border:1px solid rgba(255,255,255,.07); }
-.hf-hologram {
-  position:relative;
-  width:180px;
-  height:126px;
-  transform-style:preserve-3d;
-  transform:rotateX(var(--hf-rx,62deg)) rotateZ(var(--hf-rz,-14deg));
-  animation:hf-float 4.2s ease-in-out infinite alternate;
-}
-@keyframes hf-float {
-  to { transform:rotateX(var(--hf-rx,62deg)) rotateZ(var(--hf-rz,-14deg)) translate3d(0,-7px,8px); }
-}
-.hf-holo-plane {
-  position:absolute;
-  inset:0;
-  border-radius:22px;
-  border:1px solid rgba(255,255,255,.32);
-  background:linear-gradient(120deg,rgba(99,239,255,.62),rgba(156,115,255,.68),rgba(255,114,199,.60),rgba(255,211,107,.58));
-  box-shadow:0 0 var(--hf-glow-size,30px) rgba(111,98,255,.28);
-}
-.hf-holo-plane-back { transform:translateZ(-34px); opacity:.22; }
-.hf-holo-plane-mid { transform:translateZ(-16px); opacity:.40; }
-.hf-holo-plane-front { transform:translateZ(2px); opacity:var(--hf-material-opacity,.70); backdrop-filter:blur(3px); }
-.hf-holo-scan { position:absolute; inset:-20% 38% -20% 38%; transform:translateZ(8px) rotate(18deg); background:linear-gradient(90deg,transparent,rgba(255,255,255,.82),transparent); filter:blur(7px); animation:hf-scan 2.6s linear infinite; }
-@keyframes hf-scan { from { translate:-130% 0; } to { translate:130% 0; } }
 .hf-preview-meta, .hf-receipt { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
 .hf-preview-meta div, .hf-receipt div, .hf-metric-grid div { padding:9px; border-radius:11px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); }
 .hf-preview-meta span, .hf-receipt span, .hf-metric-grid span { display:block; margin-bottom:3px; color:#747c8e; font-size:7px; letter-spacing:.12em; }
@@ -395,73 +370,143 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   mix-blend-mode:screen;
 }
 
-.hf-hologram.motion-static { animation:none; }
-.hf-hologram.motion-static .hf-holo-scan { animation:none; opacity:.16; }
-.hf-hologram.motion-shimmer { animation:hf-shimmer 3.8s ease-in-out infinite alternate; }
-.hf-hologram.motion-shimmer .hf-holo-scan { animation:hf-scan 4.4s ease-in-out infinite; opacity:.56; }
-.hf-hologram.motion-sweep .hf-holo-scan { animation:hf-scan 1.85s linear infinite; opacity:.92; }
-.hf-hologram.motion-pulse { animation:hf-pulse-holo 2.2s ease-in-out infinite; }
-.hf-hologram.motion-pulse .hf-holo-scan { animation:none; opacity:.34; }
 
-@keyframes hf-shimmer {
-  from { filter:saturate(.9) brightness(.92); }
-  to { filter:saturate(1.38) brightness(1.16); transform:rotateX(var(--hf-rx,62deg)) rotateZ(var(--hf-rz,-14deg)) translate3d(0,-5px,7px); }
-}
-@keyframes hf-pulse-holo {
-  0%,100% { filter:brightness(.90) saturate(1); transform:rotateX(var(--hf-rx,62deg)) rotateZ(var(--hf-rz,-14deg)) scale(.985); }
-  50% { filter:brightness(1.24) saturate(1.32); transform:rotateX(var(--hf-rx,62deg)) rotateZ(var(--hf-rz,-14deg)) scale(1.025) translateZ(6px); }
-}
 
-.hf-hologram.creation-holo_text .hf-holo-plane-front {
-  display:grid;
-  place-items:center;
-  background:linear-gradient(120deg,rgba(5,8,16,.62),rgba(30,17,70,.45));
-}
-.hf-spatial-text {
-  max-width:150px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  color:#f7ffff;
-  font-size:15px;
-  font-weight:950;
-  letter-spacing:.12em;
-  text-shadow:
-    -2px 0 0 rgba(55,230,255,.64),
-    2px 0 0 rgba(255,74,208,.54),
-    0 0 var(--hf-glow-size,18px) rgba(111,100,255,.88);
-}
-.hf-hologram.creation-glass .hf-holo-plane {
-  background:linear-gradient(135deg,rgba(225,251,255,.44),rgba(112,215,255,.18),rgba(201,170,255,.22),rgba(255,255,255,.08));
-  border-color:rgba(237,254,255,.62);
-  backdrop-filter:blur(7px);
-}
-.hf-hologram.creation-chrome .hf-holo-plane {
-  background:linear-gradient(160deg,#080a10 4%,#eaf7ff 22%,#313743 38%,#f6fbff 52%,#111620 70%,#875fff 86%,#55edff);
-  filter:saturate(1.08);
-}
-.hf-hologram.creation-light_fx .hf-holo-plane {
-  background:rgba(1,3,8,.16);
-  border-color:rgba(99,239,255,.14);
-}
-.hf-spatial-light-ring {
-  position:absolute;
-  inset:23% 14%;
-  border:5px solid rgba(99,239,255,.66);
-  border-left-color:rgba(255,114,199,.76);
-  border-bottom-color:rgba(156,115,255,.78);
-  border-radius:50%;
+/* Real HoloForge WebGL studio */
+.hf-webgl-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(99,239,255,.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(83,92,255,.13), transparent 44%),
+    #020307;
   box-shadow:
-    0 0 var(--hf-glow-size,24px) rgba(99,239,255,.50),
-    inset 0 0 18px rgba(255,114,199,.20);
+    inset 0 0 34px rgba(0,0,0,.58),
+    0 16px 34px rgba(0,0,0,.18);
 }
-.hf-hologram.creation-holo_logo .hf-source-preview-image {
-  object-fit:contain;
-  filter:saturate(1.55) contrast(1.2) brightness(1.12);
-  mix-blend-mode:screen;
+
+.hf-webgl-canvas {
+  width: 100%;
+  height: 260px;
+  min-height: 260px;
+  background: #020307;
 }
-.hf-hologram.creation-holo_graphic .hf-source-preview-image {
-  object-fit:cover;
-  filter:saturate(1.38) contrast(1.12);
-  mix-blend-mode:screen;
+
+.hf-webgl-canvas > div,
+.hf-webgl-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.hf-webgl-status {
+  position: absolute;
+  z-index: 5;
+  top: 9px;
+  left: 9px;
+  right: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  color: #8c94a6;
+  font-size: 6.8px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.hf-webgl-status b {
+  min-width: 0;
+  margin-left: auto;
+  max-width: 165px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #e9f9ff;
+  font-size: 7px;
+}
+
+.hf-webgl-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #63efff;
+  box-shadow: 0 0 8px rgba(99,239,255,.9);
+}
+
+.hf-webgl-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  padding: 8px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(5,6,10,.90);
+}
+
+.hf-webgl-toolbar button {
+  min-width: 0;
+  padding: 7px 4px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: rgba(255,255,255,.025);
+  color: #8992a4;
+  font: inherit;
+  font-size: 6.8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.hf-webgl-toolbar button:hover,
+.hf-webgl-toolbar button.is-active {
+  color: #fff;
+  border-color: rgba(99,239,255,.34);
+  background: linear-gradient(135deg, rgba(99,239,255,.08), rgba(156,115,255,.10));
+}
+
+.hf-webgl-timeline {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px 8px;
+  background: rgba(5,6,10,.90);
+  color: #737c8e;
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hf-webgl-timeline input {
+  width: 100%;
+  accent-color: #9c73ff;
+}
+
+.hf-webgl-help {
+  margin: 0;
+  padding: 0 10px 9px;
+  background: rgba(5,6,10,.90);
+  color: #697284;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.hf-webgl-fallback {
+  height: 260px;
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  padding: 18px;
+  text-align: center;
+  color: #7e8798;
+  background: #020307;
+}
+
+.hf-webgl-fallback strong {
+  color: #e6faff;
+  font-size: 10px;
+}
+
+.hf-webgl-fallback span {
+  font-size: 8px;
 }
