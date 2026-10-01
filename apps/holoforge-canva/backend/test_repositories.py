@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import time
 from pathlib import Path
 
 import repositories
+from export_service import sha256_file
 from models import ExportArtifact
 from repositories import ArtifactRepository, OwnedKey
 
@@ -102,3 +104,12 @@ def test_cleanup_never_removes_paths_outside_artifact_root(tmp_path, monkeypatch
 
     assert found is None
     assert external_file.is_file()
+
+
+
+def test_sha256_file_matches_standard_digest(tmp_path):
+    payload = (b"HoloForge-render-artifact-" * 100_000) + b"tail"
+    path = tmp_path / "artifact.bin"
+    path.write_bytes(payload)
+
+    assert sha256_file(path, chunk_size=4096) == hashlib.sha256(payload).hexdigest()
