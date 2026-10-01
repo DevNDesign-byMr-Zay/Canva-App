@@ -81,7 +81,7 @@ Current capability state:
 
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
 - **GLB / glTF** — real headless-Blender exports with authored geometry, transforms, materials, camera state and animation/keyframe conversion.
-- **USDZ** — contract remains defined but disabled until a real USD/USDZ conversion lane is implemented.
+- **USDZ** — real Blender-generated USDZ package for the `ios-ar` profile. The first shipping contract is static while GLB/glTF/video remain the qualified animation paths.
 - **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
 - **MP4 / PNG Sequence** — real Blender-worker render outputs.
 - **Light-field Quilt** — real multi-view PNG quilt output. The generic compatibility profile renders 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
@@ -135,7 +135,7 @@ Current backend behavior:
 - light-field quilts freeze the authored scene at the selected timeline time, render discrete camera views across the requested cone, and assemble those views into one quilt PNG;
 - HoloScene materials are normalized through the spectral renderer before Blender receives them, so exported foil/iridescent/pearl/neon materials retain angle-reactive spectrum behavior instead of flattening to one RGB value;
 - transparent raster sources can be alpha-traced and extruded into real silhouette geometry, while unsuitable opaque sources fall back honestly to a plate;
-- USDZ remains disabled until a dedicated converter generates a real target file;
+- USDZ is generated directly by Blender's native USD archive exporter and returned through the authenticated artifact boundary;
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally stays lightweight. Production rendering uses the dedicated Blender image.
@@ -151,9 +151,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `usdz`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
+The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
 
 ## Development
 
