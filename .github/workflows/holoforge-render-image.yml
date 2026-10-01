@@ -46,7 +46,7 @@ jobs:
           docker run --rm holoforge-render:smoke \
             /opt/blender/blender --background --version
 
-      - name: Generate real GLB alpha WebM and quilt smoke artifacts
+      - name: Generate real GLB USDZ alpha WebM and quilt smoke artifacts
         run: |
           docker run --rm holoforge-render:smoke \
             python render_smoke.py
@@ -63,6 +63,7 @@ jobs:
               cat /tmp/holoforge-render-health.json
               grep -q '"glb"' /tmp/holoforge-render-health.json
               grep -q '"gltf"' /tmp/holoforge-render-health.json
+              grep -q '"usdz"' /tmp/holoforge-render-health.json
               grep -q '"webm-alpha"' /tmp/holoforge-render-health.json
               grep -q '"mp4"' /tmp/holoforge-render-health.json
               grep -q '"png-sequence"' /tmp/holoforge-render-health.json
