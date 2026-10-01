@@ -90,6 +90,7 @@ describe("HoloForge export client", () => {
     expect(isWorkerExportImplemented("webm-alpha")).toBe(true);
     expect(isWorkerExportImplemented("mp4")).toBe(true);
     expect(isWorkerExportImplemented("png-sequence")).toBe(true);
+    expect(isWorkerExportImplemented("png-still")).toBe(true);
     expect(isWorkerExportImplemented("lightfield-quilt")).toBe(true);
     expect(isWorkerExportImplemented("usdz")).toBe(true);
   });
