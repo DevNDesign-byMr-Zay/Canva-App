@@ -98,6 +98,7 @@ def request_payload(format_name="scene-json"):
         "scene-json": "scene-authoring",
         "glb": "generic-3d",
         "gltf": "generic-3d",
+        "usdz": "ios-ar",
         "webm-alpha": "transparent-video",
         "mp4": "transparent-video",
         "png-sequence": "image-sequence",
@@ -211,3 +212,12 @@ def test_lightfield_quilt_rejects_tile_aspect_mismatch():
     payload["quilt"]["viewAspect"] = 1.8
     with pytest.raises(ValidationError, match="viewAspect must match"):
         HoloExportRequest.model_validate(payload)
+
+
+
+def test_usdz_request_accepts_static_ios_ar_profile():
+    payload = request_payload("usdz")
+    payload["includeAnimation"] = False
+    request = HoloExportRequest.model_validate(payload)
+    assert request.format == "usdz"
+    assert request.profile == "ios-ar"
