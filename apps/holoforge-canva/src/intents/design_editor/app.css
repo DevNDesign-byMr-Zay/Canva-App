@@ -632,3 +632,108 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   text-align:right;
   font-variant-numeric:tabular-nums;
 }
+
+
+.hf-animation-panel {
+  display:grid;
+  gap:8px;
+  padding:9px;
+  border-top:1px solid rgba(255,255,255,.06);
+  background:linear-gradient(180deg,rgba(7,8,13,.98),rgba(3,4,7,.99));
+}
+.hf-animation-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.hf-animation-head span {
+  display:block;
+  margin-bottom:2px;
+  color:#6c7486;
+  font-size:6.4px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.hf-animation-head strong {
+  color:#edf3fb;
+  font-size:8px;
+}
+.hf-animation-head > b {
+  color:#72efff;
+  font-size:7px;
+  font-variant-numeric:tabular-nums;
+}
+.hf-animation-presets {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:4px;
+}
+.hf-animation-presets button,
+.hf-pose-actions button {
+  padding:6px 4px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;
+  background:rgba(255,255,255,.02);
+  color:#70798b;
+  font:inherit;
+  font-size:6.4px;
+  font-weight:900;
+  letter-spacing:.07em;
+  cursor:pointer;
+}
+.hf-animation-presets button.is-active {
+  color:#fff;
+  border-color:rgba(156,115,255,.34);
+  background:linear-gradient(135deg,rgba(99,239,255,.08),rgba(156,115,255,.12));
+}
+.hf-pose-actions {
+  display:grid;
+  grid-template-columns:1.2fr 1fr .65fr;
+  gap:5px;
+}
+.hf-pose-actions button:first-child {
+  color:#dffcff;
+  border-color:rgba(99,239,255,.24);
+}
+.hf-pose-actions button:disabled {
+  opacity:.34;
+  cursor:not-allowed;
+}
+.hf-keyframe-strip {
+  position:relative;
+  height:20px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:999px;
+  background:
+    linear-gradient(90deg,rgba(99,239,255,.03),rgba(156,115,255,.05)),
+    rgba(255,255,255,.012);
+}
+.hf-keyframe-strip i {
+  position:absolute;
+  top:50%;
+  width:7px;
+  height:7px;
+  border-radius:2px;
+  transform:translate(-50%,-50%) rotate(45deg);
+  background:#9c73ff;
+  box-shadow:0 0 7px rgba(156,115,255,.55);
+}
+.hf-keyframe-strip i.is-current {
+  background:#63efff;
+  box-shadow:0 0 9px rgba(99,239,255,.85);
+}
+.hf-no-keyframes {
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:#596173;
+  font-size:6.4px;
+}
+.hf-animation-panel > p {
+  margin:0;
+  color:#626b7d;
+  font-size:7px;
+  line-height:1.45;
+}
