@@ -13,6 +13,7 @@ on:
       - "apps/holoforge-canva/backend/blender_worker.py"
       - "apps/holoforge-canva/backend/render_smoke.py"
       - "apps/holoforge-canva/backend/renderers.py"
+      - "apps/holoforge-canva/backend/requirements.txt"
       - "apps/holoforge-canva/backend/models.py"
       - "apps/holoforge-canva/backend/spectral_material.py"
       - "apps/holoforge-canva/backend/test_spectral_material.py"
