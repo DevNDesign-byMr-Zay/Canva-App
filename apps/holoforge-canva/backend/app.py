@@ -97,16 +97,11 @@ async def get_export(
             expiresAt=artifact.expiresAt,
         )
 
-    matching = None
-    # Job count is bounded; this linear ownership-safe lookup remains small in v1.
-    for _, (_, job) in list(jobs._values.items()):
-        if (
-            job.exportId == export_id
-            and job.userId == user.user_id
-            and job.brandId == user.brand_id
-        ):
-            matching = job
-            break
+    matching = jobs.find_by_export(
+        user_id=user.user_id,
+        brand_id=user.brand_id,
+        export_id=export_id,
+    )
 
     if not matching:
         raise HTTPException(status_code=404, detail="Export not found")
