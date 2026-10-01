@@ -50,6 +50,12 @@ class JobRepository:
     def put(self, job: ExportJob) -> None:
         with self._lock:
             self._cleanup()
+            if job.id not in self._values and len(self._values) >= MAX_JOBS:
+                oldest_key = min(
+                    self._values,
+                    key=lambda key: self._values[key][0],
+                )
+                self._values.pop(oldest_key, None)
             self._values[job.id] = (time.time(), job)
 
     def get(self, key: OwnedKey) -> ExportJob | None:
@@ -130,6 +136,14 @@ class ArtifactRepository:
     def put(self, artifact: ExportArtifact) -> None:
         with self._lock:
             self._cleanup()
+            if artifact.id not in self._values and len(self._values) >= MAX_ARTIFACTS:
+                oldest_key = min(
+                    self._values,
+                    key=lambda key: self._values[key][0],
+                )
+                record = self._values.pop(oldest_key, None)
+                if record:
+                    _remove_artifact_tree(record[1])
             self._values[artifact.id] = (time.time(), artifact)
 
     def get(self, key: OwnedKey) -> ExportArtifact | None:
