@@ -24,7 +24,8 @@
     "@canva/asset": "^2.3.1",
     "three": "^0.186.1",
     "@react-three/fiber": "^9.8.1",
-    "@react-three/drei": "^10.7.9"
+    "@react-three/drei": "^10.7.9",
+    "@canva/user": "^2.2.1"
   },
   "devDependencies": {
     "@canva/app-scripts": "^1.1.1",
