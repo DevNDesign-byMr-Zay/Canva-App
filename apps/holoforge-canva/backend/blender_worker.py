@@ -16,6 +16,7 @@ import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from source_geometry import normalize_contours, useful_contours
+from spectral_material import build_spectral_profile
 
 args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 if len(args) != 1:
@@ -70,24 +71,61 @@ def rgba(hex_or_hsl: str):
 
 
 def material_for(spec: dict):
+    profile = build_spectral_profile(spec)
     material = bpy.data.materials.new("HoloForgeMaterial")
     material.use_nodes = True
+    material["holoforge_family"] = profile.family
+    material["holoforge_spectral"] = bool(profile.spectral)
+    material["holoforge_diffraction"] = float(spec.get("diffraction", 0.0))
+    material["holoforge_spectral_shift"] = float(spec.get("spectralShift", 0.0))
+
     nodes = material.node_tree.nodes
+    links = material.node_tree.links
     principled = nodes.get("Principled BSDF")
     if principled:
         principled.inputs["Base Color"].default_value = rgba(spec.get("baseColor", "#5cecff"))
-        principled.inputs["Metallic"].default_value = float(spec.get("metalness", 0.25))
-        principled.inputs["Roughness"].default_value = float(spec.get("roughness", 0.25))
-        principled.inputs["Alpha"].default_value = float(spec.get("opacity", 1.0))
+        principled.inputs["Metallic"].default_value = profile.metallic
+        principled.inputs["Roughness"].default_value = profile.roughness
+        principled.inputs["Alpha"].default_value = profile.opacity
         if "Transmission Weight" in principled.inputs:
-            principled.inputs["Transmission Weight"].default_value = float(spec.get("transmission", 0.0))
+            principled.inputs["Transmission Weight"].default_value = profile.transmission
         if "IOR" in principled.inputs:
-            principled.inputs["IOR"].default_value = float(spec.get("ior", 1.45))
+            principled.inputs["IOR"].default_value = profile.ior
+        if "Coat Weight" in principled.inputs:
+            principled.inputs["Coat Weight"].default_value = profile.coat_weight
+        if "Coat Roughness" in principled.inputs:
+            principled.inputs["Coat Roughness"].default_value = max(0.02, profile.roughness * 0.55)
         if "Emission Color" in principled.inputs:
             principled.inputs["Emission Color"].default_value = rgba(spec.get("emissionColor", "#6cefff"))
         if "Emission Strength" in principled.inputs:
-            principled.inputs["Emission Strength"].default_value = float(spec.get("emissionStrength", 0.0))
-    material.surface_render_method = "DITHERED" if float(spec.get("opacity", 1.0)) < 0.999 else "DITHERED"
+            principled.inputs["Emission Strength"].default_value = profile.emission_strength
+
+        if profile.spectral:
+            layer_weight = nodes.new("ShaderNodeLayerWeight")
+            layer_weight.name = "HoloForge View Angle"
+            layer_weight.inputs["Blend"].default_value = 0.38
+
+            spectrum = nodes.new("ShaderNodeValToRGB")
+            spectrum.name = "HoloForge Spectrum"
+            spectrum.color_ramp.interpolation = "EASE"
+
+            first = spectrum.color_ramp.elements[0]
+            last = spectrum.color_ramp.elements[1]
+            first.position = profile.ramp[0][0]
+            first.color = profile.ramp[0][1]
+            last.position = profile.ramp[-1][0]
+            last.color = profile.ramp[-1][1]
+
+            for position, color in profile.ramp[1:-1]:
+                stop = spectrum.color_ramp.elements.new(position)
+                stop.color = color
+
+            links.new(layer_weight.outputs["Facing"], spectrum.inputs["Fac"])
+            links.new(spectrum.outputs["Color"], principled.inputs["Base Color"])
+            if "Emission Color" in principled.inputs:
+                links.new(spectrum.outputs["Color"], principled.inputs["Emission Color"])
+
+    material.surface_render_method = "DITHERED"
     return material
 
 

@@ -419,6 +419,8 @@ for (const app of APPS) {
             "backend/render_smoke.py",
             "backend/source_geometry.py",
             "backend/test_source_geometry.py",
+            "backend/spectral_material.py",
+            "backend/test_spectral_material.py",
             "backend/test_models.py",
           ]
         : []),

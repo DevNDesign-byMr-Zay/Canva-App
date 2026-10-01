@@ -32,6 +32,14 @@ Set `BLENDER_BIN` to an installed Blender binary. The backend never bundles a fa
 The dedicated worker lives in `blender_worker.py` and is invoked with a temporary validated job payload. Production deployment can later split this worker into a separate GPU/render container without changing the API contract.
 
 
+## Spectral material parity
+
+The production Blender worker now maps HoloScene material families through a normalized spectral profile before rendering. Foil, iridescent, pearl, neon and sufficiently diffractive materials receive a view-angle-driven spectrum ramp instead of collapsing to a single flat RGB value.
+
+The worker also normalizes family-specific metallic, roughness, transmission, IOR, coat and emission behavior so the server render more closely follows the live Three.js studio while remaining deterministic. Glass/crystal prioritize transmission; foil/metal prioritize reflection; neon prioritizes emission. Renderer values are clamped before they reach Blender.
+
+The pure-Python `spectral_material.py` contract is independently tested, and any change to it triggers the heavyweight Blender render smoke.
+
 ## Raster source geometry
 
 Transparent PNG/WebP source graphics are no longer automatically exported as rectangular slabs.
