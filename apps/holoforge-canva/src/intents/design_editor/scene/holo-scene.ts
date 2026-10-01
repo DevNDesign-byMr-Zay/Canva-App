@@ -304,11 +304,24 @@ export function createHoloScene(
   });
 }
 
+function inRange(value: number, min: number, max: number): boolean {
+  return Number.isFinite(value) && value >= min && value <= max;
+}
+
+function finiteVec3(value: Vec3): boolean {
+  return (
+    Number.isFinite(value.x) &&
+    Number.isFinite(value.y) &&
+    Number.isFinite(value.z)
+  );
+}
+
 export function validateHoloScene(scene: HoloScene): readonly string[] {
   const errors: string[] = [];
   if (scene.schemaVersion !== 1) errors.push("schemaVersion must be 1");
   if (!scene.id.trim()) errors.push("scene id is required");
   if (!scene.objects.length) errors.push("scene requires at least one object");
+  if (scene.objects.length > 128) errors.push("scene supports at most 128 objects");
 
   const ids = new Set<string>();
   for (const object of scene.objects) {
@@ -316,29 +329,131 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
     if (ids.has(object.id)) errors.push(`duplicate object id: ${object.id}`);
     ids.add(object.id);
     if (!object.name.trim()) errors.push(`object ${object.id} requires a name`);
-    if (object.material.opacity < 0 || object.material.opacity > 1) {
-      errors.push(`object ${object.id} opacity must be normalized`);
+
+    if (
+      !finiteVec3(object.transform.position) ||
+      !finiteVec3(object.transform.rotation) ||
+      !finiteVec3(object.transform.scale)
+    ) {
+      errors.push(`object ${object.id} transform must contain finite values`);
     }
-    if (object.geometry.thickness < 0) {
-      errors.push(`object ${object.id} thickness must be non-negative`);
+    if (
+      object.transform.scale.x <= 0 ||
+      object.transform.scale.y <= 0 ||
+      object.transform.scale.z <= 0
+    ) {
+      errors.push(`object ${object.id} scale components must be positive`);
     }
+
+    const material = object.material;
+    const normalizedMaterialFields: ReadonlyArray<
+      readonly [string, number, number, number]
+    > = [
+      ["opacity", material.opacity, 0, 1],
+      ["metalness", material.metalness, 0, 1],
+      ["roughness", material.roughness, 0, 1],
+      ["transmission", material.transmission, 0, 1],
+      ["ior", material.ior, Number.EPSILON, 5],
+      ["emissionStrength", material.emissionStrength, 0, 20],
+      ["spectralShift", material.spectralShift, 0, 100],
+      ["diffraction", material.diffraction, 0, 2],
+      ["scanlineStrength", material.scanlineStrength, 0, 2],
+      ["shimmerStrength", material.shimmerStrength, 0, 2],
+      ["reflectionStrength", material.reflectionStrength, 0, 100],
+    ];
+    for (const [field, value, min, max] of normalizedMaterialFields) {
+      if (!inRange(value, min, max)) {
+        errors.push(
+          `object ${object.id} material ${field} must be between ${min} and ${max}`,
+        );
+      }
+    }
+
+    if (!inRange(object.geometry.thickness, 0, 20)) {
+      errors.push(`object ${object.id} thickness must be between 0 and 20`);
+    }
+    if (!inRange(object.geometry.bevelSize, 0, 10)) {
+      errors.push(`object ${object.id} bevel size must be between 0 and 10`);
+    }
+    if (
+      !Number.isInteger(object.geometry.bevelSegments) ||
+      !inRange(object.geometry.bevelSegments, 0, 32)
+    ) {
+      errors.push(`object ${object.id} bevel segments must be an integer from 0 to 32`);
+    }
+
     for (const track of object.animationTracks) {
-      if (!track.id.trim()) errors.push(`object ${object.id} animation track id is required`);
+      if (!track.id.trim()) {
+        errors.push(`object ${object.id} animation track id is required`);
+      }
       let previousTime = -1;
+      const keyframeTimes = new Set<number>();
       for (const keyframe of track.keyframes) {
+        if (!keyframe.id.trim()) {
+          errors.push(`object ${object.id} keyframe id is required`);
+        }
+        if (!finiteVec3(keyframe.value)) {
+          errors.push(`object ${object.id} keyframe ${keyframe.id} value must be finite`);
+        }
         if (keyframe.timeMs < 0 || keyframe.timeMs > scene.timeline.durationMs) {
           errors.push(`object ${object.id} keyframe ${keyframe.id} is outside the timeline`);
         }
         if (keyframe.timeMs < previousTime) {
           errors.push(`object ${object.id} keyframes must be time-sorted`);
         }
+        if (keyframeTimes.has(keyframe.timeMs)) {
+          errors.push(`object ${object.id} keyframe times must be unique within a track`);
+        }
+        keyframeTimes.add(keyframe.timeMs);
         previousTime = keyframe.timeMs;
       }
     }
   }
 
-  if (scene.camera.fov <= 0 || scene.camera.fov >= 180) errors.push("camera fov is invalid");
-  if (scene.timeline.durationMs <= 0) errors.push("timeline duration must be positive");
-  if (scene.timeline.fps <= 0) errors.push("timeline fps must be positive");
+  if (!finiteVec3(scene.camera.position) || !finiteVec3(scene.camera.target)) {
+    errors.push("camera vectors must contain finite values");
+  }
+  if (!inRange(scene.camera.fov, Number.EPSILON, 179.999)) {
+    errors.push("camera fov is invalid");
+  }
+  if (!Number.isFinite(scene.camera.near) || scene.camera.near <= 0) {
+    errors.push("camera near plane must be positive");
+  }
+  if (!Number.isFinite(scene.camera.far) || scene.camera.far <= scene.camera.near) {
+    errors.push("camera far plane must be greater than near");
+  }
+
+  if (!inRange(scene.environment.ambientIntensity, 0, 20)) {
+    errors.push("ambient intensity must be between 0 and 20");
+  }
+  if (!inRange(scene.environment.keyLightIntensity, 0, 20)) {
+    errors.push("key light intensity must be between 0 and 20");
+  }
+  if (!inRange(scene.environment.rimLightIntensity, 0, 20)) {
+    errors.push("rim light intensity must be between 0 and 20");
+  }
+
+  if (
+    !Number.isInteger(scene.timeline.durationMs) ||
+    scene.timeline.durationMs <= 0 ||
+    scene.timeline.durationMs > 60 * 60 * 1000
+  ) {
+    errors.push("timeline duration must be an integer from 1 ms to 1 hour");
+  }
+  if (
+    !Number.isInteger(scene.timeline.fps) ||
+    scene.timeline.fps <= 0 ||
+    scene.timeline.fps > 120
+  ) {
+    errors.push("timeline fps must be an integer from 1 to 120");
+  }
+  if (
+    !Number.isInteger(scene.timeline.currentTimeMs) ||
+    scene.timeline.currentTimeMs < 0 ||
+    scene.timeline.currentTimeMs > scene.timeline.durationMs
+  ) {
+    errors.push("timeline current time must lie within the scene duration");
+  }
+
   return Object.freeze(errors);
 }
