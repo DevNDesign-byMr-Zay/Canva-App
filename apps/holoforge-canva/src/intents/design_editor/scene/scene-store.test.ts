@@ -39,4 +39,49 @@ describe("HoloScene reducer", () => {
     });
     expect(next.scene.timeline.currentTimeMs).toBe(next.scene.timeline.durationMs);
   });
+
+  it("authors and removes a transform pose at the current time", () => {
+    let state = createHoloSceneState(fixture());
+    const objectId = state.scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "set_time",
+      currentTimeMs: 1500,
+    });
+    state = holoSceneReducer(state, {
+      type: "upsert_transform_pose",
+      objectId,
+      timeMs: 1500,
+    });
+
+    expect(state.scene.objects[0]?.animationPreset).toBe("custom");
+    expect(state.scene.objects[0]?.animationTracks).toHaveLength(3);
+
+    state = holoSceneReducer(state, {
+      type: "remove_transform_pose",
+      objectId,
+      timeMs: 1500,
+    });
+
+    expect(state.scene.objects[0]?.animationTracks).toHaveLength(0);
+  });
+
+  it("switches built-in animation presets and clears animation state", () => {
+    let state = createHoloSceneState(fixture());
+    const objectId = state.scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "set_animation_preset",
+      objectId,
+      preset: "turntable",
+    });
+    expect(state.scene.objects[0]?.animationPreset).toBe("turntable");
+
+    state = holoSceneReducer(state, {
+      type: "clear_animation",
+      objectId,
+    });
+    expect(state.scene.objects[0]?.animationPreset).toBe("static");
+    expect(state.scene.objects[0]?.animationTracks).toEqual([]);
+  });
 });
