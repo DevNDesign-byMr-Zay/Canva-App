@@ -279,14 +279,30 @@ for (const marker of [
   }
 }
 
+const holoBlenderWorker = readText(
+  full(APPS.holoforge.root, "backend/blender_worker.py"),
+);
+for (const marker of [
+  'format_name == "webm-alpha"',
+  "libvpx-vp9",
+  "yuva420p",
+  "alpha WebM",
+]) {
+  if (!holoBlenderWorker.includes(marker)) {
+    fail(`holoforge: alpha WebM worker marker missing: ${marker}`);
+  }
+}
+
 const holoRenderSmoke = readText(
   full(APPS.holoforge.root, "backend/render_smoke.py"),
 );
 for (const marker of [
-  '"format": "glb"',
+  '"format_name="glb"',
+  '"format_name="webm-alpha"',
   "blender_worker.py",
+  "alphaextract",
+  "alphaVerified",
   "result.json",
-  "GLB artifact",
 ]) {
   if (!holoRenderSmoke.includes(marker)) {
     fail(`holoforge: Blender render smoke marker missing: ${marker}`);
@@ -311,6 +327,7 @@ for (const marker of [
   "BlenderRenderer",
   '"glb"',
   '"gltf"',
+  '"webm-alpha"',
   '"mp4"',
   '"png-sequence"',
   "No configured HoloForge renderer",
