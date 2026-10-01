@@ -84,6 +84,13 @@ function isOptionalString(value: unknown): value is string | undefined {
   return value === undefined || typeof value === "string";
 }
 
+function isPortableImageUrl(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (typeof value !== "string") return false;
+  if (value.length > 20 * 1024 * 1024) return false;
+  return /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=\r\n]+$/iu.test(value);
+}
+
 function isVec3(value: unknown): boolean {
   if (!isRecord(value)) return false;
   return (
@@ -124,11 +131,12 @@ function isGeometry(value: unknown): boolean {
   return (
     typeof value.type === "string" &&
     GEOMETRY_TYPES.has(value.type as HoloGeometryType) &&
-    isOptionalString(value.sourceUrl) &&
+    isPortableImageUrl(value.sourceUrl) &&
     isFiniteNumber(value.thickness) &&
     isFiniteNumber(value.bevelSize) &&
     Number.isInteger(value.bevelSegments) &&
-    isOptionalString(value.meshUrl)
+    isOptionalString(value.meshUrl) &&
+    value.meshUrl === undefined
   );
 }
 
@@ -180,7 +188,7 @@ function isSource(value: unknown): boolean {
     typeof value.type === "string" &&
     SOURCE_TYPES.has(value.type as HoloSourceType) &&
     isOptionalString(value.assetId) &&
-    isOptionalString(value.previewUrl) &&
+    isPortableImageUrl(value.previewUrl) &&
     isOptionalString(value.text)
   );
 }
