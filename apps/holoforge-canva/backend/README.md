@@ -9,7 +9,7 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - per-user/per-brand job and artifact ownership;
 - bounded TTL-backed job/artifact repositories;
 - actual server-side HoloScene JSON artifacts;
-- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
+- Blender adapter contract for GLB, glTF, USDZ, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
@@ -84,6 +84,7 @@ The render-capable health response will advertise:
 scene-json
 glb
 gltf
+usdz
 webm-alpha
 mp4
 png-sequence
@@ -111,3 +112,17 @@ The Canva client defaults to a generic 45-view 5×9 profile over a 40° camera c
 - the quilt is rendered as a still multi-view frame (`includeAnimation=false`).
 
 The worker freezes the authored HoloScene at the selected timeline time, renders discrete camera views across the requested cone, then assembles them into one PNG quilt. This is real multi-view source content. Display-specific lenticular/light-field interlacing and calibration remain outside the generic HoloForge contract.
+
+
+## USDZ export contract
+
+HoloForge uses Blender's native USD archive exporter for the `ios-ar` profile. The worker writes a real `.usdz` file rather than renaming a ZIP or JSON artifact.
+
+The production smoke verifies that:
+
+- the result is a readable ZIP package;
+- the first package entry is a native USD layer;
+- package members use zero ZIP compression, as required by the USDZ container specification;
+- the package is non-empty and returned through the same authenticated artifact boundary as the other render formats.
+
+The first shipping contract is static USDZ. HoloScene animation stays available in GLB/glTF/video outputs until the USDZ animation lane is explicitly qualified across Apple-compatible consumers.
