@@ -126,6 +126,21 @@ Current backend behavior:
 
 The normal API container intentionally does not bundle Blender yet. A production renderer can point `BLENDER_BIN` at an installed Blender binary or later move the worker into a dedicated render container without changing the API contract.
 
+### Production Blender image
+
+`backend/Dockerfile.render` is the render-capable deployment image. It pins Blender **4.5.14 LTS**, downloads the official Linux x64 archive plus Blender's matching SHA-256 manifest, verifies the archive before extraction, and exposes the same FastAPI service with `BLENDER_BIN=/opt/blender/blender`.
+
+Use:
+
+```bash
+cd apps/holoforge-canva/backend
+docker compose -f docker-compose.render.yml up --build
+```
+
+The render image enables `glb`, `gltf`, `mp4`, and `png-sequence` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
+
+A separate opt-in GitHub Action, **HoloForge Render Image**, performs the expensive production-image build and generates a real GLB with `render_smoke.py`. It is intentionally not part of every pull request because the official Blender Linux archive is hundreds of megabytes.
+
 ## Development
 
     npm install --ignore-scripts
