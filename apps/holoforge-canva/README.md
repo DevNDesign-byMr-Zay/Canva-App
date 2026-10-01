@@ -73,6 +73,21 @@ The SPATIAL studio supports built-in motion presets plus a **CUSTOM** mode. In c
 
 The timeline playback loop updates scene time rather than hiding animation state inside the renderer. That makes the authored motion suitable for later conversion into GLB animation clips, Blender keyframes, or rendered video without reverse-engineering the preview.
 
+## Export and deployment profiles
+
+HoloForge now exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can already create it.
+
+Current capability state:
+
+- **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
+- **GLB / glTF** — render-worker contract defined; not marked ready until production geometry/animation conversion is implemented.
+- **USDZ** — render-worker contract defined for AR-oriented delivery.
+- **WebM Alpha / MP4 / PNG Sequence** — render-worker contracts defined for transparent/composited animation pipelines.
+- **Light-field Quilt** — device-adapter contract defined and intentionally requires an explicit columns/rows/views/aspect profile. HoloForge does not assume one universal hologram-display layout.
+
+Every format has a declared MIME type, extension, execution boundary, animation capability, and readiness flag. The UI lets users inspect planned formats while disabling the actual export action until the runtime can generate a valid file.
+
+This boundary is deliberate: HoloForge will not create fake GLB, USDZ, or WebM files by renaming JSON or a preview image.
 ## Image source behavior
 
 HoloForge can use either:
