@@ -201,14 +201,14 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
       {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
 
       <p className="hf-export-boundary">
-        Scene JSON is generated locally. GLB, glTF, MP4 and PNG sequences use the
-        authenticated HoloForge render backend when configured. USDZ, alpha-WebM
-        and light-field quilts remain unavailable until their dedicated adapters
+        Scene JSON is generated locally. GLB, glTF, transparent VP9 WebM, MP4 and
+        PNG sequences use the authenticated HoloForge render backend when configured.
+        USDZ and light-field quilts remain unavailable until dedicated adapters
         generate the actual target files.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 4 WORKER IMPLEMENTED
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 5 WORKER IMPLEMENTED
       </span>
     </section>
   );
