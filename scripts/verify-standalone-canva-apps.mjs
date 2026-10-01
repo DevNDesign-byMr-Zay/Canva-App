@@ -469,9 +469,12 @@ const holoExportPanel = readText(
 );
 for (const marker of [
   "DOWNLOAD",
-  "RENDER WORKER REQUIRED",
-  "DEVICE ADAPTER",
+  "WORKER READY",
+  "DEVICE ADAPTER NOT IMPLEMENTED",
   "downloadHoloScene",
+  "createBackendExport",
+  "waitForExport",
+  "downloadBackendExport",
 ]) {
   if (!holoExportPanel.includes(marker)) {
     fail(`holoforge: export UI marker missing: ${marker}`);
