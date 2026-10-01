@@ -8,6 +8,7 @@ import {
   type HolographicExecutionResult,
 } from "./holographic/effect-executor";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
+import { SceneImportControl } from "./export/SceneImportControl";
 import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
 import { createHoloScene, type HoloScene as HoloSceneSpec } from "./scene/holo-scene";
 import { useCanvaImageSelection } from "./use-canva-image-selection";
@@ -77,7 +78,7 @@ function SpatialPreview({
   scene: HoloSceneSpec | null;
   onSceneChange: (scene: HoloSceneSpec) => void;
 }) {
-  if (!plan || !scene) {
+  if (!scene) {
     return (
       <div className="hf-empty-state">
         <span className="hf-empty-orb" />
@@ -87,7 +88,8 @@ function SpatialPreview({
     );
   }
 
-  const p = plan.parameters;
+  const firstObject = scene.objects[0] ?? null;
+  const p = plan?.parameters;
 
   return (
     <div className="hf-spatial-panel">
@@ -96,7 +98,12 @@ function SpatialPreview({
       <div className="hf-preview-meta">
         <div>
           <span>ACTIVE MATERIAL</span>
-          <strong>{plan.presetName}</strong>
+          <strong>
+            {plan?.presetName ??
+              (firstObject
+                ? firstObject.material.family.toUpperCase() + " · RESTORED"
+                : "RESTORED SCENE")}
+          </strong>
         </div>
         <div>
           <span>SCENE</span>
@@ -105,10 +112,36 @@ function SpatialPreview({
       </div>
 
       <div className="hf-metric-grid">
-        <div><span>Shift</span><strong>{p.colorShift}%</strong></div>
-        <div><span>Depth</span><strong>{p.depth}%</strong></div>
-        <div><span>Reflect</span><strong>{p.reflection}%</strong></div>
-        <div><span>Glow</span><strong>{p.glow}%</strong></div>
+        <div>
+          <span>Shift</span>
+          <strong>
+            {Math.round(p?.colorShift ?? firstObject?.material.spectralShift ?? 0)}%
+          </strong>
+        </div>
+        <div>
+          <span>{p ? "Depth" : "Thickness"}</span>
+          <strong>
+            {p
+              ? Math.round(p.depth) + "%"
+              : (firstObject?.geometry.thickness ?? 0).toFixed(2)}
+          </strong>
+        </div>
+        <div>
+          <span>Reflect</span>
+          <strong>
+            {Math.round(
+              p?.reflection ?? firstObject?.material.reflectionStrength ?? 0,
+            )}%
+          </strong>
+        </div>
+        <div>
+          <span>Glow</span>
+          <strong>
+            {p
+              ? Math.round(p.glow) + "%"
+              : (firstObject?.material.emissionStrength ?? 0).toFixed(2)}
+          </strong>
+        </div>
       </div>
 
       <p className="hf-boundary-copy">
@@ -118,7 +151,8 @@ function SpatialPreview({
         are extruded in-browser and in Blender exports. Authored transforms, keyframes and timeline
         state stay in the active studio session when you move between tabs. GLB, glTF, USDZ, MP4,
         transparent WebM, PNG sequence and light-field quilt output become available when the
-        production render backend is configured.
+        production render backend is configured. Exported HoloScene JSON can also be reopened here,
+        restoring the authored objects, camera, environment, timeline and keyframes.
       </p>
     </div>
   );
@@ -273,6 +307,16 @@ export function App() {
         onUploaded={(uploaded) => {
           setUploadedSource(uploaded);
           setSourceMode("uploaded");
+        }}
+      />
+
+      <SceneImportControl
+        onImported={(scene) => {
+          setPlan(null);
+          setStudioScene(scene);
+          setResult(null);
+          setError(null);
+          setTab("spatial");
         }}
       />
 
