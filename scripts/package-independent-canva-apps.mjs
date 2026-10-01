@@ -101,6 +101,9 @@ function packageContents(app) {
   const reference = app.includeReference
     ? "- reference/               -> exact Drive UI/router provenance used to rebuild DepthPop\n"
     : "";
+  const webgl = app.id === "holoforge-canva"
+    ? "- WebGL spatial studio     -> real Three.js/R3F scene model, camera, environment and timeline\n"
+    : "";
 
   return `${app.displayName.toUpperCase()} — COMPLETE CANVA APP PACKAGE
 
@@ -118,8 +121,7 @@ UI
 - src/                     -> maintained React/TypeScript/CSS UI source
 - src/assets/              -> packaged HoloForge or DepthPop logo asset
 - image source workflow    -> production app can choose/drop PNG/JPEG/WebP and bind Canva raster sources
-- WebGL spatial studio     -> HoloForge package contains the real Three.js/R3F scene model and viewport
-${backend}
+${webgl}${backend}
 This package intentionally contains no node_modules, no secret .env file, no historical ROARY/ÆTHER shell, no Drive provenance HTML/router source, and no combined HoloForge/DepthPop runtime switcher.
 
 Historical Drive sources remain in the GitHub repository for provenance only and are deliberately excluded from this user-facing Canva package.
