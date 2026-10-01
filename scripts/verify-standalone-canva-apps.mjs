@@ -258,6 +258,7 @@ for (const marker of [
   '"gltf"',
   '"mp4"',
   '"png-sequence"',
+  '"lightfield-quilt"',
 ]) {
   if (!holoExportClient.includes(marker)) {
     fail(`holoforge: render backend client marker missing: ${marker}`);
@@ -287,6 +288,10 @@ for (const marker of [
   "libvpx-vp9",
   "yuva420p",
   "alpha WebM",
+  'format_name == "lightfield-quilt"',
+  "viewConeDegrees",
+  "lightfield-views",
+  "_qs",
 ]) {
   if (!holoBlenderWorker.includes(marker)) {
     fail(`holoforge: alpha WebM worker marker missing: ${marker}`);
@@ -299,9 +304,12 @@ const holoRenderSmoke = readText(
 for (const marker of [
   'format_name="glb"',
   'format_name="webm-alpha"',
+  'format_name="lightfield-quilt"',
   "blender_worker.py",
   "alphaextract",
   "alphaVerified",
+  "verify_quilt",
+  "lightfieldQuilt",
   "result.json",
 ]) {
   if (!holoRenderSmoke.includes(marker)) {
@@ -330,6 +338,7 @@ for (const marker of [
   '"webm-alpha"',
   '"mp4"',
   '"png-sequence"',
+  '"lightfield-quilt"',
   "No configured HoloForge renderer",
 ]) {
   if (!holoRenderer.includes(marker)) {
@@ -506,6 +515,8 @@ for (const marker of [
   '"lightfield-quilt"',
   "render-worker",
   "device-adapter",
+  "GENERIC_45_VIEW_QUILT",
+  "viewConeDegrees",
   "buildExportRequest",
 ]) {
   if (!holoExportContract.includes(marker)) {
@@ -524,6 +535,7 @@ for (const marker of [
   "createBackendExport",
   "waitForExport",
   "downloadBackendExport",
+  "6 WORKER IMPLEMENTED",
 ]) {
   if (!holoExportPanel.includes(marker)) {
     fail(`holoforge: export UI marker missing: ${marker}`);
