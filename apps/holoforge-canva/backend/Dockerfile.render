@@ -1,0 +1,68 @@
+# Production render-capable HoloForge image.
+# Blender is intentionally pinned to the current Blender 4.5 LTS patch used by
+# this repository's renderer contract. The checksum manifest is downloaded from
+# the same official Blender release directory and verified before extraction.
+ARG PYTHON_VERSION=3.12
+ARG BLENDER_VERSION=4.5.14
+
+FROM python:${PYTHON_VERSION}-slim AS blender-fetch
+ARG BLENDER_VERSION
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /tmp/blender
+RUN set -eux; \
+    base="https://download.blender.org/release/Blender4.5"; \
+    archive="blender-${BLENDER_VERSION}-linux-x64.tar.xz"; \
+    curl --fail --location --retry 4 --retry-delay 2 -o "${archive}" "${base}/${archive}"; \
+    curl --fail --location --retry 4 --retry-delay 2 -o checksums.sha256 "${base}/blender-${BLENDER_VERSION}.sha256"; \
+    grep "  ${archive}$" checksums.sha256 > selected.sha256; \
+    test -s selected.sha256; \
+    sha256sum -c selected.sha256; \
+    mkdir -p /opt/blender; \
+    tar -xJf "${archive}" --strip-components=1 -C /opt/blender; \
+    test -x /opt/blender/blender
+
+FROM python:${PYTHON_VERSION}-slim
+ARG BLENDER_VERSION
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8082 \
+    BLENDER_BIN=/opt/blender/blender \
+    HOLOFORGE_BLENDER_VERSION=${BLENDER_VERSION}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      ffmpeg \
+      libegl1 \
+      libgl1 \
+      libglib2.0-0 \
+      libice6 \
+      libsm6 \
+      libx11-6 \
+      libxext6 \
+      libxfixes3 \
+      libxi6 \
+      libxinerama1 \
+      libxkbcommon0 \
+      libxrandr2 \
+      libxrender1 \
+      libxxf86vm1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=blender-fetch /opt/blender /opt/blender
+
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . ./
+
+RUN /opt/blender/blender --background --version \
+    && python -m compileall -q .
+
+EXPOSE 8082
+
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8082} --proxy-headers"]

@@ -63,6 +63,9 @@ const APPS = {
       "backend/blender_worker.py",
       "backend/requirements.txt",
       "backend/Dockerfile",
+      "backend/Dockerfile.render",
+      "backend/docker-compose.render.yml",
+      "backend/render_smoke.py",
       "backend/.env.example",
       "backend/README.md",
       "backend/test_app.py",
@@ -258,6 +261,35 @@ for (const marker of [
 ]) {
   if (!holoExportClient.includes(marker)) {
     fail(`holoforge: render backend client marker missing: ${marker}`);
+  }
+}
+
+const holoRenderDockerfile = readText(
+  full(APPS.holoforge.root, "backend/Dockerfile.render"),
+);
+for (const marker of [
+  "BLENDER_VERSION=4.5.14",
+  "download.blender.org/release/Blender4.5",
+  "sha256sum -c",
+  "BLENDER_BIN=/opt/blender/blender",
+  "/opt/blender/blender --background --version",
+]) {
+  if (!holoRenderDockerfile.includes(marker)) {
+    fail(`holoforge: production render image marker missing: ${marker}`);
+  }
+}
+
+const holoRenderSmoke = readText(
+  full(APPS.holoforge.root, "backend/render_smoke.py"),
+);
+for (const marker of [
+  '"format": "glb"',
+  "blender_worker.py",
+  "result.json",
+  "GLB artifact",
+]) {
+  if (!holoRenderSmoke.includes(marker)) {
+    fail(`holoforge: Blender render smoke marker missing: ${marker}`);
   }
 }
 
