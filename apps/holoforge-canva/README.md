@@ -26,7 +26,7 @@ All six visible creation types are functional:
 - **Chrome** — re-editable holographic chrome app element.
 - **Light FX** — re-editable photonic ring/beam overlay.
 
-Material controls for color shift, depth, reflection, glow, grain, angle and transparency now normalize into a versioned `HoloScene` and drive real WebGL material/geometry state. Motion remains preview-time scene behavior until the later animation/export backend batch.
+Material controls for color shift, depth, reflection, glow, grain, angle and transparency normalize into a versioned `HoloScene` and drive real WebGL material/geometry state. Motion presets and custom transform keyframes are serialized into the same scene contract and are consumed by the production Blender export paths when the selected format supports animation.
 
 ## WebGL scene foundation
 
@@ -57,7 +57,7 @@ For uploaded transparent raster sources, HoloForge analyzes the alpha channel in
 
 Iridescent, foil, and neon material families now use a dedicated animated spectral shader with view-angle Fresnel response, spectral color shift, diffraction, scan-line modulation, shimmer, reflection contribution, and time-driven emission. Glass/crystal/metal families continue through the physical-material path.
 
-This remains a client-side authoring foundation. High-quality production mesh reconstruction and export rendering remain separate backend batches.
+The browser editor remains the authoring surface, while production rendering is handled by the authenticated Blender worker. Raster source silhouettes are reconstructed from alpha contours in both the browser and worker; richer vector/mesh reconstruction can extend that geometry layer without changing the HoloScene contract.
 
 ## 4D animation authoring
 
