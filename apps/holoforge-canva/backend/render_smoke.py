@@ -282,12 +282,12 @@ def main() -> int:
             profile="lightfield-quilt",
             transparent=True,
             include_animation=False,
-            resolution=(500, 900),
+            resolution=(250, 450),
             quilt=quilt_options,
         )
         if quilt.suffix.lower() != ".png" or "_qs5x9a1.png" not in quilt.name:
             raise SystemExit("Blender worker smoke produced the wrong quilt artifact name")
-        verify_quilt(quilt, width=500, height=900, views=45)
+        verify_quilt(quilt, width=250, height=450, views=45)
 
         print(
             json.dumps(
@@ -303,7 +303,7 @@ def main() -> int:
                     "lightfieldQuilt": {
                         "artifact": quilt.name,
                         "sizeBytes": quilt.stat().st_size,
-                        "resolution": [500, 900],
+                        "resolution": [250, 450],
                         "grid": [5, 9],
                         "views": 45,
                         "viewConeDegrees": 40,
