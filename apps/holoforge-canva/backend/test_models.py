@@ -98,6 +98,7 @@ def request_payload(format_name="scene-json"):
         "scene-json": "scene-authoring",
         "glb": "generic-3d",
         "gltf": "generic-3d",
+        "webm-alpha": "transparent-video",
         "mp4": "transparent-video",
         "png-sequence": "image-sequence",
     }
@@ -108,7 +109,7 @@ def request_payload(format_name="scene-json"):
         "profile": profiles[format_name],
         "includeAnimation": True,
         "resolution": {"width": 1920, "height": 1080},
-        "transparentBackground": False,
+        "transparentBackground": format_name == "webm-alpha",
     }
 
 
@@ -144,3 +145,17 @@ def test_submission_requires_matching_scene_id():
     request["sceneId"] = "another-scene"
     with pytest.raises(ValidationError, match="does not match scene"):
         ExportSubmission.model_validate({"scene": scene_payload(), "request": request})
+
+
+def test_alpha_webm_requires_transparent_background():
+    payload = request_payload("webm-alpha")
+    payload["transparentBackground"] = False
+    with pytest.raises(ValidationError, match="transparentBackground=true"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_alpha_webm_requires_animation():
+    payload = request_payload("webm-alpha")
+    payload["includeAnimation"] = False
+    with pytest.raises(ValidationError, match="requires includeAnimation=true"):
+        HoloExportRequest.model_validate(payload)

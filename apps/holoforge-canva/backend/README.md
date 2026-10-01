@@ -9,11 +9,11 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - per-user/per-brand job and artifact ownership;
 - bounded TTL-backed job/artifact repositories;
 - actual server-side HoloScene JSON artifacts;
-- Blender adapter contract for GLB, glTF, MP4, and PNG-sequence exports;
+- Blender adapter contract for GLB, glTF, transparent VP9 WebM, MP4, and PNG-sequence exports;
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
-The service does not pretend that USDZ, alpha-WebM, or light-field quilt generation are complete. Those require dedicated conversion/device adapters and remain unavailable until implemented.
+The service does not pretend that USDZ or light-field quilt generation are complete. Those require dedicated conversion/device adapters and remain unavailable until implemented. Transparent WebM is now a real worker output: Blender renders RGBA frames and FFmpeg/libvpx-vp9 encodes them with an alpha plane.
 
 ## API
 
@@ -54,6 +54,7 @@ The render-capable health response will advertise:
 scene-json
 glb
 gltf
+webm-alpha
 mp4
 png-sequence
 ```
@@ -64,4 +65,4 @@ Run an isolated real-GLB worker smoke inside the image with:
 python render_smoke.py
 ```
 
-This smoke invokes Blender headlessly, generates the fixture scene through `blender_worker.py`, and requires a non-empty `.glb` result.
+This smoke invokes Blender headlessly, requires a non-empty `.glb`, renders a transparent VP9 `.webm`, verifies the VP9 stream, and extracts a real alpha plane from the encoded WebM with FFmpeg.

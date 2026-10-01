@@ -5,6 +5,8 @@ import colorsys
 import json
 import math
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import zipfile
@@ -293,6 +295,60 @@ if format_name == "glb":
 elif format_name == "gltf":
     target = output_dir / (stem + ".gltf")
     bpy.ops.export_scene.gltf(filepath=str(target), export_format="GLTF_EMBEDDED", export_animations=bool(request["includeAnimation"]))
+elif format_name == "webm-alpha":
+    frames = output_dir / "webm-alpha-frames"
+    frames.mkdir(exist_ok=True)
+    scene.render.film_transparent = True
+    scene.render.filepath = str(frames / "frame_")
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA"
+    scene.render.image_settings.color_depth = "8"
+    bpy.ops.render.render(animation=True)
+
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError("ffmpeg is required for webm-alpha export")
+
+    target = output_dir / (stem + ".webm")
+    command = [
+        ffmpeg,
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-framerate",
+        str(scene.render.fps),
+        "-start_number",
+        str(scene.frame_start),
+        "-i",
+        str(frames / "frame_%04d.png"),
+        "-an",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-auto-alt-ref",
+        "0",
+        "-b:v",
+        "0",
+        "-crf",
+        "24",
+        str(target),
+    ]
+    completed = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "ffmpeg alpha WebM encode failed: " + completed.stderr[-3000:]
+        )
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise RuntimeError("ffmpeg produced no alpha WebM artifact")
 elif format_name == "mp4":
     target = output_dir / (stem + ".mp4")
     scene.render.filepath = str(target)

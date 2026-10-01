@@ -87,10 +87,10 @@ describe("HoloForge export client", () => {
   it("reports only actually implemented worker formats", () => {
     expect(isWorkerExportImplemented("glb")).toBe(true);
     expect(isWorkerExportImplemented("gltf")).toBe(true);
+    expect(isWorkerExportImplemented("webm-alpha")).toBe(true);
     expect(isWorkerExportImplemented("mp4")).toBe(true);
     expect(isWorkerExportImplemented("png-sequence")).toBe(true);
     expect(isWorkerExportImplemented("usdz")).toBe(false);
-    expect(isWorkerExportImplemented("webm-alpha")).toBe(false);
     expect(isWorkerExportImplemented("lightfield-quilt")).toBe(false);
   });
 

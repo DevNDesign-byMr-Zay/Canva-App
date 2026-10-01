@@ -262,8 +262,10 @@ class HoloExportRequest(BaseModel):
             raise ValueError("lightfield-quilt requires quilt options")
         if self.format != "lightfield-quilt" and self.quilt is not None:
             raise ValueError("quilt options are only valid for lightfield-quilt")
-        if self.format in {"mp4", "png-sequence"} and not self.includeAnimation:
+        if self.format in {"webm-alpha", "mp4", "png-sequence"} and not self.includeAnimation:
             raise ValueError(f"{self.format} requires includeAnimation=true in render-worker v1")
+        if self.format == "webm-alpha" and not self.transparentBackground:
+            raise ValueError("webm-alpha requires transparentBackground=true")
         return self
 
 
