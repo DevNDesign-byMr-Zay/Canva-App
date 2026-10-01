@@ -6,8 +6,23 @@ from pathlib import Path
 
 import repositories
 from export_service import sha256_file
-from models import ExportArtifact
-from repositories import ArtifactRepository, OwnedKey
+from models import ExportArtifact, ExportJob
+from repositories import ArtifactRepository, JobRepository, OwnedKey
+
+
+def job_for(job_id: str, export_id: str) -> ExportJob:
+    return ExportJob(
+        id=job_id,
+        exportId=export_id,
+        userId="user-1",
+        brandId="brand-1",
+        status="queued",
+        stage="queued",
+        percent=0,
+        message="queued",
+        createdAt="2026-10-01T00:00:00+00:00",
+        updatedAt="2026-10-01T00:00:00+00:00",
+    )
 
 
 def artifact_for(path: Path, export_id: str = "hfexp_test") -> ExportArtifact:
@@ -113,3 +128,44 @@ def test_sha256_file_matches_standard_digest(tmp_path):
     path.write_bytes(payload)
 
     assert sha256_file(path, chunk_size=4096) == hashlib.sha256(payload).hexdigest()
+
+
+
+def test_job_repository_cap_is_enforced_during_put(monkeypatch):
+    monkeypatch.setattr(repositories, "MAX_JOBS", 2)
+    repo = JobRepository()
+
+    repo.put(job_for("job-1", "exp-1"))
+    time.sleep(0.002)
+    repo.put(job_for("job-2", "exp-2"))
+    time.sleep(0.002)
+    repo.put(job_for("job-3", "exp-3"))
+
+    assert len(repo._values) == 2
+    assert "job-1" not in repo._values
+    assert {"job-2", "job-3"} == set(repo._values)
+
+
+def test_artifact_repository_cap_evicts_oldest_workspace_on_put(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(repositories, "ARTIFACT_ROOT", tmp_path)
+    monkeypatch.setattr(repositories, "MAX_ARTIFACTS", 2)
+    repo = ArtifactRepository()
+
+    workspaces = []
+    for index in range(1, 4):
+        export_id = f"hfexp-{index}"
+        export_dir = repo.allocate_dir(export_id)
+        path = export_dir / "scene.png"
+        path.write_bytes(f"png-{index}".encode())
+        repo.put(artifact_for(path, export_id=export_id))
+        workspaces.append(export_dir)
+        time.sleep(0.002)
+
+    assert len(repo._values) == 2
+    assert "hfexp-1" not in repo._values
+    assert not workspaces[0].exists()
+    assert workspaces[1].exists()
+    assert workspaces[2].exists()
