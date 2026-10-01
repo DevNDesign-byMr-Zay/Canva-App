@@ -40,7 +40,7 @@ The current SPATIAL editor uses:
 
 The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
 
-The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, and serializable transform keyframes. It still does **not** claim that full vector mesh reconstruction, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those remain later backend/export batches.
+The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, and serializable transform keyframes. The server-side render lane now covers Blender-backed GLB/glTF, transparent VP9 WebM, MP4, PNG-sequence, and generic multi-view quilt rendering. Full vector mesh reconstruction, USDZ conversion, and device-specific optical calibration remain later batches.
 
 ## Object manipulation and source geometry
 
@@ -80,14 +80,15 @@ HoloForge now exposes explicit export capabilities instead of presenting every d
 Current capability state:
 
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
-- **GLB / glTF** — render-worker contract defined; not marked ready until production geometry/animation conversion is implemented.
-- **USDZ** — render-worker contract defined for AR-oriented delivery.
-- **WebM Alpha / MP4 / PNG Sequence** — render-worker contracts defined for transparent/composited animation pipelines.
-- **Light-field Quilt** — device-adapter contract defined and intentionally requires an explicit columns/rows/views/aspect profile. HoloForge does not assume one universal hologram-display layout.
+- **GLB / glTF** — real Blender-worker exports with authored transforms, camera state, materials, and animation/keyframe conversion.
+- **USDZ** — contract remains defined but disabled until a real USD/USDZ conversion lane is implemented.
+- **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
+- **MP4 / PNG Sequence** — real Blender-worker render outputs.
+- **Light-field Quilt** — real multi-view PNG quilt output. The default compatibility profile is 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
 
-Every format has a declared MIME type, extension, execution boundary, animation capability, and readiness flag. The UI lets users inspect planned formats while disabling the actual export action until the runtime can generate a valid file.
+Every format has a declared MIME type, extension, execution boundary, animation capability, and readiness boundary. A quilt is treated as multi-view display content, not as a claim that one pixel-interlacing calibration fits every physical display. Device-specific optical calibration/interlacing remains the responsibility of the target display runtime or a later device adapter.
 
-This boundary is deliberate: HoloForge will not create fake GLB, USDZ, or WebM files by renaming JSON or a preview image.
+This boundary is deliberate: HoloForge will not create fake GLB, USDZ, WebM, or quilt files by renaming JSON or a preview image.
 ## Image source behavior
 
 HoloForge can use either:
@@ -119,10 +120,11 @@ The Canva bundle obtains a fresh Canva user token and submits a validated HoloSc
 Current backend behavior:
 
 - HoloScene JSON is always a real server-side artifact;
-- GLB, glTF, transparent VP9 WebM, MP4 and PNG-sequence routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- GLB, glTF, transparent VP9 WebM, MP4, PNG-sequence, and light-field quilt routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
 - Blender absence fails closed and those formats are not advertised by `/health`;
 - alpha-WebM is rendered as transparent RGBA PNG frames and encoded with FFmpeg/libvpx-vp9; the production smoke decodes and extracts the resulting alpha plane;
-- USDZ and light-field quilt remain disabled until dedicated adapters generate those actual formats;
+- light-field quilt output renders one discrete camera view per tile, sweeps those views across the requested view cone, preserves the bottom-left-to-top-right view ordering, and assembles the finished quilt PNG with FFmpeg;
+- USDZ remains disabled until a dedicated converter generates an actual USDZ artifact;
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally does not bundle Blender yet. A production renderer can point `BLENDER_BIN` at an installed Blender binary or later move the worker into a dedicated render container without changing the API contract.
@@ -138,9 +140,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, and `png-sequence` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, `png-sequence`, and `lightfield-quilt` in `GET /health`. The normal lightweight backend image remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the expensive production-image build only for render-worker pull requests or an explicit manual dispatch. Its smoke generates a real GLB and transparent VP9 WebM, then extracts the encoded alpha plane to prove transparency survived the pipeline.
+The **HoloForge Render Image** workflow performs the expensive production-image build only for render-worker pull requests or an explicit manual dispatch. Its smoke generates a real GLB, transparent VP9 WebM, and a 45-view 5×9 quilt PNG; it verifies the WebM alpha plane, final quilt dimensions, and exact view count.
 
 ## Development
 
