@@ -102,21 +102,23 @@ def request_payload(format_name="scene-json"):
         "webm-alpha": "transparent-video",
         "mp4": "transparent-video",
         "png-sequence": "image-sequence",
+        "png-still": "still-image",
         "lightfield-quilt": "lightfield-quilt",
     }
     is_quilt = format_name == "lightfield-quilt"
+    is_still = format_name == "png-still"
     payload = {
         "schemaVersion": 1,
         "sceneId": "hf-scene-test",
         "format": format_name,
         "profile": profiles[format_name],
-        "includeAnimation": not is_quilt,
+        "includeAnimation": not (is_quilt or is_still),
         "resolution": (
             {"width": 500, "height": 900}
             if is_quilt
             else {"width": 1920, "height": 1080}
         ),
-        "transparentBackground": format_name in {"webm-alpha", "lightfield-quilt"},
+        "transparentBackground": format_name in {"webm-alpha", "png-still", "lightfield-quilt"},
     }
     if is_quilt:
         payload["quilt"] = {
@@ -221,3 +223,19 @@ def test_usdz_request_accepts_static_ios_ar_profile():
     request = HoloExportRequest.model_validate(payload)
     assert request.format == "usdz"
     assert request.profile == "ios-ar"
+
+
+
+def test_png_still_accepts_static_transparent_profile():
+    request = HoloExportRequest.model_validate(request_payload("png-still"))
+    assert request.format == "png-still"
+    assert request.profile == "still-image"
+    assert request.includeAnimation is False
+    assert request.transparentBackground is True
+
+
+def test_png_still_rejects_animation():
+    payload = request_payload("png-still")
+    payload["includeAnimation"] = True
+    with pytest.raises(ValidationError, match="png-still requires includeAnimation=false"):
+        HoloExportRequest.model_validate(payload)
