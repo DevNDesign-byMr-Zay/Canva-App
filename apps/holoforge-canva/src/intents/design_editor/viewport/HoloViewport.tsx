@@ -10,6 +10,7 @@ import {
 } from "../scene/scene-store";
 import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
+import { ObjectInspector, type TransformMode } from "./ObjectInspector";
 import { StageEnvironment } from "./StageEnvironment";
 
 function WebGLFallback() {
@@ -29,6 +30,8 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
   );
   const [autoOrbit, setAutoOrbit] = useState(false);
   const [controlsRevision, setControlsRevision] = useState(0);
+  const [transformMode, setTransformMode] = useState<TransformMode>("rotate");
+  const [transforming, setTransforming] = useState(false);
 
   useEffect(() => {
     dispatch({ type: "replace_scene", scene });
@@ -42,6 +45,7 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
       <div className="hf-webgl-status">
         <span className="hf-webgl-live-dot" />
         WEBGL LIVE
+        <span>{transformMode.toUpperCase()}</span>
         <b>{selected?.name ?? "SCENE"}</b>
       </div>
 
@@ -63,32 +67,45 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
           onPointerMissed={() => dispatch({ type: "select_object", objectId: null })}
         >
           <color attach="background" args={[state.scene.environment.background]} />
-          <HoloCamera spec={state.scene.camera} />
+          <HoloCamera key={controlsRevision} spec={state.scene.camera} />
           <StageEnvironment environment={state.scene.environment} />
           <Suspense fallback={null}>
             <HoloScene
               scene={state.scene}
               selectedObjectId={state.selectedObjectId}
+              transformMode={transformMode}
               onSelectObject={(objectId) =>
                 dispatch({ type: "select_object", objectId })
               }
+              onTransformCommit={(objectId, transform) =>
+                dispatch({
+                  type: "patch_transform",
+                  objectId,
+                  transform,
+                })
+              }
+              onTransformingChange={(active) => {
+                setTransforming(active);
+                if (active) setAutoOrbit(false);
+              }}
             />
           </Suspense>
           <OrbitControls
-            key={controlsRevision}
+            key={"orbit-" + controlsRevision}
             makeDefault
             target={[
               state.scene.camera.target.x,
               state.scene.camera.target.y,
               state.scene.camera.target.z,
             ]}
+            enabled={!transforming}
             enableDamping
             dampingFactor={0.08}
             enablePan
             enableZoom
             minDistance={2.2}
             maxDistance={8}
-            autoRotate={autoOrbit}
+            autoRotate={autoOrbit && !transforming}
             autoRotateSpeed={1.15}
           />
         </Canvas>
@@ -111,12 +128,35 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
             })
           }
         >
-          {state.scene.timeline.playing ? "PAUSE" : "PLAY"}
+          {state.scene.timeline.playing ? "PAUSE FX" : "PLAY FX"}
         </button>
-        <button type="button" onClick={() => setControlsRevision((value) => value + 1)}>
+        <button
+          type="button"
+          onClick={() => {
+            setAutoOrbit(false);
+            setControlsRevision((value) => value + 1);
+          }}
+        >
           RESET VIEW
         </button>
       </div>
+
+      <ObjectInspector
+        object={selected}
+        mode={transformMode}
+        onModeChange={(mode) => {
+          setAutoOrbit(false);
+          setTransformMode(mode);
+        }}
+        onPatchTransform={(transform) => {
+          if (!selected) return;
+          dispatch({
+            type: "patch_transform",
+            objectId: selected.id,
+            transform,
+          });
+        }}
+      />
 
       <div className="hf-webgl-timeline">
         <span>0:00</span>
@@ -138,7 +178,8 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
       </div>
 
       <p className="hf-webgl-help">
-        Drag to orbit · wheel/pinch to zoom · right-drag to pan · select the hologram to inspect it.
+        Select the object, then MOVE / ROTATE / SCALE with the 3D gizmo or numeric inspector.
+        Drag empty space to orbit · wheel/pinch to zoom · right-drag to pan.
       </p>
     </div>
   );
