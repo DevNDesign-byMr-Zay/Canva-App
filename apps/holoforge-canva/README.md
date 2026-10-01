@@ -79,6 +79,12 @@ The SPATIAL workspace now owns a real editable HoloScene session instead of rebu
 
 Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
 
+## Multi-object scene composition
+
+The SPATIAL workspace now treats HoloScene as a real object stack instead of a single disposable preview. Operators can select, duplicate, hide/show, reorder and remove holographic objects while preserving unique object IDs and a valid scene selection.
+
+Duplicated objects inherit the source geometry, material and animation intent, receive a bounded spatial offset so they are immediately distinguishable, and remain independently editable. Browser rendering and the Blender worker already iterate the HoloScene object array, so multi-object compositions survive JSON, 3D, video, USDZ and light-field export paths rather than flattening back into one preview layer.
+
 ## Live material and geometry editing
 
 The selected SPATIAL object can now be edited after scene creation without rebuilding the material plan. HoloForge exposes real HoloScene-backed visibility, material-family, opacity, reflection, emission, metalness, roughness, transmission, IOR, spectral shift, diffraction, shimmer, scanline, thickness, bevel-size and bevel-segment controls.
