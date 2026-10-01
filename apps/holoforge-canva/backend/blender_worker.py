@@ -526,6 +526,16 @@ if format_name == "glb":
 elif format_name == "gltf":
     target = output_dir / (stem + ".gltf")
     bpy.ops.export_scene.gltf(filepath=str(target), export_format="GLTF_EMBEDDED", export_animations=bool(request["includeAnimation"]))
+elif format_name == "usdz":
+    target = output_dir / (stem + ".usdz")
+    bpy.ops.wm.usd_export(
+        filepath=str(target),
+        export_animation=bool(request["includeAnimation"]),
+        root_prim_path="/HoloForge",
+        relative_paths=True,
+    )
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise RuntimeError("Blender produced no USDZ artifact")
 elif format_name == "webm-alpha":
     frames = output_dir / "webm-alpha-frames"
     frames.mkdir(exist_ok=True)
