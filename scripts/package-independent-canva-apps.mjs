@@ -118,6 +118,7 @@ UI
 - src/                     -> maintained React/TypeScript/CSS UI source
 - src/assets/              -> packaged HoloForge or DepthPop logo asset
 - image source workflow    -> production app can choose/drop PNG/JPEG/WebP and bind Canva raster sources
+- WebGL spatial studio     -> HoloForge package contains the real Three.js/R3F scene model and viewport
 ${backend}
 This package intentionally contains no node_modules, no secret .env file, no historical ROARY/ÆTHER shell, no Drive provenance HTML/router source, and no combined HoloForge/DepthPop runtime switcher.
 
@@ -177,6 +178,26 @@ for (const app of APPS) {
     ]) {
       if (!holoApp.includes(marker)) {
         throw new Error(`HoloForge packaged runtime is missing functional source/forge marker: ${marker}`);
+      }
+    }
+
+    const webglViewport = await readFile(
+      join(destination, "src", "intents", "design_editor", "viewport", "HoloViewport.tsx"),
+      "utf8",
+    );
+    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "WEBGL LIVE"]) {
+      if (!webglViewport.includes(marker)) {
+        throw new Error(`HoloForge WebGL studio missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneContract = await readFile(
+      join(destination, "src", "intents", "design_editor", "scene", "holo-scene.ts"),
+      "utf8",
+    );
+    for (const marker of ["schemaVersion: 1", "export type HoloScene", "createHoloScene"]) {
+      if (!sceneContract.includes(marker)) {
+        throw new Error(`HoloForge scene contract missing packaged marker: ${marker}`);
       }
     }
 
@@ -262,6 +283,13 @@ for (const app of APPS) {
           "src/intents/design_editor/use-canva-image-selection.ts",
           "src/intents/design_editor/holographic/derived-image-adapter.ts",
           "src/intents/design_editor/holographic/derived-image-adapter.test.ts",
+          "src/intents/design_editor/scene/holo-scene.ts",
+          "src/intents/design_editor/scene/holo-scene.test.ts",
+          "src/intents/design_editor/scene/scene-store.ts",
+          "src/intents/design_editor/materials/HoloMaterial.tsx",
+          "src/intents/design_editor/viewport/HoloViewport.tsx",
+          "src/intents/design_editor/viewport/HoloScene.tsx",
+          "src/intents/design_editor/viewport/HoloObject.tsx",
         ]
       : []),
   ]) {
