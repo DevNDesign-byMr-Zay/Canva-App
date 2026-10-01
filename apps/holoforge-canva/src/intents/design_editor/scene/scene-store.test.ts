@@ -77,6 +77,53 @@ describe("HoloScene reducer", () => {
     expect(next.scene.camera.far).toBeCloseTo(0.011);
   });
 
+  it("patches object material and geometry with bounded renderer values", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const objectId = scene.objects[0]!.id;
+
+    const next = holoSceneReducer(state, {
+      type: "patch_object",
+      objectId,
+      patch: {
+        visible: false,
+        material: {
+          opacity: 4,
+          metalness: -3,
+          roughness: 0,
+          transmission: 7,
+          ior: 9,
+          emissionStrength: 8,
+          spectralShift: 140,
+          diffraction: -2,
+          reflectionStrength: 200,
+        },
+        geometry: {
+          thickness: 4,
+          bevelSize: -1,
+          bevelSegments: 12.4,
+        },
+      },
+    });
+
+    const original = scene.objects[0]!;
+    const patched = next.scene.objects[0]!;
+    expect(original.visible).toBe(true);
+    expect(patched.visible).toBe(false);
+    expect(patched.material.opacity).toBe(1);
+    expect(patched.material.metalness).toBe(0);
+    expect(patched.material.roughness).toBe(0.02);
+    expect(patched.material.transmission).toBe(1);
+    expect(patched.material.ior).toBe(2.5);
+    expect(patched.material.emissionStrength).toBe(5);
+    expect(patched.material.spectralShift).toBe(100);
+    expect(patched.material.diffraction).toBe(0);
+    expect(patched.material.reflectionStrength).toBe(100);
+    expect(patched.geometry.thickness).toBe(2);
+    expect(patched.geometry.bevelSize).toBe(0);
+    expect(patched.geometry.bevelSegments).toBe(8);
+  });
+
   it("clamps timeline changes to scene duration", () => {
     const state = createHoloSceneState(fixture());
     const next = holoSceneReducer(state, {
