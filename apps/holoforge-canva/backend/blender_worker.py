@@ -898,6 +898,10 @@ else:
     raise RuntimeError("Unsupported worker format: " + format_name)
 
 (output_dir / "result.json").write_text(
-    json.dumps({"path": str(target.resolve()), "format": format_name}),
+    json.dumps({
+        "path": str(target.resolve()),
+        "format": format_name,
+        "frame": int(scene.frame_current),
+    }),
     encoding="utf-8",
 )
