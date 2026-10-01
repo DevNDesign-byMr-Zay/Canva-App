@@ -82,6 +82,22 @@ class JobRepository:
             return None
 
 
+def _remove_artifact_tree(artifact: ExportArtifact) -> None:
+    try:
+        path = Path(artifact.path).resolve()
+        root = ARTIFACT_ROOT.resolve()
+        export_dir = path.parent
+        export_dir.relative_to(root)
+    except (OSError, ValueError):
+        return
+
+    if export_dir == root:
+        path.unlink(missing_ok=True)
+        return
+
+    shutil.rmtree(export_dir, ignore_errors=True)
+
+
 class ArtifactRepository:
     def __init__(self) -> None:
         ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -97,12 +113,12 @@ class ArtifactRepository:
         for key in expired:
             record = self._values.pop(key, None)
             if record:
-                Path(record[1].path).unlink(missing_ok=True)
+                _remove_artifact_tree(record[1])
         if len(self._values) > MAX_ARTIFACTS:
             ordered = sorted(self._values.items(), key=lambda item: item[1][0])
             for key, (_, artifact) in ordered[: len(self._values) - MAX_ARTIFACTS]:
                 self._values.pop(key, None)
-                Path(artifact.path).unlink(missing_ok=True)
+                _remove_artifact_tree(artifact)
 
     def allocate_dir(self, export_id: str) -> Path:
         root = ARTIFACT_ROOT / export_id
@@ -127,5 +143,6 @@ class ArtifactRepository:
                 return None
             if not Path(artifact.path).is_file():
                 self._values.pop(key.resource_id, None)
+                _remove_artifact_tree(artifact)
                 return None
             return artifact
