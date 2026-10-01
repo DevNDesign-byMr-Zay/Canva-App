@@ -32,6 +32,28 @@ Set `BLENDER_BIN` to an installed Blender binary. The backend never bundles a fa
 The dedicated worker lives in `blender_worker.py` and is invoked with a temporary validated job payload. Production deployment can later split this worker into a separate GPU/render container without changing the API contract.
 
 
+## Raster source geometry
+
+Transparent PNG/WebP source graphics are no longer automatically exported as rectangular slabs.
+
+For raster sources, the Blender worker now:
+
+1. downsamples a copy of the decoded image for bounded alpha analysis;
+2. creates an alpha mask;
+3. traces disconnected visible contours;
+4. removes tiny components and simplifies the remaining contours;
+5. normalizes those contours into HoloForge scene coordinates;
+6. creates a filled 2D Blender curve from the contours;
+7. extrudes/bevels the curve into 3D geometry;
+8. converts it to a mesh and applies the HoloForge material;
+9. places the original transparent source texture on the front surface for visual identity.
+
+The worker records `holoforge_geometry=alpha-extruded` on successful silhouette geometry.
+
+Fully opaque images (including typical JPEG sources), nearly empty alpha images, or images whose contour analysis cannot produce useful geometry deliberately use `holoforge_geometry=plate-fallback`. HoloForge does not invent a silhouette where the source provides no meaningful transparency boundary.
+
+The contour engine lives in `source_geometry.py` and has pure-Python tests, so contour behavior can be validated without launching Blender.
+
 ## Production render image
 
 The lightweight `Dockerfile` intentionally starts without Blender and therefore reports only `scene-json` as available.
