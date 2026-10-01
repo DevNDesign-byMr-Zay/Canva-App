@@ -110,6 +110,22 @@ The manifest requires:
 
 Private asset read is required so HoloForge can resolve an image already selected in Canva and create a derived treatment from it.
 
+## Render/export backend
+
+HoloForge now has its own authenticated FastAPI render boundary under `backend/`.
+
+The Canva bundle obtains a fresh Canva user token and submits a validated HoloScene/export request to the backend. Export jobs and artifacts are isolated by Canva `userId` + `brandId`, are bounded by TTL/capacity controls, and require authentication for status and download.
+
+Current backend behavior:
+
+- HoloScene JSON is always a real server-side artifact;
+- GLB, glTF, MP4 and PNG-sequence routes are implemented through the headless Blender worker when `BLENDER_BIN` is configured;
+- Blender absence fails closed and those formats are not advertised by `/health`;
+- USDZ, alpha-WebM and light-field quilt remain disabled until dedicated adapters generate those actual formats;
+- Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
+
+The normal API container intentionally does not bundle Blender yet. A production renderer can point `BLENDER_BIN` at an installed Blender binary or later move the worker into a dedicated render container without changing the API contract.
+
 ## Development
 
     npm install --ignore-scripts
