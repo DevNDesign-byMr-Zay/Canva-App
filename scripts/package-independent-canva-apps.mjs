@@ -187,7 +187,7 @@ for (const app of APPS) {
       join(destination, "src", "intents", "design_editor", "viewport", "HoloViewport.tsx"),
       "utf8",
     );
-    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "<ObjectInspector", "<AnimationPanel", "requestAnimationFrame", "WEBGL LIVE"]) {
+    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "<ObjectInspector", "<AnimationPanel", "<ExportPanel", "requestAnimationFrame", "WEBGL LIVE"]) {
       if (!webglViewport.includes(marker)) {
         throw new Error(`HoloForge WebGL studio missing packaged marker: ${marker}`);
       }
@@ -220,6 +220,16 @@ for (const app of APPS) {
     for (const marker of ["ShaderMaterial", "uSpectralShift", "uDiffraction", "fresnel"]) {
       if (!spectral.includes(marker)) {
         throw new Error(`HoloForge spectral material missing packaged marker: ${marker}`);
+      }
+    }
+
+    const exportContract = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "export-contract.ts"),
+      "utf8",
+    );
+    for (const marker of ['"scene-json"', '"glb"', '"usdz"', '"webm-alpha"', '"lightfield-quilt"', "render-worker", "device-adapter"]) {
+      if (!exportContract.includes(marker)) {
+        throw new Error(`HoloForge export contract missing packaged marker: ${marker}`);
       }
     }
 
@@ -333,6 +343,11 @@ for (const app of APPS) {
           "src/intents/design_editor/animation/keyframe-model.ts",
           "src/intents/design_editor/animation/keyframe-model.test.ts",
           "src/intents/design_editor/animation/AnimationPanel.tsx",
+          "src/intents/design_editor/export/export-contract.ts",
+          "src/intents/design_editor/export/export-contract.test.ts",
+          "src/intents/design_editor/export/scene-download.ts",
+          "src/intents/design_editor/export/scene-download.test.ts",
+          "src/intents/design_editor/export/ExportPanel.tsx",
           "src/intents/design_editor/geometry/alpha-contour.ts",
           "src/intents/design_editor/geometry/alpha-contour.test.ts",
           "src/intents/design_editor/geometry/use-alpha-shape.ts",
