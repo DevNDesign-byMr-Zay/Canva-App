@@ -109,7 +109,7 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
     target.rotation.set(0, 0, 0);
     target.scale.set(1, 1, 1);
 
-    if (object.animationTracks.length > 0) {
+    if (object.animationPreset === "custom" && object.animationTracks.length > 0) {
       const sampled = sampleTransformTracks(object.animationTracks, currentTimeMs);
 
       if (sampled.position) {
