@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
 import os
 import shutil
@@ -9,7 +10,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 def scene_payload() -> dict:
@@ -82,7 +83,7 @@ def scene_payload() -> dict:
 def source_scene_payload() -> dict:
     payload = scene_payload()
     image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = __import__("PIL.ImageDraw", fromlist=["ImageDraw"]).Draw(image)
+    draw = ImageDraw.Draw(image)
     draw.rounded_rectangle(
         (10, 8, 54, 56),
         radius=10,
@@ -90,7 +91,7 @@ def source_scene_payload() -> dict:
     )
     draw.ellipse((22, 18, 45, 41), fill=(255, 90, 220, 210))
 
-    buffer = __import__("io").BytesIO()
+    buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
