@@ -18,6 +18,7 @@ MIME_BY_FORMAT = {
     "webm-alpha": "video/webm",
     "mp4": "video/mp4",
     "png-sequence": "application/zip",
+    "lightfield-quilt": "image/png",
 }
 
 EXTENSION_BY_FORMAT = {
@@ -27,6 +28,7 @@ EXTENSION_BY_FORMAT = {
     "webm-alpha": ".webm",
     "mp4": ".mp4",
     "png-sequence": ".zip",
+    "lightfield-quilt": ".png",
 }
 
 
@@ -57,7 +59,7 @@ class SceneJsonRenderer:
 
 
 class BlenderRenderer:
-    IMPLEMENTED = frozenset({"glb", "gltf", "webm-alpha", "mp4", "png-sequence"})
+    IMPLEMENTED = frozenset({"glb", "gltf", "webm-alpha", "mp4", "png-sequence", "lightfield-quilt"})
 
     def __init__(self, blender_bin: str | None = None) -> None:
         self.blender_bin = (
@@ -112,10 +114,18 @@ class BlenderRenderer:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        timeout_env = (
+            "HOLOFORGE_QUILT_TIMEOUT_SECONDS"
+            if request.format == "lightfield-quilt"
+            else "HOLOFORGE_RENDER_TIMEOUT_SECONDS"
+        )
+        timeout_default = "1800" if request.format == "lightfield-quilt" else "600"
+        render_timeout = max(30, int(os.getenv(timeout_env, timeout_default)))
+
         try:
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=max(30, int(os.getenv("HOLOFORGE_RENDER_TIMEOUT_SECONDS", "600"))),
+                timeout=render_timeout,
             )
         except TimeoutError:
             process.kill()
@@ -157,7 +167,7 @@ class RendererRegistry:
                 return renderer
         raise RuntimeError(
             f"No configured HoloForge renderer can produce {format_name}. "
-            "scene-json is always available; GLB/glTF/WebM-alpha/MP4/PNG-sequence require BLENDER_BIN."
+            "scene-json is always available; GLB/glTF/WebM-alpha/MP4/PNG-sequence/light-field quilt require BLENDER_BIN."
         )
 
     def supported_formats(self) -> list[str]:
