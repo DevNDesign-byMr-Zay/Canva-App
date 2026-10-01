@@ -9,7 +9,6 @@ import type { TransformMode } from "./ObjectInspector";
 function EditableObject({
   object,
   selected,
-  playing,
   currentTimeMs,
   mode,
   onSelectObject,
@@ -18,7 +17,6 @@ function EditableObject({
 }: {
   object: HoloObjectSpec;
   selected: boolean;
-  playing: boolean;
   currentTimeMs: number;
   mode: TransformMode;
   onSelectObject: (id: string) => void;
@@ -35,7 +33,6 @@ function EditableObject({
       ref={objectRef}
       object={object}
       selected={selected}
-      playing={playing}
       currentTimeMs={currentTimeMs}
       onSelect={onSelectObject}
     />
@@ -103,7 +100,6 @@ export function HoloScene({
           key={object.id}
           object={object}
           selected={selectedObjectId === object.id}
-          playing={scene.timeline.playing}
           currentTimeMs={scene.timeline.currentTimeMs}
           mode={transformMode}
           onSelectObject={onSelectObject}
