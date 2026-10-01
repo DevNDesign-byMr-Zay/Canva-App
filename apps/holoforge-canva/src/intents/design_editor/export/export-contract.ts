@@ -76,7 +76,7 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: false,
-    description: "AR-ready USDZ output. Requires worker-side material and geometry conversion.",
+    description: "AR-oriented USDZ package generated directly by Blender's USD archive exporter.",
   },
   {
     format: "webm-alpha",
