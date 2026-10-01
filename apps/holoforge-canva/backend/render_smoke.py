@@ -8,6 +8,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from PIL import Image
+
 
 def scene_payload() -> dict:
     return {
@@ -140,6 +142,23 @@ def run_worker(
     if not artifact.is_file() or artifact.stat().st_size <= 0:
         raise SystemExit(f"Blender worker produced no {format_name} artifact")
     return artifact, result
+
+
+def verify_png_still(artifact: Path, *, width: int, height: int) -> None:
+    if artifact.suffix.lower() != ".png":
+        raise SystemExit("PNG still smoke produced the wrong artifact extension")
+
+    with Image.open(artifact) as image:
+        if image.size != (width, height):
+            raise SystemExit(
+                f"PNG still dimensions are wrong: {image.size}; expected {(width, height)}"
+            )
+        if image.mode != "RGBA":
+            raise SystemExit(f"PNG still is not RGBA: {image.mode}")
+        alpha = image.getchannel("A")
+        minimum, maximum = alpha.getextrema()
+        if minimum >= 255 or maximum <= 0:
+            raise SystemExit("PNG still smoke did not preserve meaningful transparency")
 
 
 def verify_webm_alpha(artifact: Path) -> None:
@@ -284,6 +303,18 @@ def main() -> int:
         )
         verify_usdz(usdz)
 
+        png_still, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="png-still",
+            profile="still-image",
+            transparent=True,
+            include_animation=False,
+            resolution=(320, 180),
+        )
+        verify_png_still(png_still, width=320, height=180)
+
         webm, _ = run_worker(
             blender,
             worker,
@@ -324,6 +355,12 @@ def main() -> int:
                     "ok": True,
                     "glb": {"artifact": glb.name, "sizeBytes": glb.stat().st_size},
                     "usdz": {"artifact": usdz.name, "sizeBytes": usdz.stat().st_size},
+                    "pngStill": {
+                        "artifact": png_still.name,
+                        "sizeBytes": png_still.stat().st_size,
+                        "resolution": [320, 180],
+                        "alphaVerified": True,
+                    },
                     "webmAlpha": {
                         "artifact": webm.name,
                         "sizeBytes": webm.stat().st_size,

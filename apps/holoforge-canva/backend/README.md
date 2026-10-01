@@ -9,7 +9,7 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - per-user/per-brand job and artifact ownership;
 - bounded TTL-backed job/artifact repositories;
 - actual server-side HoloScene JSON artifacts;
-- Blender adapter contract for GLB, glTF, USDZ, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
+- Blender adapter contract for GLB, glTF, USDZ, transparent static PNG, transparent VP9 WebM, MP4, PNG-sequence, and multi-view light-field quilt exports;
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
@@ -85,6 +85,7 @@ scene-json
 glb
 gltf
 usdz
+png-still
 webm-alpha
 mp4
 png-sequence
@@ -126,3 +127,12 @@ The production smoke verifies that:
 - the package is non-empty and returned through the same authenticated artifact boundary as the other render formats.
 
 The first shipping contract is static USDZ. HoloScene animation stays available in GLB/glTF/video outputs until the USDZ animation lane is explicitly qualified across Apple-compatible consumers.
+
+
+## Static PNG / Canva insertion
+
+The `png-still` / `still-image` profile renders the HoloScene at its authored `timeline.currentTimeMs` instead of rendering the full animation. The worker writes a real PNG at the requested resolution and honors `transparentBackground`, making the result suitable for Canva compositing.
+
+The production smoke opens the rendered PNG with Pillow, verifies the requested dimensions, requires RGBA output, and confirms that the alpha channel contains meaningful transparency rather than an opaque placeholder.
+
+The Canva-side export adapter downloads the completed artifact through the authenticated export boundary, uploads it to the operator's Canva asset library, waits for upload completion, and inserts the rendered image into the active design.

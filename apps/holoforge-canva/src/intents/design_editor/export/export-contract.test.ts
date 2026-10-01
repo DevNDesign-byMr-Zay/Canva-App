@@ -37,6 +37,19 @@ describe("HoloForge export contract", () => {
     expect(capabilityFor("glb").execution).toBe("render-worker");
   });
 
+  it("builds a transparent static PNG request for the authored timeline frame", () => {
+    const request = buildExportRequest(scene(), "png-still");
+
+    expect(request).toMatchObject({
+      format: "png-still",
+      profile: "still-image",
+      includeAnimation: false,
+      resolution: { width: 1920, height: 1080 },
+      transparentBackground: true,
+    });
+    expect(capabilityFor("png-still").execution).toBe("render-worker");
+  });
+
   it("builds a bounded generic 45-view quilt request", () => {
     const request = buildExportRequest(scene(), "lightfield-quilt");
 

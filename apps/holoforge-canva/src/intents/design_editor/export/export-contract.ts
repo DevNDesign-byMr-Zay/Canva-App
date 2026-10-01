@@ -8,6 +8,7 @@ export type HoloExportFormat =
   | "webm-alpha"
   | "mp4"
   | "png-sequence"
+  | "png-still"
   | "lightfield-quilt";
 
 export type HoloExportProfile =
@@ -16,6 +17,7 @@ export type HoloExportProfile =
   | "ios-ar"
   | "transparent-video"
   | "image-sequence"
+  | "still-image"
   | "lightfield-quilt"
   | "custom";
 
@@ -112,6 +114,17 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     description: "Frame-accurate transparent sequence for compositing, LED/display pipelines, and archival interchange.",
   },
   {
+    format: "png-still",
+    profile: "still-image",
+    label: "PNG Still",
+    extension: ".png",
+    mimeType: "image/png",
+    execution: "render-worker",
+    ready: false,
+    animated: false,
+    description: "Transparent still render of the currently authored HoloScene timeline frame, suitable for direct Canva insertion.",
+  },
+  {
     format: "lightfield-quilt",
     profile: "lightfield-quilt",
     label: "Light-field Quilt",
@@ -177,6 +190,7 @@ export function buildExportRequest(
     transparentBackground: overrides.transparentBackground ?? (
       format === "webm-alpha" ||
       format === "png-sequence" ||
+      format === "png-still" ||
       format === "lightfield-quilt"
     ),
     ...(format === "lightfield-quilt"
