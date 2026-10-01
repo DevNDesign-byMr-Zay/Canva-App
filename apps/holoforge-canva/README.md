@@ -73,6 +73,12 @@ The SPATIAL studio supports built-in motion presets plus a **CUSTOM** mode. In c
 
 The timeline playback loop updates scene time rather than hiding animation state inside the renderer. That makes the authored motion suitable for later conversion into GLB animation clips, Blender keyframes, or rendered video without reverse-engineering the preview.
 
+## Spatial edit session
+
+The SPATIAL workspace now owns a real editable HoloScene session instead of rebuilding the scene every time the operator changes tabs. Transform edits, authored poses, animation presets and manually scrubbed timeline state are lifted back into the app-level studio scene and restored when CREATE / SPATIAL / VERIFY navigation unmounts and remounts the viewport.
+
+Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
+
 ## Export and deployment profiles
 
 HoloForge exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can create it locally.
