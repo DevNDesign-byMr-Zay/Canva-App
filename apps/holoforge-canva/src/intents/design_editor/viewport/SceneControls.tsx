@@ -132,7 +132,7 @@ export function SceneControls({
     <section className="hf-scene-controls" aria-label="HoloForge scene and camera controls">
       <div className="hf-scene-controls-head">
         <div>
-          <span>04 · SCENE / CAMERA</span>
+          <span>05 · SCENE / CAMERA</span>
           <strong>LIVE STAGE</strong>
         </div>
         <button
