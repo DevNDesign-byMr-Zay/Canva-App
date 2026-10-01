@@ -106,6 +106,18 @@ const APPS = {
       "backend/.env.example",
       "backend/README.md",
       "backend/test_app.py",
+      "src/intents/design_editor/scene/depth-scene.ts",
+      "src/intents/design_editor/api/depthpop-api.ts",
+      "backend/models/scene.py",
+      "backend/models/object.py",
+      "backend/models/job.py",
+      "backend/providers/segmentation_provider.py",
+      "backend/providers/depth_provider.py",
+      "backend/providers/inpaint_provider.py",
+      "backend/services/scene_builder.py",
+      "backend/api/scenes.py",
+      "backend/api/jobs.py",
+      "backend/test_v1_scenes.py",
       "reference/DRIVE_SOURCE.md",
       "reference/drive-source/roaryv246_v115_depthpop_modeldrawer_FINALFIX.html",
       "reference/drive-source/roary_router_5055_SEARCH_FIXED_v261_depthpop_progress_v3.py.txt",
@@ -671,6 +683,21 @@ if (fs.existsSync(packagerPath)) {
     if (!packager.includes(marker)) {
       fail(`packaging: independent-app package guard missing: ${marker}`);
     }
+  }
+}
+
+
+const depthSceneTs = readText(full(APPS.depthpop.root, "src/intents/design_editor/scene/depth-scene.ts"));
+for (const marker of ["schemaVersion: 1", "sourceAssetId", "reconstructedPlate", "DepthObject"]) {
+  if (!depthSceneTs.includes(marker)) {
+    fail(`depthpop: scene contract marker missing: ${marker}`);
+  }
+}
+
+const depthScenesApi = readText(full(APPS.depthpop.root, "backend/api/scenes.py"));
+for (const marker of ["@router.post", "run_scene_decomposition_job", "max_objects"]) {
+  if (!depthScenesApi.includes(marker)) {
+    fail(`depthpop backend: v1 scenes API marker missing: ${marker}`);
   }
 }
 

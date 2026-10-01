@@ -6,24 +6,24 @@ import hashlib
 import io
 import os
 import time
-from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
 import fal_client
 import httpx
-import jwt
 import numpy as np
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from jwt import PyJWKClient
 from PIL import Image, ImageFilter
 
-MAX_IMAGE_BYTES = 50 * 1024 * 1024
+from api.jobs import router as jobs_router
+from api.scenes import router as scenes_router
+from auth import verify_canva_user, VerifiedCanvaUser
+from services.upload import validate_and_read_upload, MAX_IMAGE_BYTES, SUPPORTED_IMAGE_MIME
+
 CACHE_TTL_SECONDS = 15 * 60
 CACHE_LIMIT = 32
-SUPPORTED_IMAGE_MIME = {"image/png", "image/jpeg", "image/webp"}
 
 CANVA_APP_ID = os.getenv("CANVA_APP_ID", "").strip()
 CANVA_APP_ORIGIN = os.getenv("CANVA_APP_ORIGIN", "").strip().rstrip("/")
@@ -35,70 +35,16 @@ if CANVA_APP_ORIGIN:
         CORSMiddleware,
         allow_origins=[CANVA_APP_ORIGIN],
         allow_credentials=False,
-        allow_methods=["POST", "OPTIONS"],
+        allow_methods=["POST", "GET", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
-_jwks_client: PyJWKClient | None = None
+app.include_router(scenes_router)
+app.include_router(jobs_router)
+
 _image_cache: dict[str, tuple[float, bytes, str]] = {}
 _progress_cache: dict[str, dict[str, Any]] = {}
 _render_slots = asyncio.Semaphore(max(1, int(os.getenv("DEPTHPOP_MAX_CONCURRENCY", "3"))))
-
-
-@dataclass(frozen=True)
-class VerifiedCanvaUser:
-    user_id: str
-    brand_id: str
-
-
-def _require_config() -> None:
-    if not CANVA_APP_ID:
-        raise HTTPException(status_code=503, detail="CANVA_APP_ID is not configured")
-    if not os.getenv("FAL_KEY", "").strip():
-        raise HTTPException(status_code=503, detail="FAL_KEY is not configured")
-
-
-def _get_jwks_client() -> PyJWKClient:
-    global _jwks_client
-    _require_config()
-    if _jwks_client is None:
-        _jwks_client = PyJWKClient(
-            "https://api.canva.com/rest/v1/apps/" + CANVA_APP_ID + "/jwks",
-            cache_keys=True,
-            max_cached_keys=16,
-            lifespan=3600,
-        )
-    return _jwks_client
-
-
-def _extract_bearer(authorization: str | None) -> str:
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Canva authorization token")
-    scheme, _, token = authorization.strip().partition(" ")
-    if scheme.lower() != "bearer" or not token.strip():
-        raise HTTPException(status_code=401, detail="Invalid Canva authorization header")
-    return token.strip()
-
-
-async def verify_canva_user(authorization: str | None = Header(default=None)) -> VerifiedCanvaUser:
-    token = _extract_bearer(authorization)
-    try:
-        signing_key = await asyncio.to_thread(_get_jwks_client().get_signing_key_from_jwt, token)
-        claims = jwt.decode(
-            token,
-            signing_key.key,
-            algorithms=["RS256"],
-            audience=CANVA_APP_ID,
-            options={"require": ["aud", "exp"]},
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail="Invalid Canva authorization token") from exc
-
-    user_id = str(claims.get("userId") or "").strip()
-    brand_id = str(claims.get("brandId") or "").strip()
-    if not user_id or not brand_id:
-        raise HTTPException(status_code=401, detail="Canva user identity is incomplete")
-    return VerifiedCanvaUser(user_id=user_id, brand_id=brand_id)
 
 
 FAL_MEDIA_BASES = {
@@ -145,23 +91,7 @@ async def _fetch_provider_image(url: str) -> bytes:
 
 
 async def _read_source_image(image: UploadFile) -> tuple[bytes, str]:
-    mime = (image.content_type or "").split(";", 1)[0].strip().lower()
-    if mime not in SUPPORTED_IMAGE_MIME:
-        raise HTTPException(status_code=415, detail="DepthPop supports PNG, JPEG, and WebP images")
-
-    raw = await image.read(MAX_IMAGE_BYTES + 1)
-    if not raw:
-        raise HTTPException(status_code=400, detail="Selected image was empty")
-    if len(raw) > MAX_IMAGE_BYTES:
-        raise HTTPException(status_code=413, detail="Selected image exceeds 50 MB")
-
-    try:
-        with Image.open(io.BytesIO(raw)) as probe:
-            probe.verify()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Selected file is not a valid raster image") from exc
-
-    return raw, mime
+    return await validate_and_read_upload(image)
 
 
 def _to_data_url(raw: bytes, mime: str) -> str:
@@ -409,7 +339,8 @@ async def execute_depthpop(
     progress_id: str | None = Form(None),
     _user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict[str, Any]:
-    _require_config()
+    if not os.getenv("FAL_KEY", "").strip():
+        raise HTTPException(status_code=503, detail="FAL_KEY is not configured")
     _progress_set(progress_id, 1, "running", "start")
 
     async with _render_slots:

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 import app as depthpop
+from auth import verify_canva_user, VerifiedCanvaUser
 
 
 def _png_bytes(size=(24, 24), color=(180, 90, 220)):
@@ -80,7 +81,7 @@ def test_fal_media_url_rejects_untrusted_hosts():
 
 def test_depthpop_route_completes_with_stubbed_depth_provider(monkeypatch):
     async def fake_verify():
-        return depthpop.VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
+        return VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
 
     async def fake_depth_map(raw: bytes, mime: str):
         assert raw
@@ -94,7 +95,7 @@ def test_depthpop_route_completes_with_stubbed_depth_provider(monkeypatch):
     monkeypatch.setattr(depthpop, "CANVA_APP_ID", "test-app")
     monkeypatch.setenv("FAL_KEY", "test-key")
     monkeypatch.setattr(depthpop, "_depth_map", fake_depth_map)
-    depthpop.app.dependency_overrides[depthpop.verify_canva_user] = fake_verify
+    depthpop.app.dependency_overrides[verify_canva_user] = fake_verify
 
     try:
         client = TestClient(depthpop.app)
@@ -124,10 +125,9 @@ def test_depthpop_route_completes_with_stubbed_depth_provider(monkeypatch):
         depthpop.app.dependency_overrides.clear()
 
 
-
 def test_drive_compatible_route_alias_and_progress_contract(monkeypatch):
     async def fake_verify():
-        return depthpop.VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
+        return VerifiedCanvaUser(user_id="user-1", brand_id="brand-1")
 
     async def fake_depth_map(raw: bytes, mime: str):
         assert raw
@@ -141,7 +141,7 @@ def test_drive_compatible_route_alias_and_progress_contract(monkeypatch):
     monkeypatch.setattr(depthpop, "CANVA_APP_ID", "test-app")
     monkeypatch.setenv("FAL_KEY", "test-key")
     monkeypatch.setattr(depthpop, "_depth_map", fake_depth_map)
-    depthpop.app.dependency_overrides[depthpop.verify_canva_user] = fake_verify
+    depthpop.app.dependency_overrides[verify_canva_user] = fake_verify
     depthpop._progress_cache.clear()
 
     try:
@@ -186,7 +186,7 @@ def test_drive_compatible_route_alias_and_progress_contract(monkeypatch):
 
 
 def test_all_drive_depthpop_aliases_are_registered():
-    routes = {route.path for route in depthpop.app.routes}
+    routes = {getattr(route, "path", None) for route in depthpop.app.routes}
     assert "/api/depthpop" in routes
     assert "/tool/depth_pop" in routes
     assert "/tool/depthpop" in routes
