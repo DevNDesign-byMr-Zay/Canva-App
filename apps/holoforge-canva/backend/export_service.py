@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -109,6 +110,7 @@ class ExportService:
         if not job:
             return
 
+        output_dir: Path | None = None
         try:
             job = self._update(
                 job,
@@ -172,6 +174,8 @@ class ExportService:
                 message="Export complete",
             )
         except Exception as exc:
+            if output_dir is not None:
+                shutil.rmtree(output_dir, ignore_errors=True)
             self._update(
                 job,
                 status="error",
