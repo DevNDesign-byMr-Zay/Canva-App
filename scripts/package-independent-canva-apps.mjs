@@ -236,7 +236,7 @@ for (const app of APPS) {
     }
 
     const blenderWorker = await readFile(
-      join(destination, "backend", "blender_worker.py"),
+      join(source, "backend", "blender_worker.py"),
       "utf8",
     );
     for (const marker of ['format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
