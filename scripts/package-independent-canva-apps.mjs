@@ -468,6 +468,7 @@ for (const app of APPS) {
             "backend/spectral_material.py",
             "backend/test_spectral_material.py",
             "backend/test_models.py",
+            "backend/test_repositories.py",
           ]
         : []),
     ];
