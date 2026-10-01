@@ -11,6 +11,7 @@ const APPS = {
       "package.json",
       "canva-app.json",
       "tsconfig.json",
+      ".env.template",
       "README.md",
       "preview/index.html",
       "src/index.tsx",
@@ -41,6 +42,7 @@ const APPS = {
       "src/intents/design_editor/export/scene-download.ts",
       "src/intents/design_editor/export/scene-download.test.ts",
       "src/intents/design_editor/export/ExportPanel.tsx",
+      "src/intents/design_editor/export/export-client.ts",
       "src/intents/design_editor/geometry/alpha-contour.ts",
       "src/intents/design_editor/geometry/alpha-contour.test.ts",
       "src/intents/design_editor/geometry/use-alpha-shape.ts",
@@ -52,6 +54,19 @@ const APPS = {
       "src/intents/design_editor/viewport/StageEnvironment.tsx",
       "src/intents/design_editor/use-canva-image-selection.ts",
       "src/assets/holoforge-logo.svg",
+      "backend/app.py",
+      "backend/auth.py",
+      "backend/models.py",
+      "backend/repositories.py",
+      "backend/renderers.py",
+      "backend/export_service.py",
+      "backend/blender_worker.py",
+      "backend/requirements.txt",
+      "backend/Dockerfile",
+      "backend/.env.example",
+      "backend/README.md",
+      "backend/test_app.py",
+      "backend/test_models.py",
     ],
     forbiddenText: [
       "__MRZAY_CANVA_PRODUCT__",
@@ -155,7 +170,7 @@ for (const [name, spec] of Object.entries(APPS)) {
     }
     const requiredDependencies =
       name === "holoforge"
-        ? ["@canva/asset", "@canva/design", "three", "@react-three/fiber", "@react-three/drei"]
+        ? ["@canva/asset", "@canva/design", "@canva/user", "three", "@react-three/fiber", "@react-three/drei"]
         : ["@canva/asset", "@canva/design"];
     for (const dependency of requiredDependencies) {
       if (!pkg?.dependencies?.[dependency]) {
@@ -224,6 +239,52 @@ for (const [name, spec] of Object.entries(APPS)) {
         fail(`${name}: test-image upload marker missing: ${marker}`);
       }
     }
+  }
+}
+
+const holoExportClient = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/export-client.ts"),
+);
+for (const marker of [
+  "auth.getCanvaUserToken",
+  "prepareSceneForBackend",
+  "createBackendExport",
+  "waitForExport",
+  "downloadBackendExport",
+  '"glb"',
+  '"gltf"',
+  '"mp4"',
+  '"png-sequence"',
+]) {
+  if (!holoExportClient.includes(marker)) {
+    fail(`holoforge: render backend client marker missing: ${marker}`);
+  }
+}
+
+const holoBackend = readText(full(APPS.holoforge.root, "backend/app.py"));
+for (const marker of [
+  '"/api/v1/exports"',
+  '"/api/v1/jobs/{job_id}"',
+  'Depends(verify_canva_user)',
+  "supportedFormats",
+]) {
+  if (!holoBackend.includes(marker)) {
+    fail(`holoforge: export backend API marker missing: ${marker}`);
+  }
+}
+
+const holoRenderer = readText(full(APPS.holoforge.root, "backend/renderers.py"));
+for (const marker of [
+  "SceneJsonRenderer",
+  "BlenderRenderer",
+  '"glb"',
+  '"gltf"',
+  '"mp4"',
+  '"png-sequence"',
+  "No configured HoloForge renderer",
+]) {
+  if (!holoRenderer.includes(marker)) {
+    fail(`holoforge: render adapter marker missing: ${marker}`);
   }
 }
 
