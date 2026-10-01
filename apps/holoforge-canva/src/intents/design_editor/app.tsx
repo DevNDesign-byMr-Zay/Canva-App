@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 
 import { CreatePanel } from "./create/create-panel";
 import { canvaAppOwnedEffectAdapter } from "./holographic/app-owned-effect-adapter";
@@ -9,7 +9,7 @@ import {
 } from "./holographic/effect-executor";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
 import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
-import { createHoloScene } from "./scene/holo-scene";
+import { createHoloScene, type HoloScene as HoloSceneSpec } from "./scene/holo-scene";
 import { useCanvaImageSelection } from "./use-canva-image-selection";
 import { HoloViewport } from "./viewport/HoloViewport";
 
@@ -70,16 +70,13 @@ function HoloForgeLogo() {
 
 function SpatialPreview({
   plan,
-  sourcePreviewUrl,
+  scene,
+  onSceneChange,
 }: {
   plan: HolographicEffectPlan | null;
-  sourcePreviewUrl: string | null;
+  scene: HoloSceneSpec | null;
+  onSceneChange: (scene: HoloSceneSpec) => void;
 }) {
-  const scene = useMemo(
-    () => (plan ? createHoloScene(plan, sourcePreviewUrl) : null),
-    [plan, sourcePreviewUrl],
-  );
-
   if (!plan || !scene) {
     return (
       <div className="hf-empty-state">
@@ -94,7 +91,7 @@ function SpatialPreview({
 
   return (
     <div className="hf-spatial-panel">
-      <HoloViewport scene={scene} />
+      <HoloViewport scene={scene} onSceneChange={onSceneChange} />
 
       <div className="hf-preview-meta">
         <div>
@@ -118,8 +115,10 @@ function SpatialPreview({
         This SPATIAL view is a real Three.js scene inside the Canva app iframe. Orbit, pan, zoom,
         object selection, transform controls, playback and timeline scrubbing operate on the same
         HoloScene contract used by the authenticated render backend. Transparent source silhouettes
-        are extruded in-browser and in Blender exports; GLB, glTF, MP4, transparent WebM and PNG
-        sequence output become available when the production render backend is configured.
+        are extruded in-browser and in Blender exports. Authored transforms, keyframes and timeline
+        state stay in the active studio session when you move between tabs. GLB, glTF, USDZ, MP4,
+        transparent WebM, PNG sequence and light-field quilt output become available when the
+        production render backend is configured.
       </p>
     </div>
   );
@@ -177,6 +176,7 @@ function VerifyPanel({
 export function App() {
   const [tab, setTab] = useState<StudioTab>("create");
   const [plan, setPlan] = useState<HolographicEffectPlan | null>(null);
+  const [studioScene, setStudioScene] = useState<HoloSceneSpec | null>(null);
   const [result, setResult] = useState<HolographicExecutionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForging, setIsForging] = useState(false);
@@ -199,6 +199,7 @@ export function App() {
 
   const preview = (nextPlan: HolographicEffectPlan) => {
     setPlan(nextPlan);
+    setStudioScene(createHoloScene(nextPlan, activeSourcePreview));
     setError(null);
     setTab("spatial");
   };
@@ -301,7 +302,11 @@ export function App() {
           />
         )}
         {tab === "spatial" && (
-          <SpatialPreview plan={plan} sourcePreviewUrl={activeSourcePreview} />
+          <SpatialPreview
+            plan={plan}
+            scene={studioScene}
+            onSceneChange={setStudioScene}
+          />
         )}
         {tab === "verify" && <VerifyPanel plan={plan} result={result} error={error} />}
       </section>
