@@ -102,7 +102,15 @@ function isVec3(value: unknown): boolean {
 
 function isTransform(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  return isVec3(value.position) && isVec3(value.rotation) && isVec3(value.scale);
+  if (!isVec3(value.position) || !isVec3(value.rotation) || !isVec3(value.scale)) {
+    return false;
+  }
+  const scale = value.scale as UnknownRecord;
+  return (
+    (scale.x as number) > 0 &&
+    (scale.y as number) > 0 &&
+    (scale.z as number) > 0
+  );
 }
 
 function isMaterial(value: unknown): boolean {
@@ -112,17 +120,39 @@ function isMaterial(value: unknown): boolean {
     MATERIAL_FAMILIES.has(value.family as MaterialFamily) &&
     isNonEmptyString(value.baseColor) &&
     isFiniteNumber(value.opacity) &&
+    value.opacity >= 0 &&
+    value.opacity <= 1 &&
     isFiniteNumber(value.metalness) &&
+    value.metalness >= 0 &&
+    value.metalness <= 1 &&
     isFiniteNumber(value.roughness) &&
+    value.roughness >= 0 &&
+    value.roughness <= 1 &&
     isFiniteNumber(value.transmission) &&
+    value.transmission >= 0 &&
+    value.transmission <= 1 &&
     isFiniteNumber(value.ior) &&
+    value.ior > 0 &&
+    value.ior <= 5 &&
     isNonEmptyString(value.emissionColor) &&
     isFiniteNumber(value.emissionStrength) &&
+    value.emissionStrength >= 0 &&
+    value.emissionStrength <= 20 &&
     isFiniteNumber(value.spectralShift) &&
+    value.spectralShift >= 0 &&
+    value.spectralShift <= 100 &&
     isFiniteNumber(value.diffraction) &&
+    value.diffraction >= 0 &&
+    value.diffraction <= 2 &&
     isFiniteNumber(value.scanlineStrength) &&
+    value.scanlineStrength >= 0 &&
+    value.scanlineStrength <= 2 &&
     isFiniteNumber(value.shimmerStrength) &&
-    isFiniteNumber(value.reflectionStrength)
+    value.shimmerStrength >= 0 &&
+    value.shimmerStrength <= 2 &&
+    isFiniteNumber(value.reflectionStrength) &&
+    value.reflectionStrength >= 0 &&
+    value.reflectionStrength <= 100
   );
 }
 
@@ -133,8 +163,14 @@ function isGeometry(value: unknown): boolean {
     GEOMETRY_TYPES.has(value.type as HoloGeometryType) &&
     isPortableImageUrl(value.sourceUrl) &&
     isFiniteNumber(value.thickness) &&
+    value.thickness >= 0 &&
+    value.thickness <= 20 &&
     isFiniteNumber(value.bevelSize) &&
+    value.bevelSize >= 0 &&
+    value.bevelSize <= 10 &&
     Number.isInteger(value.bevelSegments) &&
+    (value.bevelSegments as number) >= 0 &&
+    (value.bevelSegments as number) <= 32 &&
     isOptionalString(value.meshUrl) &&
     value.meshUrl === undefined
   );
@@ -210,8 +246,12 @@ function isCamera(value: unknown): boolean {
     isVec3(value.position) &&
     isVec3(value.target) &&
     isFiniteNumber(value.fov) &&
+    value.fov > 0 &&
+    value.fov < 180 &&
     isFiniteNumber(value.near) &&
-    isFiniteNumber(value.far)
+    value.near > 0 &&
+    isFiniteNumber(value.far) &&
+    value.far > value.near
   );
 }
 
@@ -220,10 +260,16 @@ function isTimeline(value: unknown): boolean {
   return (
     Number.isInteger(value.durationMs) &&
     isFiniteNumber(value.durationMs) &&
+    value.durationMs > 0 &&
+    value.durationMs <= 60 * 60 * 1000 &&
     Number.isInteger(value.fps) &&
     isFiniteNumber(value.fps) &&
+    value.fps > 0 &&
+    value.fps <= 120 &&
     Number.isInteger(value.currentTimeMs) &&
     isFiniteNumber(value.currentTimeMs) &&
+    value.currentTimeMs >= 0 &&
+    value.currentTimeMs <= value.durationMs &&
     typeof value.playing === "boolean"
   );
 }
