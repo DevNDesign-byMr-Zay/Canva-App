@@ -239,3 +239,29 @@ def test_png_still_rejects_animation():
     payload["includeAnimation"] = True
     with pytest.raises(ValidationError, match="png-still requires includeAnimation=false"):
         HoloExportRequest.model_validate(payload)
+
+
+
+def test_render_request_rejects_excessive_pixel_budget():
+    payload = request_payload("png-still")
+    payload["resolution"] = {"width": 8192, "height": 8192}
+    with pytest.raises(ValidationError, match="production budget"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_animated_submission_rejects_excessive_frame_budget():
+    scene = scene_payload()
+    scene["timeline"]["durationMs"] = 61_000
+    scene["timeline"]["fps"] = 60
+    request = request_payload("mp4")
+    with pytest.raises(ValidationError, match="frame production budget"):
+        ExportSubmission.model_validate({"scene": scene, "request": request})
+
+
+def test_glb_submission_does_not_use_raster_frame_budget():
+    scene = scene_payload()
+    scene["timeline"]["durationMs"] = 120_000
+    scene["timeline"]["fps"] = 60
+    request = request_payload("glb")
+    submission = ExportSubmission.model_validate({"scene": scene, "request": request})
+    assert submission.request.format == "glb"
