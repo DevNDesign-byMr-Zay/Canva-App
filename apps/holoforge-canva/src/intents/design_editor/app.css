@@ -737,3 +737,154 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   font-size:7px;
   line-height:1.45;
 }
+
+
+.hf-export-panel {
+  display:grid;
+  gap:8px;
+  padding:9px;
+  border-top:1px solid rgba(255,255,255,.06);
+  background:linear-gradient(180deg,rgba(5,6,10,.99),rgba(2,3,5,.99));
+}
+.hf-export-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.hf-export-head span {
+  display:block;
+  margin-bottom:2px;
+  color:#697284;
+  font-size:6.4px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.hf-export-head strong {
+  color:#edf4fd;
+  font-size:8px;
+}
+.hf-export-head > b {
+  padding:4px 6px;
+  border:1px solid rgba(255,211,107,.18);
+  border-radius:999px;
+  color:#d8ba70;
+  font-size:6px;
+  letter-spacing:.08em;
+}
+.hf-export-head > b.is-ready {
+  color:#72efff;
+  border-color:rgba(99,239,255,.24);
+}
+.hf-export-groups {
+  display:grid;
+  gap:6px;
+}
+.hf-export-groups > div {
+  display:grid;
+  gap:4px;
+}
+.hf-export-groups > div > span {
+  color:#555f72;
+  font-size:6px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.hf-export-groups > div > div {
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.hf-export-groups button {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:6px 7px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;
+  background:rgba(255,255,255,.02);
+  color:#737c8d;
+  font:inherit;
+  font-size:6.5px;
+  font-weight:900;
+  cursor:pointer;
+}
+.hf-export-groups button.is-active {
+  color:#fff;
+  border-color:rgba(156,115,255,.34);
+  background:rgba(156,115,255,.08);
+}
+.hf-export-groups button i {
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#8d7240;
+}
+.hf-export-groups button i.is-ready {
+  background:#63efff;
+  box-shadow:0 0 7px rgba(99,239,255,.65);
+}
+.hf-export-detail {
+  display:grid;
+  gap:6px;
+  padding:8px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:9px;
+  background:rgba(255,255,255,.018);
+}
+.hf-export-detail p {
+  margin:0;
+  color:#8790a1;
+  font-size:7px;
+  line-height:1.45;
+}
+.hf-export-detail > div {
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+.hf-export-detail span {
+  padding:3px 5px;
+  border-radius:999px;
+  background:rgba(99,239,255,.045);
+  color:#778296;
+  font-size:5.9px;
+  font-weight:800;
+  letter-spacing:.06em;
+}
+.hf-export-primary {
+  width:100%;
+  padding:8px;
+  border:1px solid rgba(99,239,255,.25);
+  border-radius:9px;
+  background:linear-gradient(90deg,rgba(99,239,255,.12),rgba(156,115,255,.13));
+  color:#eaffff;
+  font:inherit;
+  font-size:6.8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+.hf-export-primary:disabled {
+  border-color:rgba(255,255,255,.06);
+  background:rgba(255,255,255,.018);
+  color:#555e70;
+  cursor:not-allowed;
+}
+.hf-export-status {
+  margin:0;
+  color:#74efff;
+  font-size:6.6px;
+}
+.hf-export-boundary {
+  margin:0;
+  color:#5f687a;
+  font-size:6.5px;
+  line-height:1.45;
+}
+.hf-export-count {
+  color:#4f586a;
+  font-size:5.8px;
+  font-weight:900;
+  letter-spacing:.10em;
+}

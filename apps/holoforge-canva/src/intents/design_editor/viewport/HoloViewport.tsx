@@ -9,6 +9,7 @@ import {
   holoSceneReducer,
 } from "../scene/scene-store";
 import { AnimationPanel } from "../animation/AnimationPanel";
+import { ExportPanel } from "../export/ExportPanel";
 import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
 import { ObjectInspector, type TransformMode } from "./ObjectInspector";
@@ -222,6 +223,8 @@ export function HoloViewport({ scene }: { scene: HoloSceneSpec }) {
           dispatch({ type: "set_time", currentTimeMs: 0 });
         }}
       />
+
+      <ExportPanel scene={state.scene} />
 
       <div className="hf-webgl-timeline">
         <span>0:00</span>

@@ -36,6 +36,11 @@ const APPS = {
       "src/intents/design_editor/animation/keyframe-model.ts",
       "src/intents/design_editor/animation/keyframe-model.test.ts",
       "src/intents/design_editor/animation/AnimationPanel.tsx",
+      "src/intents/design_editor/export/export-contract.ts",
+      "src/intents/design_editor/export/export-contract.test.ts",
+      "src/intents/design_editor/export/scene-download.ts",
+      "src/intents/design_editor/export/scene-download.test.ts",
+      "src/intents/design_editor/export/ExportPanel.tsx",
       "src/intents/design_editor/geometry/alpha-contour.ts",
       "src/intents/design_editor/geometry/alpha-contour.test.ts",
       "src/intents/design_editor/geometry/use-alpha-shape.ts",
@@ -308,6 +313,7 @@ for (const marker of [
   "<HoloScene",
   "<ObjectInspector",
   "<AnimationPanel",
+  "<ExportPanel",
   "transformMode",
   "requestAnimationFrame",
   "WEBGL LIVE",
@@ -374,6 +380,40 @@ for (const marker of [
 ]) {
   if (!spectralMaterial.includes(marker)) {
     fail(`holoforge: spectral shader marker missing: ${marker}`);
+  }
+}
+
+const holoExportContract = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/export-contract.ts"),
+);
+for (const marker of [
+  '"scene-json"',
+  '"glb"',
+  '"gltf"',
+  '"usdz"',
+  '"webm-alpha"',
+  '"png-sequence"',
+  '"lightfield-quilt"',
+  "render-worker",
+  "device-adapter",
+  "buildExportRequest",
+]) {
+  if (!holoExportContract.includes(marker)) {
+    fail(`holoforge: export contract marker missing: ${marker}`);
+  }
+}
+
+const holoExportPanel = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/ExportPanel.tsx"),
+);
+for (const marker of [
+  "DOWNLOAD",
+  "RENDER WORKER REQUIRED",
+  "DEVICE ADAPTER",
+  "downloadHoloScene",
+]) {
+  if (!holoExportPanel.includes(marker)) {
+    fail(`holoforge: export UI marker missing: ${marker}`);
   }
 }
 
@@ -528,7 +568,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + real WebGL scene + transforms + alpha extrusion + spectral shader + serializable keyframe animation + Canva forge routes");
+console.log(" - HoloForge: independent app + real WebGL scene + transforms + spectral/keyframe runtime + explicit export capability contracts + Canva forge routes");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");
