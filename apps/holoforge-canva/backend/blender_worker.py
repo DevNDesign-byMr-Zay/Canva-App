@@ -286,23 +286,49 @@ def attach_source_face(
     alpha_geometry: dict,
     *,
     thickness: float,
+    material_spec: dict,
 ):
+    profile = build_spectral_profile(material_spec)
     material = bpy.data.materials.new(parent.name + "-source-face")
     material.use_nodes = True
+    material["holoforge_source_face"] = True
+    material["holoforge_source_opacity"] = float(profile.opacity)
+
     nodes = material.node_tree.nodes
     links = material.node_tree.links
     principled = nodes.get("Principled BSDF")
     texture = nodes.new("ShaderNodeTexImage")
     texture.image = image
+
     if principled:
         links.new(texture.outputs["Color"], principled.inputs["Base Color"])
-        if texture.outputs.get("Alpha"):
-            links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
-        principled.inputs["Roughness"].default_value = 0.28
+        principled.inputs["Metallic"].default_value = 0.0
+        principled.inputs["Roughness"].default_value = 0.42
+
+        alpha_output = texture.outputs.get("Alpha")
+        if alpha_output:
+            alpha_multiply = nodes.new("ShaderNodeMath")
+            alpha_multiply.operation = "MULTIPLY"
+            alpha_multiply.inputs[1].default_value = max(
+                0.0,
+                min(1.0, float(profile.opacity) * 0.96),
+            )
+            links.new(alpha_output, alpha_multiply.inputs[0])
+            links.new(alpha_multiply.outputs[0], principled.inputs["Alpha"])
+        else:
+            principled.inputs["Alpha"].default_value = max(
+                0.0,
+                min(1.0, float(profile.opacity) * 0.96),
+            )
+
         if "Emission Color" in principled.inputs:
             links.new(texture.outputs["Color"], principled.inputs["Emission Color"])
         if "Emission Strength" in principled.inputs:
-            principled.inputs["Emission Strength"].default_value = 0.12
+            # Browser source faces are unlit mesh-basic overlays. A modest
+            # emission contribution keeps the Blender face readable without
+            # overpowering the spectral shell beneath it.
+            principled.inputs["Emission Strength"].default_value = 0.35
+
     material.surface_render_method = "DITHERED"
 
     bpy.ops.mesh.primitive_plane_add(
@@ -478,6 +504,7 @@ def create_object(item: dict):
                     image,
                     alpha_geometry,
                     thickness=thickness,
+                    material_spec=item["material"],
                 )
                 material = None
             else:
@@ -489,18 +516,32 @@ def create_object(item: dict):
                 )
                 obj = bpy.context.object
                 obj["holoforge_geometry"] = "plate-fallback"
+
+                # Bake the primitive dimensions before parenting the source
+                # overlay so the face inherits only the authored HoloObject
+                # transform, not the primitive's construction scale.
+                bpy.context.view_layer.objects.active = obj
+                obj.select_set(True)
+                bpy.ops.object.transform_apply(
+                    location=False,
+                    rotation=False,
+                    scale=True,
+                )
+
                 material = material_for(item["material"])
-                nodes = material.node_tree.nodes
-                links = material.node_tree.links
-                texture = nodes.new("ShaderNodeTexImage")
-                texture.image = image
-                principled = nodes.get("Principled BSDF")
-                if principled:
-                    links.new(texture.outputs["Color"], principled.inputs["Base Color"])
-                    if texture.outputs.get("Alpha"):
-                        links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
                 animate_material(material, item)
                 obj.data.materials.append(material)
+                attach_source_face(
+                    obj,
+                    image,
+                    {
+                        "width": 2.3,
+                        "height": plate_height,
+                        "coverage": 1.0,
+                    },
+                    thickness=thickness,
+                    material_spec=item["material"],
+                )
                 material = None
         elif kind in {"glass", "chrome", "holo_logo", "holo_graphic"}:
             bpy.ops.mesh.primitive_cube_add(scale=(1.15, 0.72, max(0.015, thickness / 2)))
