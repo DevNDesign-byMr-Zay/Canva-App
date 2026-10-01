@@ -209,7 +209,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       <div className="hf-capability-note">
         <Text>
           <FormattedMessage
-            defaultMessage="HoloForge creates holographic design treatments for Canva: editable text/material elements or derived raster treatments for source imagery. Motion stays a preview behavior; the forged output is static and production-safe."
+            defaultMessage="HoloForge creates holographic design treatments for Canva: editable text/material elements or derived raster treatments for source imagery. Forge into Canva stays static and production-safe; SPATIAL keeps authored 4D motion for render/export formats that support animation."
             description="Capability footnote explaining HoloForge's product boundary."
           />
         </Text>

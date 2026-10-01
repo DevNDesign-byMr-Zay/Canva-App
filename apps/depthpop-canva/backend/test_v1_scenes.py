@@ -95,6 +95,7 @@ def test_cross_user_scene_and_job_access_denial(test_client):
         post_resp = test_client.post(
             "/api/v1/scenes",
             files={"image": ("test.png", image_bytes, "image/png")},
+            data={"inpaint": "false"},
         )
         assert post_resp.status_code == 200
         job_id = post_resp.json()["jobId"]
@@ -369,7 +370,7 @@ def test_fixture_segmentation_provider_error():
 
 def test_fixture_depth_provider_error():
     class ErrorDepthProvider:
-        async def estimate(self, image: bytes):
+        async def estimate(self, image: bytes, quality: str = "high"):
             raise RuntimeError("Depth estimation service offline")
 
     builder = SceneBuilderService(
@@ -609,3 +610,76 @@ def test_depth_orientation_canonical_normalization():
     assert fg_obj.transform.position.z > bg_obj.transform.position.z
     assert fg_obj.transform.position.z > 0.0, "Foreground object Z should be positive (nearer camera)"
     assert bg_obj.transform.position.z < 0.0, "Background object Z should be negative (farther from camera)"
+
+
+def test_scene_patch_and_composite(auth_client):
+    image_bytes = _create_test_image((64, 64))
+
+    post_resp = auth_client.post(
+        "/api/v1/scenes",
+        files={"image": ("test.png", image_bytes, "image/png")},
+        data={"inpaint": "false"},
+    )
+    assert post_resp.status_code == 200
+    job_id = post_resp.json()["jobId"]
+
+    job_resp = auth_client.get(f"/api/v1/jobs/{job_id}")
+    scene_id = job_resp.json()["sceneId"]
+
+    # PATCH scene transform
+    patch_resp = auth_client.patch(
+        f"/api/v1/scenes/{scene_id}",
+        json={
+            "camera": {"fov": 60},
+            "objects": [
+                {
+                  "id": "person_01",
+                  "label": "person",
+                  "order": 1,
+                  "opacity": 0.9,
+                  "feather": 2,
+                  "visible": True,
+                  "locked": False,
+                  "transform": {
+                    "position": {"x": 0.4, "y": 0.4, "z": 0.8},
+                    "rotation": {"x": 0, "y": 0, "z": 10},
+                    "scale": {"x": 1.1, "y": 1.1, "z": 1.1}
+                  }
+                }
+            ]
+        }
+    )
+    assert patch_resp.status_code == 200
+    updated_scene = patch_resp.json()
+    assert updated_scene["camera"]["fov"] == 60
+
+    # Composite scene
+    comp_resp = auth_client.post(f"/api/v1/scenes/{scene_id}/composite")
+    assert comp_resp.status_code == 200
+    comp_data = comp_resp.json()
+    assert comp_data["ok"] is True
+    assert comp_data["url"].startswith("http://testserver/api/v1/assets/")
+
+
+def test_segmentation_mode_routing():
+    from services.segmentation import SegmentationService
+    from providers.segmentation_provider import FalSegmentationProvider, MockSegmentationProvider
+
+    srv = SegmentationService()
+    p_fal = srv.get_provider(mode="florence_sam3")
+    assert isinstance(p_fal, FalSegmentationProvider)
+
+    p_mock = srv.get_provider(mode="mock")
+    assert isinstance(p_mock, MockSegmentationProvider)
+
+
+def test_depth_polarity_normalization_inversion():
+    from providers.depth_provider import normalize_depth_polarity
+
+    # Dark center, bright edges (center < edges) -> should invert
+    arr = np.ones((50, 50), dtype=np.float32) * 0.9
+    arr[18:32, 18:32] = 0.1
+
+    norm_arr, polarity = normalize_depth_polarity(arr)
+    assert polarity == "inverted"
+    assert norm_arr[25, 25] == 0.9, "Center should become near (0.9)"

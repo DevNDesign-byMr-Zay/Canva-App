@@ -16,7 +16,6 @@ def get_depth_provider() -> DepthProvider:
     if mode == "mock":
         return MockDepthProvider()
 
-    # auto mode: check for FAL_KEY
     if os.getenv("FAL_KEY", "").strip():
         return FalDepthProvider()
     return MockDepthProvider()
@@ -30,5 +29,5 @@ class DepthService:
     def provider(self) -> DepthProvider:
         return self._provider or get_depth_provider()
 
-    async def estimate_depth(self, image: bytes) -> DepthMap:
-        return await self.provider.estimate(image)
+    async def estimate_depth(self, image: bytes, quality: str = "high") -> DepthMap:
+        return await self.provider.estimate(image, quality=quality)

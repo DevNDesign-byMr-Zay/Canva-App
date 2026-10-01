@@ -20,7 +20,7 @@ import { useAlphaShape } from "../geometry/use-alpha-shape";
 import { HoloMaterial } from "../materials/HoloMaterial";
 import type { HoloObject as HoloObjectSpec } from "../scene/holo-scene";
 
-function SourceTexture({ url }: { url: string }) {
+function SourceTexture({ url, opacity }: { url: string; opacity: number }) {
   const texture = useLoader(TextureLoader, url);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function SourceTexture({ url }: { url: string }) {
     <meshBasicMaterial
       map={texture}
       transparent
-      opacity={0.96}
+      opacity={Math.max(0, Math.min(1, opacity * 0.96))}
       toneMapped={false}
       depthWrite={false}
     />
@@ -247,7 +247,7 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
 
             <mesh position={[0, 0, thickness + 0.012]}>
               <planeGeometry args={[frontWidth, frontHeight]} />
-              <SourceTexture url={sourceUrl} />
+              <SourceTexture url={sourceUrl} opacity={object.material.opacity} />
             </mesh>
           </group>
         ) : object.creationType === "glass" || object.creationType === "chrome" ? (

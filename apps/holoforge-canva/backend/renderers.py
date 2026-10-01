@@ -15,6 +15,7 @@ MIME_BY_FORMAT = {
     "scene-json": "application/json",
     "glb": "model/gltf-binary",
     "gltf": "model/gltf+json",
+    "usdz": "model/vnd.usdz+zip",
     "webm-alpha": "video/webm",
     "mp4": "video/mp4",
     "png-sequence": "application/zip",
@@ -25,6 +26,7 @@ EXTENSION_BY_FORMAT = {
     "scene-json": ".holoscene.json",
     "glb": ".glb",
     "gltf": ".gltf",
+    "usdz": ".usdz",
     "webm-alpha": ".webm",
     "mp4": ".mp4",
     "png-sequence": ".zip",
@@ -59,7 +61,7 @@ class SceneJsonRenderer:
 
 
 class BlenderRenderer:
-    IMPLEMENTED = frozenset({"glb", "gltf", "webm-alpha", "mp4", "png-sequence", "lightfield-quilt"})
+    IMPLEMENTED = frozenset({"glb", "gltf", "usdz", "webm-alpha", "mp4", "png-sequence", "lightfield-quilt"})
 
     def __init__(self, blender_bin: str | None = None) -> None:
         self.blender_bin = (
@@ -167,7 +169,7 @@ class RendererRegistry:
                 return renderer
         raise RuntimeError(
             f"No configured HoloForge renderer can produce {format_name}. "
-            "scene-json is always available; GLB/glTF/WebM-alpha/MP4/PNG-sequence/light-field quilt require BLENDER_BIN."
+            "scene-json is always available; GLB/glTF/USDZ/WebM-alpha/MP4/PNG-sequence/light-field quilt require BLENDER_BIN."
         )
 
     def supported_formats(self) -> list[str]:

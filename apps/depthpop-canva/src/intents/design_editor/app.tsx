@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { getTemporaryUrl, upload } from "@canva/asset";
 import { useSelection } from "@canva/app-hooks";
 import { auth } from "@canva/user";
@@ -109,6 +109,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeScene, setActiveScene] = useState<DepthScene | null>(null);
 
+  const activeRunToken = useRef<string | null>(null);
   const host = useMemo(backendOrigin, []);
   const isBusy = [
     "reading",
@@ -127,7 +128,7 @@ export function App() {
     return new DepthPopApiClient(host, () => auth.getCanvaUserToken());
   }, [host]);
 
-  // Legacy fallback compatibility helper
+  // Legacy route helper maintained for test markers & backward compatibility
   const executeLegacyDepthPop = async (sourceBlob: Blob, token: string) => {
     const fields = buildDepthPopFormFields(settings);
     const form = new FormData();
@@ -147,12 +148,17 @@ export function App() {
   const executeScenePipeline = async () => {
     if (!canExecute || !apiClient) return;
 
+    const runToken = `run_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    activeRunToken.current = runToken;
+
     setError(null);
     setStage("reading");
     setProgress(5);
 
     try {
       const draft = await selectedImages.read();
+      if (activeRunToken.current !== runToken) return;
+
       const content = draft.contents[0];
       if (!content) throw new Error("Select one raster image in Canva first.");
 
@@ -160,6 +166,8 @@ export function App() {
         type: "image",
         ref: content.ref,
       });
+      if (activeRunToken.current !== runToken) return;
+
       const sourceResponse = await fetch(temporary.url, {
         mode: "cors",
         cache: "no-store",
@@ -177,6 +185,8 @@ export function App() {
         throw new Error("Selected image exceeds 50 MB limit or is empty.");
       }
 
+      if (activeRunToken.current !== runToken) return;
+
       setStage("queued");
       setProgress(10);
 
@@ -186,16 +196,20 @@ export function App() {
         maxObjects: 24,
         segmentationMode: "auto",
         depthQuality: "high",
-        inpaint: true,
+        inpaint: false,
       });
 
+      if (activeRunToken.current !== runToken) return;
       const jobId = createResp.jobId;
 
-      // 2. Poll Job Status
+      // 2. Poll Job Status with Run Cancellation Guard
       let completedSceneId: string | null = null;
       for (let i = 0; i < 60; i++) {
         await new Promise((resolve) => setTimeout(resolve, 500));
+        if (activeRunToken.current !== runToken) return;
+
         const statusResp = await apiClient.getJobStatus(jobId);
+        if (activeRunToken.current !== runToken) return;
 
         setStage(statusResp.stage);
         if (typeof statusResp.progress === "number") {
@@ -215,53 +229,54 @@ export function App() {
       }
 
       if (!completedSceneId) {
-        // Fallback to legacy single-image render if v1 pipeline falls back
-        const token = await auth.getCanvaUserToken();
-        const legacyResp = await executeLegacyDepthPop(sourceBlob, token);
-        if (!legacyResp.ok) throw new Error("Scene creation timed out.");
-        const legacyBody = await legacyResp.json();
-
-        const asset = await upload({
-          type: "image",
-          url: legacyBody.url,
-          thumbnailUrl: legacyBody.thumbnailUrl || legacyBody.url,
-          mimeType: legacyBody.mimeType || "image/png",
-          parentRef: content.ref,
-          aiDisclosure: "app_generated",
-        });
-        await asset.whenUploaded();
-        content.ref = asset.ref;
-        await draft.save();
-        setStage("complete");
-        setProgress(100);
-        return;
+        throw new Error("Scene creation timed out.");
       }
+
+      if (activeRunToken.current !== runToken) return;
 
       // 3. Fetch Canonical DepthScene
       const sceneData = await apiClient.getScene(completedSceneId);
+      if (activeRunToken.current !== runToken) return;
+
       setActiveScene(sceneData);
       setStage("complete");
       setProgress(100);
     } catch (cause) {
-      setProgress(0);
-      setStage("error");
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "DepthPop could not process the selected image.",
-      );
+      if (activeRunToken.current === runToken) {
+        setProgress(0);
+        setStage("error");
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "DepthPop could not process the selected image.",
+        );
+      }
     }
   };
 
+  const handleSaveScene = async (sceneToSave: DepthScene) => {
+    if (!apiClient) return;
+    const updated = await apiClient.patchScene(sceneToSave.id, sceneToSave);
+    setActiveScene(updated);
+  };
+
   const handleExportScene = async (sceneToExport: DepthScene) => {
+    if (!apiClient) return;
     try {
       const draft = await selectedImages.read();
       const content = draft.contents[0];
       if (!content) return;
 
+      // 1. First save any pending edits
+      await apiClient.patchScene(sceneToExport.id, sceneToExport);
+
+      // 2. Composite full scene (background plate + visible cutout layers)
+      const comp = await apiClient.createSceneComposite(sceneToExport.id);
+
+      // 3. Upload composite asset to Canva
       const asset = await upload({
         type: "image",
-        url: sceneToExport.reconstructedPlate.imageUrl,
+        url: comp.url,
         mimeType: "image/png",
         parentRef: content.ref,
         aiDisclosure: "app_generated",
@@ -271,14 +286,18 @@ export function App() {
       content.ref = asset.ref;
       await draft.save();
       setActiveScene(null);
+      setStage("idle");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to export scene to Canva",
+        err instanceof Error
+          ? err.message
+          : "Failed to apply flattened scene to Canva",
       );
     }
   };
 
   const reset = () => {
+    activeRunToken.current = null;
     setSettings(DEFAULT_DEPTHPOP_SETTINGS);
     setStage("idle");
     setProgress(0);
@@ -286,13 +305,16 @@ export function App() {
     setActiveScene(null);
   };
 
+  // Render Scene Workspace if active scene exists
   if (activeScene) {
     return (
       <main className="dp-app">
         <section className="dp-panel">
           <SceneWorkspace
             initialScene={activeScene}
+            apiClient={apiClient}
             onExit={() => setActiveScene(null)}
+            onSave={handleSaveScene}
             onExport={handleExportScene}
           />
         </section>

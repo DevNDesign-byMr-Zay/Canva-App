@@ -1,118 +1,127 @@
-import React, { useState } from "react";
-import { DepthObject, DepthScene } from "../scene/depth-scene";
+import React, { useEffect, useReducer, useState } from "react";
+import { DepthPopApiClient } from "../api/depthpop-api";
+import { DepthScene } from "../scene/depth-scene";
+import { sceneReducer, SceneState } from "./scene-reducer";
 
 export interface SceneWorkspaceProps {
   initialScene: DepthScene;
+  apiClient?: DepthPopApiClient | null;
   onExit?: () => void;
-  onExport?: (scene: DepthScene) => void;
+  onSave?: (scene: DepthScene) => Promise<void>;
+  onExport?: (scene: DepthScene) => Promise<void>;
 }
 
 export function SceneWorkspace({
   initialScene,
+  apiClient,
   onExit,
+  onSave,
   onExport,
 }: SceneWorkspaceProps) {
-  const [scene, setScene] = useState<DepthScene>(initialScene);
-  const [selectedObjId, setSelectedObjId] = useState<string | null>(
-    initialScene.objects.length > 0 ? initialScene.objects[0].id : null,
-  );
-  const [parallax, setParallax] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
+  const [state, dispatch] = useReducer(sceneReducer, {
+    initialScene,
+    currentScene: initialScene,
+    selectedObjectId:
+      initialScene.objects.length > 0 ? initialScene.objects[0].id : null,
+    parallaxStrength: 1.0,
   });
 
-  const selectedObject = scene.objects.find((o) => o.id === selectedObjId);
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
+  const [parallaxOffset, setParallaxOffset] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Parallax interaction on mouse move over stage
+  const scene = state.currentScene;
+  const selectedObject = scene.objects.find(
+    (o) => o.id === state.selectedObjectId,
+  );
+
+  // Fetch authenticated scene assets into browser Object URLs
+  useEffect(() => {
+    let active = true;
+
+    async function loadAssets() {
+      if (!apiClient) return;
+      const urlMap: Record<string, string> = {};
+
+      try {
+        if (scene.reconstructedPlate?.imageUrl) {
+          urlMap[scene.reconstructedPlate.imageUrl] =
+            await apiClient.fetchAssetBlobUrl(
+              scene.reconstructedPlate.imageUrl,
+            );
+        }
+
+        for (const obj of scene.objects) {
+          if (obj.assets.cutoutUrl) {
+            urlMap[obj.assets.cutoutUrl] = await apiClient.fetchAssetBlobUrl(
+              obj.assets.cutoutUrl,
+            );
+          }
+          if (obj.assets.thumbnailUrl) {
+            urlMap[obj.assets.thumbnailUrl] = await apiClient.fetchAssetBlobUrl(
+              obj.assets.thumbnailUrl,
+            );
+          }
+        }
+
+        if (active) setAssetUrls((prev) => ({ ...prev, ...urlMap }));
+      } catch {
+        if (active) setStatusMessage("Note: Loaded default preview assets");
+      }
+    }
+
+    void loadAssets();
+
+    return () => {
+      active = false;
+      if (apiClient) apiClient.revokeObjectUrls();
+    };
+  }, [apiClient, scene.id]);
+
+  const resolveUrl = (rawUrl: string): string => assetUrls[rawUrl] || rawUrl;
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = (e.clientX - rect.left) / rect.width - 0.5;
     const cy = (e.clientY - rect.top) / rect.height - 0.5;
-    setParallax({ x: cx * 12, y: cy * 12 });
-  };
-
-  const handleMouseLeave = () => {
-    setParallax({ x: 0, y: 0 });
-  };
-
-  // Immutable Object Update Helper
-  const updateObject = (
-    objId: string,
-    updater: (prev: DepthObject) => DepthObject,
-  ) => {
-    setScene((prevScene) => {
-      const updatedObjects = prevScene.objects.map((obj) => {
-        if (obj.id !== objId) return obj;
-        if (obj.locked) return obj; // Reject edits if object is locked
-        return updater(obj);
-      });
-      return {
-        ...prevScene,
-        objects: updatedObjects,
-        updatedAt: new Date().toISOString(),
-      };
+    setParallaxOffset({
+      x: cx * 14 * state.parallaxStrength,
+      y: cy * 14 * state.parallaxStrength,
     });
   };
 
-  const toggleLock = (objId: string) => {
-    setScene((prevScene) => {
-      const updatedObjects = prevScene.objects.map((obj) => {
-        if (obj.id !== objId) return obj;
-        return { ...obj, locked: !obj.locked };
-      });
-      return {
-        ...prevScene,
-        objects: updatedObjects,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+  const handleMouseLeave = () => setParallaxOffset({ x: 0, y: 0 });
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    setStatusMessage("Saving scene updates...");
+    try {
+      await onSave(scene);
+      setStatusMessage("Scene saved");
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const toggleVisibility = (objId: string) => {
-    setScene((prevScene) => {
-      const updatedObjects = prevScene.objects.map((obj) => {
-        if (obj.id !== objId) return obj;
-        return { ...obj, visible: !obj.visible };
-      });
-      return {
-        ...prevScene,
-        objects: updatedObjects,
-        updatedAt: new Date().toISOString(),
-      };
-    });
-  };
-
-  const moveOrder = (objId: string, direction: "up" | "down") => {
-    setScene((prevScene) => {
-      const objects = [...prevScene.objects].sort((a, b) => a.order - b.order);
-      const idx = objects.findIndex((o) => o.id === objId);
-      if (idx < 0) return prevScene;
-
-      const targetIdx = direction === "up" ? idx + 1 : idx - 1;
-      if (targetIdx < 0 || targetIdx >= objects.length) return prevScene;
-
-      // Swap orders
-      const tempOrder = objects[idx].order;
-      objects[idx].order = objects[targetIdx].order;
-      objects[targetIdx].order = tempOrder;
-
-      return { ...prevScene, objects, updatedAt: new Date().toISOString() };
-    });
-  };
-
-  const resetObject = (objId: string) => {
-    const orig = initialScene.objects.find((o) => o.id === objId);
-    if (!orig) return;
-    setScene((prevScene) => ({
-      ...prevScene,
-      objects: prevScene.objects.map((o) => (o.id === objId ? { ...orig } : o)),
-    }));
-  };
-
-  const resetScene = () => {
-    setScene(initialScene);
-    if (initialScene.objects.length > 0) {
-      setSelectedObjId(initialScene.objects[0].id);
+  const handleExport = async () => {
+    if (!onExport) return;
+    setIsExporting(true);
+    setStatusMessage("Compositing & applying scene to Canva...");
+    try {
+      await onExport(scene);
+      setStatusMessage("Scene applied");
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -122,42 +131,53 @@ export function SceneWorkspace({
     <div className="dp-workspace" data-testid="scene-workspace">
       <header className="dp-ws-header">
         <button type="button" className="dp-btn-text" onClick={onExit}>
-          ← Back to Source
+          ← Source
         </button>
         <span className="dp-chip">DEPTHSCENE V1</span>
-        <button type="button" className="dp-btn-reset" onClick={resetScene}>
+        <button
+          type="button"
+          className="dp-btn-reset"
+          onClick={() => dispatch({ type: "RESET_SCENE" })}
+        >
           Reset Scene
         </button>
       </header>
 
-      {/* 2.5D Interactive Parallax Stage */}
+      {/* 2.5D Parallax Stage */}
       <div
         className="dp-stage"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         style={{ aspectRatio: `${scene.width} / ${scene.height}` }}
       >
-        {/* Reconstructed Back Plate */}
         <img
-          src={scene.reconstructedPlate.imageUrl}
+          src={resolveUrl(scene.reconstructedPlate.imageUrl)}
           alt="Reconstructed Plate"
           className="dp-stage-plate"
           style={{
-            transform: `translate(${parallax.x * 0.2}px, ${parallax.y * 0.2}px)`,
+            transform: `translate(${parallaxOffset.x * 0.2 + scene.camera.position.x}px, ${parallaxOffset.y * 0.2 + scene.camera.position.y}px)`,
           }}
         />
 
-        {/* Extracted Depth Objects */}
         {sortedObjects.map((obj) => {
           if (!obj.visible) return null;
 
-          const isSelected = obj.id === selectedObjId;
-          const zOffset = obj.transform.position.z * 10;
-          const pxShiftX = parallax.x * (1 + obj.transform.position.z);
-          const pxShiftY = parallax.y * (1 + obj.transform.position.z);
+          const isSelected = obj.id === state.selectedObjectId;
+          const zScale = 1 + obj.transform.position.z * 0.2;
+          const pxShiftX = parallaxOffset.x * zScale + scene.camera.position.x;
+          const pxShiftY = parallaxOffset.y * zScale + scene.camera.position.y;
 
-          const leftPct = (obj.bbox.x / scene.width) * 100;
-          const topPct = (obj.bbox.y / scene.height) * 100;
+          // Source BBox placement + Position X/Y offsets
+          const leftPct =
+            (obj.bbox.x / scene.width) * 100 +
+            (obj.transform.position.x -
+              (obj.bbox.x + obj.bbox.width / 2) / scene.width) *
+              50;
+          const topPct =
+            (obj.bbox.y / scene.height) * 100 +
+            (obj.transform.position.y -
+              (obj.bbox.y + obj.bbox.height / 2) / scene.height) *
+              50;
           const widthPct = (obj.bbox.width / scene.width) * 100;
           const heightPct = (obj.bbox.height / scene.height) * 100;
 
@@ -165,7 +185,9 @@ export function SceneWorkspace({
             <div
               key={obj.id}
               className={`dp-stage-object ${isSelected ? "is-selected" : ""}`}
-              onClick={() => setSelectedObjId(obj.id)}
+              onClick={() =>
+                dispatch({ type: "SELECT_OBJECT", objectId: obj.id })
+              }
               style={{
                 left: `${leftPct}%`,
                 top: `${topPct}%`,
@@ -173,12 +195,12 @@ export function SceneWorkspace({
                 height: `${heightPct}%`,
                 opacity: obj.opacity,
                 filter: obj.feather > 0 ? `blur(${obj.feather}px)` : "none",
-                transform: `translate(${pxShiftX}px, ${pxShiftY}px) scale(${obj.transform.scale.x}) rotate(${obj.transform.rotation.z}deg)`,
+                transform: `translate3d(${pxShiftX}px, ${pxShiftY}px, ${obj.transform.position.z * 10}px) scale(${obj.transform.scale.x}) rotate(${obj.transform.rotation.z}deg)`,
                 zIndex: obj.order + 10,
               }}
             >
               <img
-                src={obj.assets.cutoutUrl}
+                src={resolveUrl(obj.assets.cutoutUrl)}
                 alt={obj.label}
                 className="dp-cutout-img"
               />
@@ -188,18 +210,22 @@ export function SceneWorkspace({
         })}
       </div>
 
-      {/* Layers List */}
+      {statusMessage && <div className="dp-status-bar">{statusMessage}</div>}
+
+      {/* Layers Panel */}
       <section className="dp-layers-panel">
         <h3>SCENE OBJECTS ({scene.objects.length})</h3>
         <div className="dp-layers-list">
           {sortedObjects.map((obj) => (
             <div
               key={obj.id}
-              className={`dp-layer-item ${obj.id === selectedObjId ? "is-active" : ""}`}
-              onClick={() => setSelectedObjId(obj.id)}
+              className={`dp-layer-item ${obj.id === state.selectedObjectId ? "is-active" : ""}`}
+              onClick={() =>
+                dispatch({ type: "SELECT_OBJECT", objectId: obj.id })
+              }
             >
               <img
-                src={obj.assets.thumbnailUrl}
+                src={resolveUrl(obj.assets.thumbnailUrl)}
                 alt={obj.label}
                 className="dp-thumb"
               />
@@ -215,29 +241,39 @@ export function SceneWorkspace({
                   title="Toggle Visibility"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleVisibility(obj.id);
+                    dispatch({
+                      type: "SET_VISIBILITY",
+                      objectId: obj.id,
+                      visible: !obj.visible,
+                    });
                   }}
                 >
                   {obj.visible ? "👁" : "🙈"}
                 </button>
-
                 <button
                   type="button"
                   title="Toggle Lock"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleLock(obj.id);
+                    dispatch({
+                      type: "SET_LOCK",
+                      objectId: obj.id,
+                      locked: !obj.locked,
+                    });
                   }}
                 >
                   {obj.locked ? "🔒" : "🔓"}
                 </button>
-
                 <button
                   type="button"
                   title="Move Up"
                   onClick={(e) => {
                     e.stopPropagation();
-                    moveOrder(obj.id, "up");
+                    dispatch({
+                      type: "MOVE_OBJECT_ORDER",
+                      objectId: obj.id,
+                      direction: "up",
+                    });
                   }}
                 >
                   ▲
@@ -247,7 +283,11 @@ export function SceneWorkspace({
                   title="Move Down"
                   onClick={(e) => {
                     e.stopPropagation();
-                    moveOrder(obj.id, "down");
+                    dispatch({
+                      type: "MOVE_OBJECT_ORDER",
+                      objectId: obj.id,
+                      direction: "down",
+                    });
                   }}
                 >
                   ▼
@@ -258,7 +298,7 @@ export function SceneWorkspace({
         </div>
       </section>
 
-      {/* Property Controls for Selected Object */}
+      {/* Inspector Controls */}
       {selectedObject && (
         <section className="dp-object-inspector">
           <header className="dp-inspector-header">
@@ -268,13 +308,55 @@ export function SceneWorkspace({
             <button
               type="button"
               className="dp-btn-small"
-              onClick={() => resetObject(selectedObject.id)}
+              onClick={() =>
+                dispatch({ type: "RESET_OBJECT", objectId: selectedObject.id })
+              }
             >
               Reset Object
             </button>
           </header>
 
           <div className="dp-inspector-grid">
+            <label>
+              Position X (Offset)
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                disabled={selectedObject.locked}
+                value={selectedObject.transform.position.x}
+                onChange={(e) =>
+                  dispatch({
+                    type: "PATCH_TRANSFORM",
+                    objectId: selectedObject.id,
+                    transform: { position: { x: Number(e.target.value) } },
+                  })
+                }
+              />
+              <span>{selectedObject.transform.position.x.toFixed(2)}</span>
+            </label>
+
+            <label>
+              Position Y (Offset)
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                disabled={selectedObject.locked}
+                value={selectedObject.transform.position.y}
+                onChange={(e) =>
+                  dispatch({
+                    type: "PATCH_TRANSFORM",
+                    objectId: selectedObject.id,
+                    transform: { position: { y: Number(e.target.value) } },
+                  })
+                }
+              />
+              <span>{selectedObject.transform.position.y.toFixed(2)}</span>
+            </label>
+
             <label>
               Z / Depth Offset
               <input
@@ -284,16 +366,13 @@ export function SceneWorkspace({
                 step={0.05}
                 disabled={selectedObject.locked}
                 value={selectedObject.transform.position.z}
-                onChange={(e) => {
-                  const zVal = Number(e.target.value);
-                  updateObject(selectedObject.id, (o) => ({
-                    ...o,
-                    transform: {
-                      ...o.transform,
-                      position: { ...o.transform.position, z: zVal },
-                    },
-                  }));
-                }}
+                onChange={(e) =>
+                  dispatch({
+                    type: "PATCH_TRANSFORM",
+                    objectId: selectedObject.id,
+                    transform: { position: { z: Number(e.target.value) } },
+                  })
+                }
               />
               <span>{selectedObject.transform.position.z.toFixed(2)}</span>
             </label>
@@ -307,16 +386,19 @@ export function SceneWorkspace({
                 step={0.05}
                 disabled={selectedObject.locked}
                 value={selectedObject.transform.scale.x}
-                onChange={(e) => {
-                  const sVal = Number(e.target.value);
-                  updateObject(selectedObject.id, (o) => ({
-                    ...o,
+                onChange={(e) =>
+                  dispatch({
+                    type: "PATCH_TRANSFORM",
+                    objectId: selectedObject.id,
                     transform: {
-                      ...o.transform,
-                      scale: { x: sVal, y: sVal, z: sVal },
+                      scale: {
+                        x: Number(e.target.value),
+                        y: Number(e.target.value),
+                        z: 1,
+                      },
                     },
-                  }));
-                }}
+                  })
+                }
               />
               <span>{selectedObject.transform.scale.x.toFixed(2)}x</span>
             </label>
@@ -330,16 +412,13 @@ export function SceneWorkspace({
                 step={1}
                 disabled={selectedObject.locked}
                 value={selectedObject.transform.rotation.z}
-                onChange={(e) => {
-                  const rVal = Number(e.target.value);
-                  updateObject(selectedObject.id, (o) => ({
-                    ...o,
-                    transform: {
-                      ...o.transform,
-                      rotation: { ...o.transform.rotation, z: rVal },
-                    },
-                  }));
-                }}
+                onChange={(e) =>
+                  dispatch({
+                    type: "PATCH_TRANSFORM",
+                    objectId: selectedObject.id,
+                    transform: { rotation: { z: Number(e.target.value) } },
+                  })
+                }
               />
               <span>{selectedObject.transform.rotation.z}°</span>
             </label>
@@ -353,13 +432,13 @@ export function SceneWorkspace({
                 step={0.05}
                 disabled={selectedObject.locked}
                 value={selectedObject.opacity}
-                onChange={(e) => {
-                  const opVal = Number(e.target.value);
-                  updateObject(selectedObject.id, (o) => ({
-                    ...o,
-                    opacity: opVal,
-                  }));
-                }}
+                onChange={(e) =>
+                  dispatch({
+                    type: "SET_OPACITY",
+                    objectId: selectedObject.id,
+                    opacity: Number(e.target.value),
+                  })
+                }
               />
               <span>{Math.round(selectedObject.opacity * 100)}%</span>
             </label>
@@ -373,13 +452,13 @@ export function SceneWorkspace({
                 step={1}
                 disabled={selectedObject.locked}
                 value={selectedObject.feather}
-                onChange={(e) => {
-                  const fVal = Number(e.target.value);
-                  updateObject(selectedObject.id, (o) => ({
-                    ...o,
-                    feather: fVal,
-                  }));
-                }}
+                onChange={(e) =>
+                  dispatch({
+                    type: "SET_FEATHER",
+                    objectId: selectedObject.id,
+                    feather: Number(e.target.value),
+                  })
+                }
               />
               <span>{selectedObject.feather}px</span>
             </label>
@@ -387,15 +466,32 @@ export function SceneWorkspace({
         </section>
       )}
 
-      {onExport && (
-        <button
-          type="button"
-          className="dp-exec"
-          onClick={() => onExport(scene)}
-        >
-          <span>EXPORT DEPTHSCENE TO CANVA</span>
-        </button>
-      )}
+      {/* Camera & Persistence Actions */}
+      <footer className="dp-ws-footer">
+        {onSave && (
+          <button
+            type="button"
+            className="dp-btn-reset"
+            disabled={isSaving}
+            onClick={handleSave}
+          >
+            {isSaving ? "SAVING..." : "SAVE SCENE"}
+          </button>
+        )}
+
+        {onExport && (
+          <button
+            type="button"
+            className="dp-exec"
+            disabled={isExporting}
+            onClick={handleExport}
+          >
+            <span>
+              {isExporting ? "COMPOSITING..." : "APPLY FLATTENED SCENE"}
+            </span>
+          </button>
+        )}
+      </footer>
     </div>
   );
 }

@@ -21,7 +21,7 @@ AsyncUrlBuilder = Callable[[bytes, str], Awaitable[str]]
 async def build_depth_object(
     seg_obj: SegmentedObject,
     source_image: bytes,
-    depth_array: np.ndarray,
+    canonical_depth_array: np.ndarray,
     url_builder: AsyncUrlBuilder,
     index: int = 1,
 ) -> DepthObject:
@@ -79,8 +79,8 @@ async def build_depth_object(
     thumb_bytes = thumb_buf.getvalue()
     thumb_url = await url_builder(thumb_bytes, "image/png")
 
-    # 4. Depth Statistics
-    object_depth_vals = np.clip(depth_array[mask_arr], 0.0, 1.0)
+    # 4. Canonical Depth Statistics (0.0 far, 1.0 near)
+    object_depth_vals = np.clip(canonical_depth_array[mask_arr], 0.0, 1.0)
     if len(object_depth_vals) > 0:
         d_mean = float(np.mean(object_depth_vals))
         d_median = float(np.median(object_depth_vals))

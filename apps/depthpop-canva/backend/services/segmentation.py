@@ -9,14 +9,19 @@ from providers.segmentation_provider import (
 )
 
 
-def get_segmentation_provider() -> SegmentationProvider:
-    mode = os.getenv("SEGMENTATION_PROVIDER", "auto").lower().strip()
-    if mode == "fal":
+def get_segmentation_provider(requested_mode: str = "auto") -> SegmentationProvider:
+    clean_mode = requested_mode.lower().strip()
+    if clean_mode == "florence_sam3":
         return FalSegmentationProvider()
-    if mode == "mock":
+    if clean_mode == "mock":
         return MockSegmentationProvider()
 
-    # auto mode: check if FAL_KEY exists or if running in pytest/test
+    env_mode = os.getenv("SEGMENTATION_PROVIDER", "auto").lower().strip()
+    if env_mode == "fal":
+        return FalSegmentationProvider()
+    if env_mode == "mock":
+        return MockSegmentationProvider()
+
     fal_key = os.getenv("FAL_KEY", "").strip()
     is_pytest = "PYTEST_CURRENT_TEST" in os.environ or os.getenv("ENVIRONMENT") == "test"
 
@@ -32,9 +37,11 @@ class SegmentationService:
     def __init__(self, provider: SegmentationProvider | None = None):
         self._provider = provider
 
-    @property
-    def provider(self) -> SegmentationProvider:
-        return self._provider or get_segmentation_provider()
+    def get_provider(self, mode: str = "auto") -> SegmentationProvider:
+        return self._provider or get_segmentation_provider(requested_mode=mode)
 
-    async def segment_objects(self, image: bytes, max_objects: int = 24) -> list[SegmentedObject]:
-        return await self.provider.segment(image, max_objects=max_objects)
+    async def segment_objects(
+        self, image: bytes, max_objects: int = 24, mode: str = "auto"
+    ) -> list[SegmentedObject]:
+        provider = self.get_provider(mode=mode)
+        return await provider.segment(image, max_objects=max_objects)

@@ -73,6 +73,30 @@ The SPATIAL studio supports built-in motion presets plus a **CUSTOM** mode. In c
 
 The timeline playback loop updates scene time rather than hiding animation state inside the renderer. That makes the authored motion suitable for later conversion into GLB animation clips, Blender keyframes, or rendered video without reverse-engineering the preview.
 
+## Spatial edit session
+
+The SPATIAL workspace now owns a real editable HoloScene session instead of rebuilding the scene every time the operator changes tabs. Transform edits, authored poses, animation presets and manually scrubbed timeline state are lifted back into the app-level studio scene and restored when CREATE / SPATIAL / VERIFY navigation unmounts and remounts the viewport.
+
+Starting a new Preview from CREATE intentionally creates a fresh scene from the current material/source plan. Normal tab navigation does not reset authored spatial work.
+
+## Multi-object scene composition
+
+The SPATIAL workspace now treats HoloScene as a real object stack instead of a single disposable preview. Operators can select, duplicate, hide/show, reorder and remove holographic objects while preserving unique object IDs and a valid scene selection.
+
+Duplicated objects inherit the source geometry, material and animation intent, receive a bounded spatial offset so they are immediately distinguishable, and remain independently editable. Browser rendering and the Blender worker already iterate the HoloScene object array, so multi-object compositions survive JSON, 3D, video, USDZ and light-field export paths rather than flattening back into one preview layer.
+
+## Live material and geometry editing
+
+The selected SPATIAL object can now be edited after scene creation without rebuilding the material plan. HoloForge exposes real HoloScene-backed visibility, material-family, opacity, reflection, emission, metalness, roughness, transmission, IOR, spectral shift, diffraction, shimmer, scanline, thickness, bevel-size and bevel-segment controls.
+
+Material and geometry edits are bounded before entering the renderer contract, persist through studio-tab navigation, update the live Three.js object immediately, and serialize into the same HoloScene submitted to Blender exports. Raster source faces now honor the edited object opacity instead of remaining visually opaque over the holographic mesh.
+
+## Live scene controls
+
+The SPATIAL workspace now exposes real scene-level controls backed by HoloScene state rather than visual-only UI. Operators can change the stage background, toggle the floor grid, tune ambient/key/rim light intensity, adjust perspective field of view, edit camera position/target coordinates, and jump between bounded FRONT / HERO / CLOSE camera presets.
+
+These edits are immutable scene updates and persist through the app-level spatial session, so the same environment and camera state is serialized into HoloScene JSON and submitted to the production render backend.
+
 ## Export and deployment profiles
 
 HoloForge exposes explicit export capabilities instead of presenting every desired format as if the Canva iframe can create it locally.
@@ -81,7 +105,7 @@ Current capability state:
 
 - **HoloScene JSON** — client-ready. Downloads the complete authored scene contract, including transform state, camera, material metadata, timeline and keyframes.
 - **GLB / glTF** — real headless-Blender exports with authored geometry, transforms, materials, camera state and animation/keyframe conversion.
-- **USDZ** — contract remains defined but disabled until a real USD/USDZ conversion lane is implemented.
+- **USDZ** — real Blender-generated USDZ package for the `ios-ar` profile. The first shipping contract is static while GLB/glTF/video remain the qualified animation paths.
 - **WebM Alpha** — real transparent VP9 output assembled from Blender-rendered RGBA frames.
 - **MP4 / PNG Sequence** — real Blender-worker render outputs.
 - **Light-field Quilt** — real multi-view PNG quilt output. The generic compatibility profile renders 45 views in a 5×9 quilt over a 40° camera cone at 3600×3600, while custom bounded quilt layouts can be submitted explicitly.
@@ -135,7 +159,7 @@ Current backend behavior:
 - light-field quilts freeze the authored scene at the selected timeline time, render discrete camera views across the requested cone, and assemble those views into one quilt PNG;
 - HoloScene materials are normalized through the spectral renderer before Blender receives them, so exported foil/iridescent/pearl/neon materials retain angle-reactive spectrum behavior instead of flattening to one RGB value;
 - transparent raster sources can be alpha-traced and extruded into real silhouette geometry, while unsuitable opaque sources fall back honestly to a plate;
-- USDZ remains disabled until a dedicated converter generates a real target file;
+- USDZ is generated directly by Blender's native USD archive exporter and returned through the authenticated artifact boundary;
 - Canva temporary image URLs are materialized in the browser and embedded before submission, so the server does not fetch arbitrary remote source URLs.
 
 The normal API container intentionally stays lightweight. Production rendering uses the dedicated Blender image.
@@ -151,9 +175,9 @@ cd apps/holoforge-canva/backend
 docker compose -f docker-compose.render.yml up --build
 ```
 
-The render image enables `glb`, `gltf`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
+The render image enables `glb`, `gltf`, `usdz`, `webm-alpha`, `mp4`, `png-sequence` and `lightfield-quilt` in `GET /health`. The normal lightweight backend remains useful for API/schema/auth testing and scene JSON exports.
 
-The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
+The **HoloForge Render Image** workflow performs the production-image build for render-worker pull requests or explicit manual dispatch. Its smoke proves a real GLB, a structurally valid USDZ package, a transparent VP9 WebM with recoverable alpha, and a bounded 3×3 / 9-view quilt path so CI verifies multi-view rendering without paying the full cost of the production 45-view default.
 
 ## Development
 

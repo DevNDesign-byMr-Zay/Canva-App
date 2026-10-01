@@ -31,6 +31,158 @@ describe("HoloScene reducer", () => {
     expect(next.scene.objects[0]?.transform.position.z).toBe(1.4);
   });
 
+  it("patches scene lighting without mutating the source environment", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const next = holoSceneReducer(state, {
+      type: "patch_environment",
+      environment: {
+        background: "#101827",
+        ambientIntensity: 1.25,
+        keyLightIntensity: 3.5,
+        rimLightIntensity: 2.4,
+        floorGrid: false,
+      },
+    });
+
+    expect(scene.environment.background).toBe("#020307");
+    expect(next.scene.environment).toMatchObject({
+      background: "#101827",
+      ambientIntensity: 1.25,
+      keyLightIntensity: 3.5,
+      rimLightIntensity: 2.4,
+      floorGrid: false,
+    });
+  });
+
+  it("patches camera vectors and clamps unsafe lens values", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const next = holoSceneReducer(state, {
+      type: "patch_camera",
+      camera: {
+        position: { x: 2.25, y: 1.25, z: 4.65 },
+        target: { y: 0.1 },
+        fov: 500,
+        near: -4,
+        far: 0,
+      },
+    });
+
+    expect(scene.camera.position.x).toBe(0);
+    expect(next.scene.camera.position).toEqual({ x: 2.25, y: 1.25, z: 4.65 });
+    expect(next.scene.camera.target.y).toBe(0.1);
+    expect(next.scene.camera.fov).toBe(110);
+    expect(next.scene.camera.near).toBe(0.001);
+    expect(next.scene.camera.far).toBeCloseTo(0.011);
+  });
+
+  it("patches object material and geometry with bounded renderer values", () => {
+    const scene = fixture();
+    const state = createHoloSceneState(scene);
+    const objectId = scene.objects[0]!.id;
+
+    const next = holoSceneReducer(state, {
+      type: "patch_object",
+      objectId,
+      patch: {
+        visible: false,
+        material: {
+          opacity: 4,
+          metalness: -3,
+          roughness: 0,
+          transmission: 7,
+          ior: 9,
+          emissionStrength: 8,
+          spectralShift: 140,
+          diffraction: -2,
+          reflectionStrength: 200,
+        },
+        geometry: {
+          thickness: 4,
+          bevelSize: -1,
+          bevelSegments: 12.4,
+        },
+      },
+    });
+
+    const original = scene.objects[0]!;
+    const patched = next.scene.objects[0]!;
+    expect(original.visible).toBe(true);
+    expect(patched.visible).toBe(false);
+    expect(patched.material.opacity).toBe(1);
+    expect(patched.material.metalness).toBe(0);
+    expect(patched.material.roughness).toBe(0.02);
+    expect(patched.material.transmission).toBe(1);
+    expect(patched.material.ior).toBe(2.5);
+    expect(patched.material.emissionStrength).toBe(5);
+    expect(patched.material.spectralShift).toBe(100);
+    expect(patched.material.diffraction).toBe(0);
+    expect(patched.material.reflectionStrength).toBe(100);
+    expect(patched.geometry.thickness).toBe(2);
+    expect(patched.geometry.bevelSize).toBe(0);
+    expect(patched.geometry.bevelSegments).toBe(8);
+  });
+
+  it("duplicates scene objects with unique ids and selects the duplicate", () => {
+    const scene = fixture();
+    let state = createHoloSceneState(scene);
+    const sourceId = scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    expect(state.scene.objects).toHaveLength(2);
+    expect(state.scene.objects[1]?.id).toBe(sourceId + "-copy-01");
+    expect(state.scene.objects[1]?.name).toContain("COPY");
+    expect(state.scene.objects[1]?.transform.position.x).toBeCloseTo(
+      scene.objects[0]!.transform.position.x + 0.18,
+    );
+    expect(state.selectedObjectId).toBe(sourceId + "-copy-01");
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    expect(state.scene.objects.map((object) => object.id)).toEqual([
+      sourceId,
+      sourceId + "-copy-02",
+      sourceId + "-copy-01",
+    ]);
+  });
+
+  it("reorders and removes objects while preserving a valid selection", () => {
+    const scene = fixture();
+    let state = createHoloSceneState(scene);
+    const sourceId = scene.objects[0]!.id;
+
+    state = holoSceneReducer(state, {
+      type: "duplicate_object",
+      objectId: sourceId,
+    });
+    const duplicateId = state.selectedObjectId!;
+    state = holoSceneReducer(state, {
+      type: "move_object",
+      objectId: duplicateId,
+      direction: "backward",
+    });
+    expect(state.scene.objects[0]?.id).toBe(duplicateId);
+
+    state = holoSceneReducer(state, {
+      type: "remove_object",
+      objectId: duplicateId,
+    });
+    expect(state.scene.objects).toHaveLength(1);
+    expect(state.selectedObjectId).toBe(sourceId);
+
+    const unchanged = holoSceneReducer(state, {
+      type: "remove_object",
+      objectId: sourceId,
+    });
+    expect(unchanged).toBe(state);
+  });
+
   it("clamps timeline changes to scene duration", () => {
     const state = createHoloSceneState(fixture());
     const next = holoSceneReducer(state, {

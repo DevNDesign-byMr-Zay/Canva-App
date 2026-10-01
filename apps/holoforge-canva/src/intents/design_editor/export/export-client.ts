@@ -46,6 +46,7 @@ export type ExportStatusResponse = Readonly<{
 const IMPLEMENTED_WORKER_FORMATS = new Set<HoloExportFormat>([
   "glb",
   "gltf",
+  "usdz",
   "webm-alpha",
   "mp4",
   "png-sequence",

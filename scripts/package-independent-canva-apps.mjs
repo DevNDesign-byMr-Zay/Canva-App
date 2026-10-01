@@ -239,7 +239,7 @@ for (const app of APPS) {
       join(source, "backend", "blender_worker.py"),
       "utf8",
     );
-    for (const marker of ['format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
+    for (const marker of ['format_name == "usdz"', 'format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
       if (!blenderWorker.includes(marker)) {
         throw new Error(`HoloForge light-field worker missing packaged marker: ${marker}`);
       }
