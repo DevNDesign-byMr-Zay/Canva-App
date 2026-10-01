@@ -75,6 +75,44 @@ jobs:
             apps/${{ matrix.app }}/canva-app.json
             apps/${{ matrix.app }}/preview/index.html
 
+
+  holoforge-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/holoforge-canva/backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/holoforge-canva/backend/requirements.txt
+      - name: Install backend
+        run: python -m pip install -r requirements.txt
+      - name: Compile backend
+        run: python -m compileall -q .
+      - name: Backend unit tests
+        run: python -m pytest -q
+      - name: Build backend container
+        run: docker build -t holoforge-canva-backend .
+      - name: Start backend container
+        run: |
+          docker run -d --rm --name holoforge-canva-backend-smoke -p 18082:8082 holoforge-canva-backend
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18082/health > /tmp/holoforge-health.json; then
+              cat /tmp/holoforge-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs holoforge-canva-backend-smoke
+          exit 1
+      - name: Stop backend container
+        if: always()
+        run: docker stop holoforge-canva-backend-smoke || true
+
   depthpop-backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -103,6 +141,7 @@ jobs:
     needs:
       - standalone-regression-guard
       - canva-frontends
+      - holoforge-backend
       - depthpop-backend
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -135,6 +174,9 @@ jobs:
             test -s "$root/preview/index.html"
             test ! -e "$root/reference"
           done
+          test -s .artifacts/independent-canva-apps/holoforge-canva/backend/app.py
+          test -s .artifacts/independent-canva-apps/holoforge-canva/backend/blender_worker.py
+          test -s .artifacts/independent-canva-apps/holoforge-canva/backend/test_app.py
           test -s .artifacts/independent-canva-apps/depthpop-canva/backend/app.py
           test -s .artifacts/independent-canva-apps/depthpop-canva/backend/test_app.py
       - name: Create exactly two Canva handoff ZIPs
@@ -164,6 +206,9 @@ jobs:
             fi
           done
 
+          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/app.py'
+          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/blender_worker.py'
+          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/test_app.py'
           unzip -Z1 .artifacts/canva-zips/DepthPop-Canva-App.zip | grep -qx 'backend/app.py'
           unzip -Z1 .artifacts/canva-zips/DepthPop-Canva-App.zip | grep -qx 'backend/test_app.py'
 
