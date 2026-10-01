@@ -101,16 +101,31 @@ def request_payload(format_name="scene-json"):
         "webm-alpha": "transparent-video",
         "mp4": "transparent-video",
         "png-sequence": "image-sequence",
+        "lightfield-quilt": "lightfield-quilt",
     }
-    return {
+    is_quilt = format_name == "lightfield-quilt"
+    payload = {
         "schemaVersion": 1,
         "sceneId": "hf-scene-test",
         "format": format_name,
         "profile": profiles[format_name],
-        "includeAnimation": True,
-        "resolution": {"width": 1920, "height": 1080},
-        "transparentBackground": format_name == "webm-alpha",
+        "includeAnimation": not is_quilt,
+        "resolution": (
+            {"width": 500, "height": 900}
+            if is_quilt
+            else {"width": 1920, "height": 1080}
+        ),
+        "transparentBackground": format_name in {"webm-alpha", "lightfield-quilt"},
     }
+    if is_quilt:
+        payload["quilt"] = {
+            "columns": 5,
+            "rows": 9,
+            "views": 45,
+            "viewAspect": 1.0,
+            "viewConeDegrees": 40,
+        }
+    return payload
 
 
 def test_scene_contract_accepts_sorted_keyframes():
@@ -158,4 +173,41 @@ def test_alpha_webm_requires_animation():
     payload = request_payload("webm-alpha")
     payload["includeAnimation"] = False
     with pytest.raises(ValidationError, match="requires includeAnimation=true"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_lightfield_quilt_accepts_complete_view_grid():
+    request = HoloExportRequest.model_validate(
+        request_payload("lightfield-quilt")
+    )
+    assert request.quilt is not None
+    assert request.quilt.views == 45
+    assert request.quilt.viewConeDegrees == 40
+
+
+def test_lightfield_quilt_rejects_missing_tile_view():
+    payload = request_payload("lightfield-quilt")
+    payload["quilt"]["views"] = 44
+    with pytest.raises(ValidationError, match="one light-field view per quilt tile"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_lightfield_quilt_rejects_animation_in_v1():
+    payload = request_payload("lightfield-quilt")
+    payload["includeAnimation"] = True
+    with pytest.raises(ValidationError, match="requires includeAnimation=false"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_lightfield_quilt_rejects_non_divisible_resolution():
+    payload = request_payload("lightfield-quilt")
+    payload["resolution"]["width"] = 501
+    with pytest.raises(ValidationError, match="width must be divisible"):
+        HoloExportRequest.model_validate(payload)
+
+
+def test_lightfield_quilt_rejects_tile_aspect_mismatch():
+    payload = request_payload("lightfield-quilt")
+    payload["quilt"]["viewAspect"] = 1.8
+    with pytest.raises(ValidationError, match="viewAspect must match"):
         HoloExportRequest.model_validate(payload)
