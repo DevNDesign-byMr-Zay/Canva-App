@@ -40,7 +40,7 @@ The current SPATIAL editor uses:
 
 The production Canva app renders this scene inside its normal app iframe. Canva remains responsible for asset access and design insertion; HoloForge owns the 3D scene, camera, environment, materials, and timeline state.
 
-The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, and serializable transform keyframes. It still does **not** claim that full vector mesh reconstruction, Blender rendering, GLB/USDZ export, or device-specific light-field output are complete. Those remain later backend/export batches.
+The WebGL foundation now includes transform gizmos, alpha-silhouette extrusion, an animated spectral shader, serializable transform keyframes, real Blender-backed GLB/glTF/USDZ/video/PNG/light-field export paths, and a render-to-Canva PNG route. Device-specific optical interlacing remains outside the generic HoloForge export contract, and full vector-mesh reconstruction remains a later geometry specialization.
 
 ## Object manipulation and source geometry
 
@@ -83,7 +83,7 @@ Starting a new Preview from CREATE intentionally creates a fresh scene from the 
 
 HoloScene JSON is now a real editable project format rather than a one-way diagnostic export. Operators can reopen a previously downloaded HoloScene file and return directly to SPATIAL with its objects, materials, geometry, transforms, camera, environment, timeline, animation presets and authored keyframes restored.
 
-Imports are bounded to 25 MB, parsed locally, checked against the v1 runtime structure, passed through semantic HoloScene validation, and recursively frozen before entering studio state. Invalid JSON, malformed scene shapes, duplicate object IDs and out-of-range keyframes fail with an explicit import message instead of partially mutating the current scene.
+Project saves first materialize temporary Canva raster URLs into embedded image data, so a downloaded HoloScene does not depend on an expiring Canva source URL. Imports are bounded to 25 MB, parsed locally, restricted to embedded PNG/JPEG/WebP source imagery, checked against the v1 runtime structure, passed through semantic HoloScene validation, and recursively frozen before entering studio state. Remote image/mesh references, invalid JSON, malformed scene shapes, duplicate object IDs, unsafe camera/material/geometry values and out-of-range keyframes fail before studio state is changed.
 
 ## Multi-object scene composition
 
