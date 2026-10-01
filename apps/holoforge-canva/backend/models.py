@@ -221,15 +221,16 @@ class Resolution(BaseModel):
 
 class QuiltOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    columns: int = Field(ge=1, le=32)
-    rows: int = Field(ge=1, le=32)
-    views: int = Field(ge=1, le=1024)
+    columns: int = Field(ge=1, le=16)
+    rows: int = Field(ge=1, le=16)
+    views: int = Field(ge=2, le=128)
     viewAspect: float = Field(gt=0, le=10)
+    viewConeDegrees: float = Field(gt=0, le=120)
 
     @model_validator(mode="after")
     def fit_views(self) -> "QuiltOptions":
-        if self.views > self.columns * self.rows:
-            raise ValueError("quilt views exceed available tiles")
+        if self.views != self.columns * self.rows:
+            raise ValueError("render-worker v1 requires one light-field view per quilt tile")
         return self
 
 
@@ -266,6 +267,19 @@ class HoloExportRequest(BaseModel):
             raise ValueError(f"{self.format} requires includeAnimation=true in render-worker v1")
         if self.format == "webm-alpha" and not self.transparentBackground:
             raise ValueError("webm-alpha requires transparentBackground=true")
+        if self.format == "lightfield-quilt":
+            if self.includeAnimation:
+                raise ValueError("lightfield-quilt v1 is a still quilt and requires includeAnimation=false")
+            assert self.quilt is not None
+            if self.resolution.width % self.quilt.columns != 0:
+                raise ValueError("lightfield quilt width must be divisible by columns")
+            if self.resolution.height % self.quilt.rows != 0:
+                raise ValueError("lightfield quilt height must be divisible by rows")
+            tile_width = self.resolution.width / self.quilt.columns
+            tile_height = self.resolution.height / self.quilt.rows
+            actual_aspect = tile_width / tile_height
+            if abs(actual_aspect - self.quilt.viewAspect) > 0.02:
+                raise ValueError("lightfield quilt viewAspect must match its tile geometry")
         return self
 
 
