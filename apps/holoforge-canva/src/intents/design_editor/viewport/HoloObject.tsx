@@ -1,5 +1,5 @@
 import { Edges } from "@react-three/drei";
-import { useFrame, useLoader } from "@react-three/fiber";
+import { useFrame, useLoader, type ThreeEvent } from "@react-three/fiber";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
   CanvasTexture,
@@ -127,7 +127,7 @@ export function HoloObject({
   if (!object.visible) return null;
 
   const commonProps = {
-    onPointerDown: (event: { stopPropagation: () => void }) => {
+    onPointerDown: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation();
       onSelect(object.id);
     },
