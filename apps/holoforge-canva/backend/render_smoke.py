@@ -83,20 +83,27 @@ def run_worker(
     format_name: str,
     profile: str,
     transparent: bool,
-) -> Path:
+    include_animation: bool = True,
+    resolution: tuple[int, int] = (320, 180),
+    quilt: dict | None = None,
+) -> tuple[Path, dict]:
     output = root / format_name
     output.mkdir(parents=True, exist_ok=True)
+    request = {
+        "schemaVersion": 1,
+        "sceneId": "render-smoke",
+        "format": format_name,
+        "profile": profile,
+        "includeAnimation": include_animation,
+        "resolution": {"width": resolution[0], "height": resolution[1]},
+        "transparentBackground": transparent,
+    }
+    if quilt is not None:
+        request["quilt"] = quilt
+
     payload = {
         "scene": scene_payload(),
-        "request": {
-            "schemaVersion": 1,
-            "sceneId": "render-smoke",
-            "format": format_name,
-            "profile": profile,
-            "includeAnimation": True,
-            "resolution": {"width": 320, "height": 180},
-            "transparentBackground": transparent,
-        },
+        "request": request,
         "outputDir": str(output),
     }
     job = output / "job.json"
@@ -115,7 +122,7 @@ def run_worker(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        timeout=180,
+        timeout=600 if format_name == "lightfield-quilt" else 240,
         check=False,
     )
     if completed.returncode != 0:
@@ -131,7 +138,7 @@ def run_worker(
     artifact = Path(result["path"])
     if not artifact.is_file() or artifact.stat().st_size <= 0:
         raise SystemExit(f"Blender worker produced no {format_name} artifact")
-    return artifact
+    return artifact, result
 
 
 def verify_webm_alpha(artifact: Path) -> None:
@@ -191,6 +198,43 @@ def verify_webm_alpha(artifact: Path) -> None:
         raise SystemExit("alpha WebM smoke could not extract a real alpha plane")
 
 
+def verify_quilt(artifact: Path, *, width: int, height: int, views: int) -> None:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        raise SystemExit("ffprobe is required for quilt smoke")
+
+    probe = subprocess.run(
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=s=x:p=0",
+            str(artifact),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if probe.returncode != 0 or probe.stdout.strip() != f"{width}x{height}":
+        raise SystemExit(
+            "light-field quilt dimensions are wrong: "
+            + (probe.stdout.strip() or probe.stderr[-500:])
+        )
+
+    rendered_views = list((artifact.parent / "lightfield-views").glob("slot_*.png"))
+    if len(rendered_views) != views:
+        raise SystemExit(
+            f"light-field quilt rendered {len(rendered_views)} views; expected {views}"
+        )
+
+
 def main() -> int:
     blender = os.environ.get("BLENDER_BIN", "").strip()
     if not blender:
@@ -200,7 +244,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="holoforge-blender-smoke-") as temp:
         root = Path(temp)
 
-        glb = run_worker(
+        glb, _ = run_worker(
             blender,
             worker,
             root,
@@ -211,7 +255,7 @@ def main() -> int:
         if glb.suffix.lower() != ".glb":
             raise SystemExit("Blender worker smoke produced the wrong GLB artifact type")
 
-        webm = run_worker(
+        webm, _ = run_worker(
             blender,
             worker,
             root,
@@ -223,6 +267,28 @@ def main() -> int:
             raise SystemExit("Blender worker smoke produced the wrong WebM artifact type")
         verify_webm_alpha(webm)
 
+        quilt_options = {
+            "columns": 3,
+            "rows": 3,
+            "views": 9,
+            "viewAspect": 1.0,
+            "viewConeDegrees": 30,
+        }
+        quilt, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="lightfield-quilt",
+            profile="lightfield-quilt",
+            transparent=True,
+            include_animation=False,
+            resolution=(150, 150),
+            quilt=quilt_options,
+        )
+        if quilt.suffix.lower() != ".png" or "_qs3x3a1.png" not in quilt.name:
+            raise SystemExit("Blender worker smoke produced the wrong quilt artifact name")
+        verify_quilt(quilt, width=150, height=150, views=9)
+
         print(
             json.dumps(
                 {
@@ -233,6 +299,14 @@ def main() -> int:
                         "sizeBytes": webm.stat().st_size,
                         "codec": "vp9",
                         "alphaVerified": True,
+                    },
+                    "lightfieldQuilt": {
+                        "artifact": quilt.name,
+                        "sizeBytes": quilt.stat().st_size,
+                        "resolution": [150, 150],
+                        "grid": [3, 3],
+                        "views": 9,
+                        "viewConeDegrees": 30,
                     },
                 }
             )
