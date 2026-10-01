@@ -73,7 +73,11 @@ export function sampleTransformTracks(
   tracks: readonly HoloAnimationTrack[],
   timeMs: number,
 ): Partial<Pick<SceneTransform, "position" | "rotation" | "scale">> {
-  const result: Partial<Pick<SceneTransform, "position" | "rotation" | "scale">> = {};
+  const result: {
+    position?: SceneTransform["position"];
+    rotation?: SceneTransform["rotation"];
+    scale?: SceneTransform["scale"];
+  } = {};
   for (const track of tracks) {
     const sampled = sampleTrack(track, timeMs);
     if (sampled) result[track.property] = sampled;
