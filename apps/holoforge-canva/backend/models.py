@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 from typing import Literal
 from uuid import uuid4
 
@@ -30,6 +31,9 @@ ExportProfile = Literal[
 AnimationProperty = Literal["position", "rotation", "scale"]
 Easing = Literal["linear", "ease-in", "ease-out", "ease-in-out"]
 JobStatus = Literal["queued", "validating", "rendering", "packaging", "complete", "error"]
+
+MAX_RENDER_PIXELS = 16_777_216
+MAX_RENDERED_FRAMES = 3600
 
 
 class Vec3(BaseModel):
@@ -249,6 +253,11 @@ class HoloExportRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_format_profile(self) -> "HoloExportRequest":
+        if self.resolution.width * self.resolution.height > MAX_RENDER_PIXELS:
+            raise ValueError(
+                f"render resolution exceeds the {MAX_RENDER_PIXELS}-pixel production budget"
+            )
+
         expected = {
             "scene-json": "scene-authoring",
             "glb": "generic-3d",
@@ -297,6 +306,17 @@ class ExportSubmission(BaseModel):
     def matching_scene(self) -> "ExportSubmission":
         if self.scene.id != self.request.sceneId:
             raise ValueError("export request sceneId does not match scene")
+
+        if self.request.format in {"webm-alpha", "mp4", "png-sequence"}:
+            frames = math.ceil(
+                (self.scene.timeline.durationMs / 1000.0)
+                * self.scene.timeline.fps
+            )
+            if frames > MAX_RENDERED_FRAMES:
+                raise ValueError(
+                    f"animated render exceeds the {MAX_RENDERED_FRAMES}-frame production budget"
+                )
+
         return self
 
 
