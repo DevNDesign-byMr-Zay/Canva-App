@@ -15,6 +15,7 @@ import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
 import { MaterialInspector } from "./MaterialInspector";
 import { ObjectInspector, type TransformMode } from "./ObjectInspector";
+import { ObjectStackPanel } from "./ObjectStackPanel";
 import { SceneControls } from "./SceneControls";
 import { StageEnvironment } from "./StageEnvironment";
 
@@ -190,6 +191,34 @@ export function HoloViewport({
           RESET VIEW
         </button>
       </div>
+
+      <ObjectStackPanel
+        objects={state.scene.objects}
+        selectedObjectId={state.selectedObjectId}
+        onSelect={(objectId) =>
+          dispatch({ type: "select_object", objectId })
+        }
+        onDuplicate={(objectId) =>
+          dispatchPersistent({ type: "duplicate_object", objectId })
+        }
+        onRemove={(objectId) =>
+          dispatchPersistent({ type: "remove_object", objectId })
+        }
+        onMove={(objectId, direction) =>
+          dispatchPersistent({
+            type: "move_object",
+            objectId,
+            direction,
+          })
+        }
+        onToggleVisible={(objectId, visible) =>
+          dispatchPersistent({
+            type: "patch_object",
+            objectId,
+            patch: { visible },
+          })
+        }
+      />
 
       <ObjectInspector
         object={selected}
