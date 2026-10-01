@@ -11,6 +11,7 @@ const APPS = {
       "package.json",
       "canva-app.json",
       "tsconfig.json",
+      ".env.template",
       "README.md",
       "preview/index.html",
       "src/index.tsx",
@@ -26,8 +27,49 @@ const APPS = {
       "src/intents/design_editor/holographic/effect-plan.ts",
       "src/intents/design_editor/holographic/forge-support.ts",
       "src/intents/design_editor/holographic/material-contract.ts",
+      "src/intents/design_editor/scene/holo-scene.ts",
+      "src/intents/design_editor/scene/holo-scene.test.ts",
+      "src/intents/design_editor/scene/holo-object.ts",
+      "src/intents/design_editor/scene/scene-store.ts",
+      "src/intents/design_editor/scene/scene-store.test.ts",
+      "src/intents/design_editor/materials/HoloMaterial.tsx",
+      "src/intents/design_editor/materials/SpectralHoloMaterial.tsx",
+      "src/intents/design_editor/animation/keyframe-model.ts",
+      "src/intents/design_editor/animation/keyframe-model.test.ts",
+      "src/intents/design_editor/animation/AnimationPanel.tsx",
+      "src/intents/design_editor/export/export-contract.ts",
+      "src/intents/design_editor/export/export-contract.test.ts",
+      "src/intents/design_editor/export/scene-download.ts",
+      "src/intents/design_editor/export/scene-download.test.ts",
+      "src/intents/design_editor/export/ExportPanel.tsx",
+      "src/intents/design_editor/export/export-client.ts",
+      "src/intents/design_editor/geometry/alpha-contour.ts",
+      "src/intents/design_editor/geometry/alpha-contour.test.ts",
+      "src/intents/design_editor/geometry/use-alpha-shape.ts",
+      "src/intents/design_editor/viewport/HoloCamera.tsx",
+      "src/intents/design_editor/viewport/HoloObject.tsx",
+      "src/intents/design_editor/viewport/HoloScene.tsx",
+      "src/intents/design_editor/viewport/HoloViewport.tsx",
+      "src/intents/design_editor/viewport/ObjectInspector.tsx",
+      "src/intents/design_editor/viewport/StageEnvironment.tsx",
       "src/intents/design_editor/use-canva-image-selection.ts",
       "src/assets/holoforge-logo.svg",
+      "backend/app.py",
+      "backend/auth.py",
+      "backend/models.py",
+      "backend/repositories.py",
+      "backend/renderers.py",
+      "backend/export_service.py",
+      "backend/blender_worker.py",
+      "backend/requirements.txt",
+      "backend/Dockerfile",
+      "backend/Dockerfile.render",
+      "backend/docker-compose.render.yml",
+      "backend/render_smoke.py",
+      "backend/.env.example",
+      "backend/README.md",
+      "backend/test_app.py",
+      "backend/test_models.py",
     ],
     forbiddenText: [
       "__MRZAY_CANVA_PRODUCT__",
@@ -141,7 +183,11 @@ for (const [name, spec] of Object.entries(APPS)) {
         fail(`${name}: package.json is missing ${scriptName} script`);
       }
     }
-    for (const dependency of ["@canva/asset", "@canva/design"]) {
+    const requiredDependencies =
+      name === "holoforge"
+        ? ["@canva/asset", "@canva/design", "@canva/user", "three", "@react-three/fiber", "@react-three/drei"]
+        : ["@canva/asset", "@canva/design"];
+    for (const dependency of requiredDependencies) {
       if (!pkg?.dependencies?.[dependency]) {
         fail(`${name}: package.json is missing ${dependency} required for test-image upload/add-to-design`);
       }
@@ -208,6 +254,98 @@ for (const [name, spec] of Object.entries(APPS)) {
         fail(`${name}: test-image upload marker missing: ${marker}`);
       }
     }
+  }
+}
+
+const holoExportClient = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/export-client.ts"),
+);
+for (const marker of [
+  "auth.getCanvaUserToken",
+  "prepareSceneForBackend",
+  "createBackendExport",
+  "waitForExport",
+  "downloadBackendExport",
+  '"glb"',
+  '"gltf"',
+  '"mp4"',
+  '"png-sequence"',
+]) {
+  if (!holoExportClient.includes(marker)) {
+    fail(`holoforge: render backend client marker missing: ${marker}`);
+  }
+}
+
+const holoRenderDockerfile = readText(
+  full(APPS.holoforge.root, "backend/Dockerfile.render"),
+);
+for (const marker of [
+  "BLENDER_VERSION=4.5.14",
+  "download.blender.org/release/Blender4.5",
+  "sha256sum -c",
+  "BLENDER_BIN=/opt/blender/blender",
+  "/opt/blender/blender --background --version",
+]) {
+  if (!holoRenderDockerfile.includes(marker)) {
+    fail(`holoforge: production render image marker missing: ${marker}`);
+  }
+}
+
+const holoBlenderWorker = readText(
+  full(APPS.holoforge.root, "backend/blender_worker.py"),
+);
+for (const marker of [
+  'format_name == "webm-alpha"',
+  "libvpx-vp9",
+  "yuva420p",
+  "alpha WebM",
+]) {
+  if (!holoBlenderWorker.includes(marker)) {
+    fail(`holoforge: alpha WebM worker marker missing: ${marker}`);
+  }
+}
+
+const holoRenderSmoke = readText(
+  full(APPS.holoforge.root, "backend/render_smoke.py"),
+);
+for (const marker of [
+  'format_name="glb"',
+  'format_name="webm-alpha"',
+  "blender_worker.py",
+  "alphaextract",
+  "alphaVerified",
+  "result.json",
+]) {
+  if (!holoRenderSmoke.includes(marker)) {
+    fail(`holoforge: Blender render smoke marker missing: ${marker}`);
+  }
+}
+
+const holoBackend = readText(full(APPS.holoforge.root, "backend/app.py"));
+for (const marker of [
+  '"/api/v1/exports"',
+  '"/api/v1/jobs/{job_id}"',
+  'Depends(verify_canva_user)',
+  "supportedFormats",
+]) {
+  if (!holoBackend.includes(marker)) {
+    fail(`holoforge: export backend API marker missing: ${marker}`);
+  }
+}
+
+const holoRenderer = readText(full(APPS.holoforge.root, "backend/renderers.py"));
+for (const marker of [
+  "SceneJsonRenderer",
+  "BlenderRenderer",
+  '"glb"',
+  '"gltf"',
+  '"webm-alpha"',
+  '"mp4"',
+  '"png-sequence"',
+  "No configured HoloForge renderer",
+]) {
+  if (!holoRenderer.includes(marker)) {
+    fail(`holoforge: render adapter marker missing: ${marker}`);
   }
 }
 
@@ -278,10 +416,183 @@ for (const marker of [
   "<LocalImageUpload",
   'productName="HoloForge"',
   "executeHolographicEffectPlan",
+  "createHoloScene",
+  "<HoloViewport",
 ]) {
   if (!holoApp.includes(marker)) {
     fail(`holoforge: runtime/UI marker missing: ${marker}`);
   }
+}
+
+const holoViewport = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloViewport.tsx"),
+);
+for (const marker of [
+  'from "@react-three/fiber"',
+  'from "@react-three/drei"',
+  "<Canvas",
+  "<OrbitControls",
+  "<HoloScene",
+  "<ObjectInspector",
+  "<AnimationPanel",
+  "<ExportPanel",
+  "transformMode",
+  "requestAnimationFrame",
+  "WEBGL LIVE",
+  "AUTO ORBIT",
+  "HoloForge timeline",
+]) {
+  if (!holoViewport.includes(marker)) {
+    fail(`holoforge: WebGL viewport marker missing: ${marker}`);
+  }
+}
+
+const holoSceneView = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloScene.tsx"),
+);
+for (const marker of [
+  "<TransformControls",
+  'mode={mode}',
+  "onTransformCommit",
+  "onTransformingChange",
+]) {
+  if (!holoSceneView.includes(marker)) {
+    fail(`holoforge: 3D transform-gizmo marker missing: ${marker}`);
+  }
+}
+
+const holoAlphaContour = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/geometry/alpha-contour.ts"),
+);
+for (const marker of [
+  "traceAlphaContours",
+  "largestAlphaContour",
+  "normalizeContour",
+  "boundaryEdges",
+]) {
+  if (!holoAlphaContour.includes(marker)) {
+    fail(`holoforge: alpha silhouette marker missing: ${marker}`);
+  }
+}
+
+const holoObjectView = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/viewport/HoloObject.tsx"),
+);
+for (const marker of [
+  "useAlphaShape",
+  "<extrudeGeometry",
+  "forwardRef<Group",
+  "alphaShape.shape",
+]) {
+  if (!holoObjectView.includes(marker)) {
+    fail(`holoforge: extruded source-object marker missing: ${marker}`);
+  }
+}
+
+const spectralMaterial = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/materials/SpectralHoloMaterial.tsx"),
+);
+for (const marker of [
+  "ShaderMaterial",
+  "uSpectralShift",
+  "uDiffraction",
+  "fresnel",
+  "spectral(",
+  "uTime",
+]) {
+  if (!spectralMaterial.includes(marker)) {
+    fail(`holoforge: spectral shader marker missing: ${marker}`);
+  }
+}
+
+const holoExportContract = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/export-contract.ts"),
+);
+for (const marker of [
+  '"scene-json"',
+  '"glb"',
+  '"gltf"',
+  '"usdz"',
+  '"webm-alpha"',
+  '"png-sequence"',
+  '"lightfield-quilt"',
+  "render-worker",
+  "device-adapter",
+  "buildExportRequest",
+]) {
+  if (!holoExportContract.includes(marker)) {
+    fail(`holoforge: export contract marker missing: ${marker}`);
+  }
+}
+
+const holoExportPanel = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/export/ExportPanel.tsx"),
+);
+for (const marker of [
+  "DOWNLOAD",
+  "WORKER READY",
+  "DEVICE ADAPTER NOT IMPLEMENTED",
+  "downloadHoloScene",
+  "createBackendExport",
+  "waitForExport",
+  "downloadBackendExport",
+]) {
+  if (!holoExportPanel.includes(marker)) {
+    fail(`holoforge: export UI marker missing: ${marker}`);
+  }
+}
+
+const holoKeyframes = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/animation/keyframe-model.ts"),
+);
+for (const marker of [
+  "upsertTransformPose",
+  "removePoseAtTime",
+  "sampleTransformTracks",
+  "poseTimes",
+  "ease-in-out",
+]) {
+  if (!holoKeyframes.includes(marker)) {
+    fail(`holoforge: keyframe animation marker missing: ${marker}`);
+  }
+}
+
+const holoAnimationPanel = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/animation/AnimationPanel.tsx"),
+);
+for (const marker of [
+  "ADD POSE",
+  "REMOVE POSE",
+  "TIME / MOTION",
+  "onPresetChange",
+  "onClearAnimation",
+]) {
+  if (!holoAnimationPanel.includes(marker)) {
+    fail(`holoforge: animation authoring UI marker missing: ${marker}`);
+  }
+}
+
+const holoSceneContract = readText(
+  full(APPS.holoforge.root, "src/intents/design_editor/scene/holo-scene.ts"),
+);
+for (const marker of [
+  "schemaVersion: 1",
+  "export type HoloScene",
+  "export type HoloObject",
+  "export type HoloMaterialSpec",
+  "export type HoloTimeline",
+  "export type HoloAnimationTrack",
+  "export type HoloKeyframe",
+  "createHoloScene",
+  "validateHoloScene",
+]) {
+  if (!holoSceneContract.includes(marker)) {
+    fail(`holoforge: canonical scene contract marker missing: ${marker}`);
+  }
+}
+
+if (holoApp.includes("hf-hologram") || holoApp.includes("hf-holo-plane")) {
+  fail("holoforge: app.tsx still references the retired CSS pseudo-3D renderer");
 }
 
 const holoSelection = readText(
@@ -397,7 +708,7 @@ if (failures.length) {
 }
 
 console.log("Standalone Canva app verification passed.");
-console.log(" - HoloForge: independent app + native file picker + selected-image binding + six functional hologram creation modes + app-element/derived-image execution");
+console.log(" - HoloForge: independent app + real WebGL scene + transforms + spectral/keyframe runtime + explicit export capability contracts + Canva forge routes");
 console.log(" - DepthPop: independent app + embedded/packaged logo + Canva test-image upload + Drive v115 processing contract");
 console.log(" - DepthPop backend: auth, provider, render, cache, tests, Docker and deployment files present");
 console.log(" - No shared HoloForge/DepthPop product-switch runtime detected");

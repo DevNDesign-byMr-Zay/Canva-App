@@ -41,6 +41,10 @@ def _create_test_image(
     return buf.getvalue()
 
 
+async def dummy_url_builder(data: bytes, mime: str) -> str:
+    return "https://test.server/api/v1/assets/dummy123"
+
+
 @pytest.fixture
 def test_client():
     return TestClient(depthpop.app)
@@ -121,7 +125,7 @@ def test_post_scene_returns_queued_job_and_completes(auth_client):
             "max_objects": "10",
             "segmentation_mode": "auto",
             "depth_quality": "high",
-            "inpaint": "true",
+            "inpaint": "false",
         },
     )
     assert response.status_code == 200
@@ -203,9 +207,6 @@ def test_fixture_single_object():
 
     import asyncio
 
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/123"
-
     image_bytes = _create_test_image((50, 50))
     scene = asyncio.run(
         builder.build_scene(
@@ -259,9 +260,6 @@ def test_fixture_multiple_objects_different_depths():
     )
 
     import asyncio
-
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/multi"
 
     image_bytes = _create_test_image((100, 100))
     scene = asyncio.run(
@@ -317,9 +315,6 @@ def test_fixture_overlapping_objects():
 
     import asyncio
 
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/overlap"
-
     image_bytes = _create_test_image((80, 80))
     scene = asyncio.run(
         builder.build_scene(
@@ -338,9 +333,6 @@ def test_fixture_transparent_logo_source():
     builder = SceneBuilderService()
 
     import asyncio
-
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/logo"
 
     scene = asyncio.run(
         builder.build_scene(
@@ -364,9 +356,6 @@ def test_fixture_segmentation_provider_error():
 
     import asyncio
 
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/err"
-
     image_bytes = _create_test_image((50, 50))
     with pytest.raises(RuntimeError, match="Segmentation engine unavailable"):
         asyncio.run(
@@ -388,9 +377,6 @@ def test_fixture_depth_provider_error():
     )
 
     import asyncio
-
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/err"
 
     image_bytes = _create_test_image((50, 50))
     with pytest.raises(RuntimeError, match="Depth estimation service offline"):
@@ -430,9 +416,6 @@ def test_safe_object_count_limit():
     )
 
     import asyncio
-
-    def dummy_url_builder(data: bytes, mime: str) -> str:
-        return "https://test.server/cache/image/limit"
 
     image_bytes = _create_test_image((100, 100))
     scene = asyncio.run(
@@ -577,3 +560,52 @@ def test_unsupported_segmentation_mode_and_depth_quality_return_422(auth_client)
         data={"depth_quality": "invalid_quality"},
     )
     assert resp_depth.status_code == 422
+
+
+def test_depth_orientation_canonical_normalization():
+    from services.object_builder import build_depth_object
+    from models.object import BBox
+    import asyncio
+
+    depth_array = np.zeros((100, 100), dtype=np.float32)
+    depth_array[10:40, 10:40] = 0.1
+    depth_array[60:90, 60:90] = 0.9
+
+    bg_mask = np.zeros((100, 100), dtype=bool)
+    bg_mask[10:40, 10:40] = True
+
+    fg_mask = np.zeros((100, 100), dtype=bool)
+    fg_mask[60:90, 60:90] = True
+
+    buf_bg, buf_fg = io.BytesIO(), io.BytesIO()
+    Image.fromarray((bg_mask * 255).astype(np.uint8)).save(buf_bg, format="PNG")
+    Image.fromarray((fg_mask * 255).astype(np.uint8)).save(buf_fg, format="PNG")
+
+    bg_seg = SegmentedObject(
+        id="bg_01",
+        label="building",
+        semantic_type="building",
+        confidence=0.90,
+        bbox=BBox(x=10, y=10, width=30, height=30),
+        mask_bytes=buf_bg.getvalue(),
+        mask_array=bg_mask,
+    )
+    fg_seg = SegmentedObject(
+        id="fg_01",
+        label="person",
+        semantic_type="person",
+        confidence=0.98,
+        bbox=BBox(x=60, y=60, width=30, height=30),
+        mask_bytes=buf_fg.getvalue(),
+        mask_array=fg_mask,
+    )
+
+    src_img = _create_test_image((100, 100))
+
+    bg_obj = asyncio.run(build_depth_object(bg_seg, src_img, depth_array, dummy_url_builder))
+    fg_obj = asyncio.run(build_depth_object(fg_seg, src_img, depth_array, dummy_url_builder))
+
+    assert fg_obj.depth.median > bg_obj.depth.median
+    assert fg_obj.transform.position.z > bg_obj.transform.position.z
+    assert fg_obj.transform.position.z > 0.0, "Foreground object Z should be positive (nearer camera)"
+    assert bg_obj.transform.position.z < 0.0, "Background object Z should be negative (farther from camera)"

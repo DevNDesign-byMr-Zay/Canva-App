@@ -11,7 +11,7 @@ const APPS = Object.freeze([
     id: "holoforge-canva",
     displayName: "HoloForge",
     packageName: "holoforge-canva-app",
-    includeBackend: false,
+    includeBackend: true,
     includeReference: false,
   },
   {
@@ -96,10 +96,15 @@ ${displayName} is packaged as an independent Canva app with its own app.js and c
 
 function packageContents(app) {
   const backend = app.includeBackend
-    ? "- backend/                 -> DepthPop authenticated processing service, tests, Dockerfile, requirements and env template\n"
+    ? app.id === "holoforge-canva"
+      ? "- backend/                 -> HoloForge authenticated render/export service, Blender worker, tests, Dockerfile, requirements and env template\n"
+      : "- backend/                 -> DepthPop authenticated processing service, tests, Dockerfile, requirements and env template\n"
     : "";
   const reference = app.includeReference
     ? "- reference/               -> exact Drive UI/router provenance used to rebuild DepthPop\n"
+    : "";
+  const webgl = app.id === "holoforge-canva"
+    ? "- WebGL spatial studio     -> real Three.js/R3F scene model, camera, environment and timeline\n"
     : "";
 
   return `${app.displayName.toUpperCase()} — COMPLETE CANVA APP PACKAGE
@@ -118,7 +123,7 @@ UI
 - src/                     -> maintained React/TypeScript/CSS UI source
 - src/assets/              -> packaged HoloForge or DepthPop logo asset
 - image source workflow    -> production app can choose/drop PNG/JPEG/WebP and bind Canva raster sources
-${backend}
+${webgl}${backend}
 This package intentionally contains no node_modules, no secret .env file, no historical ROARY/ÆTHER shell, no Drive provenance HTML/router source, and no combined HoloForge/DepthPop runtime switcher.
 
 Historical Drive sources remain in the GitHub repository for provenance only and are deliberately excluded from this user-facing Canva package.
@@ -177,6 +182,86 @@ for (const app of APPS) {
     ]) {
       if (!holoApp.includes(marker)) {
         throw new Error(`HoloForge packaged runtime is missing functional source/forge marker: ${marker}`);
+      }
+    }
+
+    const webglViewport = await readFile(
+      join(destination, "src", "intents", "design_editor", "viewport", "HoloViewport.tsx"),
+      "utf8",
+    );
+    for (const marker of ["<Canvas", "<OrbitControls", "<HoloScene", "<ObjectInspector", "<AnimationPanel", "<ExportPanel", "requestAnimationFrame", "WEBGL LIVE"]) {
+      if (!webglViewport.includes(marker)) {
+        throw new Error(`HoloForge WebGL studio missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneView = await readFile(
+      join(destination, "src", "intents", "design_editor", "viewport", "HoloScene.tsx"),
+      "utf8",
+    );
+    for (const marker of ["<TransformControls", "onTransformCommit", "onTransformingChange"]) {
+      if (!sceneView.includes(marker)) {
+        throw new Error(`HoloForge transform controls missing packaged marker: ${marker}`);
+      }
+    }
+
+    const alphaContour = await readFile(
+      join(destination, "src", "intents", "design_editor", "geometry", "alpha-contour.ts"),
+      "utf8",
+    );
+    for (const marker of ["traceAlphaContours", "largestAlphaContour", "normalizeContour"]) {
+      if (!alphaContour.includes(marker)) {
+        throw new Error(`HoloForge alpha geometry missing packaged marker: ${marker}`);
+      }
+    }
+
+    const spectral = await readFile(
+      join(destination, "src", "intents", "design_editor", "materials", "SpectralHoloMaterial.tsx"),
+      "utf8",
+    );
+    for (const marker of ["ShaderMaterial", "uSpectralShift", "uDiffraction", "fresnel"]) {
+      if (!spectral.includes(marker)) {
+        throw new Error(`HoloForge spectral material missing packaged marker: ${marker}`);
+      }
+    }
+
+    const exportContract = await readFile(
+      join(destination, "src", "intents", "design_editor", "export", "export-contract.ts"),
+      "utf8",
+    );
+    for (const marker of ['"scene-json"', '"glb"', '"usdz"', '"webm-alpha"', '"lightfield-quilt"', "GENERIC_45_VIEW_QUILT", "viewConeDegrees", "render-worker", "device-adapter"]) {
+      if (!exportContract.includes(marker)) {
+        throw new Error(`HoloForge export contract missing packaged marker: ${marker}`);
+      }
+    }
+
+    const blenderWorker = await readFile(
+      join(source, "backend", "blender_worker.py"),
+      "utf8",
+    );
+    for (const marker of ['format_name == "lightfield-quilt"', "viewConeDegrees", "lightfield-views", "_qs"]) {
+      if (!blenderWorker.includes(marker)) {
+        throw new Error(`HoloForge light-field worker missing packaged marker: ${marker}`);
+      }
+    }
+
+    const keyframes = await readFile(
+      join(destination, "src", "intents", "design_editor", "animation", "keyframe-model.ts"),
+      "utf8",
+    );
+    for (const marker of ["upsertTransformPose", "sampleTransformTracks", "poseTimes"]) {
+      if (!keyframes.includes(marker)) {
+        throw new Error(`HoloForge keyframe engine missing packaged marker: ${marker}`);
+      }
+    }
+
+    const sceneContract = await readFile(
+      join(destination, "src", "intents", "design_editor", "scene", "holo-scene.ts"),
+      "utf8",
+    );
+    for (const marker of ["schemaVersion: 1", "export type HoloScene", "createHoloScene"]) {
+      if (!sceneContract.includes(marker)) {
+        throw new Error(`HoloForge scene contract missing packaged marker: ${marker}`);
       }
     }
 
@@ -262,6 +347,27 @@ for (const app of APPS) {
           "src/intents/design_editor/use-canva-image-selection.ts",
           "src/intents/design_editor/holographic/derived-image-adapter.ts",
           "src/intents/design_editor/holographic/derived-image-adapter.test.ts",
+          "src/intents/design_editor/scene/holo-scene.ts",
+          "src/intents/design_editor/scene/holo-scene.test.ts",
+          "src/intents/design_editor/scene/scene-store.ts",
+          "src/intents/design_editor/materials/HoloMaterial.tsx",
+          "src/intents/design_editor/materials/SpectralHoloMaterial.tsx",
+          "src/intents/design_editor/animation/keyframe-model.ts",
+          "src/intents/design_editor/animation/keyframe-model.test.ts",
+          "src/intents/design_editor/animation/AnimationPanel.tsx",
+          "src/intents/design_editor/export/export-contract.ts",
+          "src/intents/design_editor/export/export-contract.test.ts",
+          "src/intents/design_editor/export/scene-download.ts",
+          "src/intents/design_editor/export/scene-download.test.ts",
+          "src/intents/design_editor/export/ExportPanel.tsx",
+          "src/intents/design_editor/export/export-client.ts",
+          "src/intents/design_editor/geometry/alpha-contour.ts",
+          "src/intents/design_editor/geometry/alpha-contour.test.ts",
+          "src/intents/design_editor/geometry/use-alpha-shape.ts",
+          "src/intents/design_editor/viewport/HoloViewport.tsx",
+          "src/intents/design_editor/viewport/HoloScene.tsx",
+          "src/intents/design_editor/viewport/HoloObject.tsx",
+          "src/intents/design_editor/viewport/ObjectInspector.tsx",
         ]
       : []),
   ]) {
@@ -304,15 +410,34 @@ for (const app of APPS) {
   }
 
   if (app.includeBackend) {
-    for (const required of [
+    const backendRequired = [
       "backend/app.py",
       "backend/Dockerfile",
       "backend/requirements.txt",
       "backend/test_app.py",
       "backend/.env.example",
-    ]) {
+      ...(app.id === "holoforge-canva"
+        ? [
+            "backend/auth.py",
+            "backend/models.py",
+            "backend/repositories.py",
+            "backend/renderers.py",
+            "backend/export_service.py",
+            "backend/blender_worker.py",
+            "backend/Dockerfile.render",
+            "backend/docker-compose.render.yml",
+            "backend/render_smoke.py",
+            "backend/source_geometry.py",
+            "backend/test_source_geometry.py",
+            "backend/spectral_material.py",
+            "backend/test_spectral_material.py",
+            "backend/test_models.py",
+          ]
+        : []),
+    ];
+    for (const required of backendRequired) {
       if (!files.includes(required)) {
-        throw new Error(`DepthPop package is missing required backend file: ${required}`);
+        throw new Error(`${app.displayName} package is missing required backend file: ${required}`);
       }
     }
   }

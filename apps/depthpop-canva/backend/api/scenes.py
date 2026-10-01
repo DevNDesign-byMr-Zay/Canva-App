@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import uuid
-from typing import Callable
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from typing import Awaitable, Callable
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from auth import verify_canva_user, VerifiedCanvaUser
 from models.job import DepthJob
-from services.persistence import job_repo, scene_repo
+from services.persistence import job_repo, scene_asset_repo, scene_repo
 from services.scene_builder import SceneBuilderService
 from services.upload import validate_and_read_upload
 
-router = APIRouter(prefix="/api/v1/scenes", tags=["scenes"])
+router = APIRouter(prefix="/api/v1", tags=["scenes"])
 
 SUPPORTED_SEGMENTATION_MODES = {"auto", "florence_sam3", "mock"}
 SUPPORTED_DEPTH_QUALITIES = {"high", "standard"}
@@ -20,7 +21,7 @@ async def run_scene_decomposition_job(
     job_id: str,
     raw_image_bytes: bytes,
     source_asset_id: str,
-    url_builder: Callable[[bytes, str], str],
+    url_builder: Callable[[bytes, str], Awaitable[str]],
     max_objects: int,
     segmentation_mode: str,
     depth_quality: str,
@@ -80,7 +81,7 @@ async def run_scene_decomposition_job(
         )
 
 
-@router.post("")
+@router.post("/scenes")
 async def create_scene(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -88,7 +89,7 @@ async def create_scene(
     max_objects: int = Form(24, ge=1, le=100),
     segmentation_mode: str = Form("auto"),
     depth_quality: str = Form("high"),
-    inpaint: bool = Form(True),
+    inpaint: bool = Form(False),
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
     if segmentation_mode not in SUPPORTED_SEGMENTATION_MODES:
@@ -107,11 +108,19 @@ async def create_scene(
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     asset_id = f"asset_{uuid.uuid4().hex[:8]}"
 
-    from app import _cache_put, _public_url
+    from app import _public_url
 
-    def build_url(data: bytes, mime: str) -> str:
-        key = _cache_put(data, mime)
-        return _public_url(request, f"/cache/image/{key}")
+    async def build_url(data: bytes, mime: str) -> str:
+        key = hashlib.sha256(data).hexdigest()[:32]
+        await scene_asset_repo.save_asset(
+            asset_id=key,
+            scene_id="",
+            user_id=user.user_id,
+            brand_id=user.brand_id,
+            data=data,
+            mime_type=mime,
+        )
+        return _public_url(request, f"/api/v1/assets/{key}")
 
     await job_repo.update_job_stage(
         job_id, stage="queued", status="queued", progress=0.0, user_id=user.user_id, brand_id=user.brand_id
@@ -134,7 +143,7 @@ async def create_scene(
     return {"jobId": job_id, "status": "queued"}
 
 
-@router.get("/{scene_id}")
+@router.get("/scenes/{scene_id}")
 async def get_scene(
     scene_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
@@ -144,3 +153,19 @@ async def get_scene(
         raise HTTPException(status_code=404, detail="Scene not found")
 
     return scene.model_dump(mode="json", by_alias=True)
+
+
+@router.get("/assets/{asset_id}")
+async def get_scene_asset(
+    asset_id: str,
+    user: VerifiedCanvaUser = Depends(verify_canva_user),
+) -> Response:
+    asset = await scene_asset_repo.get_asset(asset_id, user_id=user.user_id, brand_id=user.brand_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset expired or unavailable")
+
+    return Response(
+        content=asset.data,
+        media_type=asset.mime_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )

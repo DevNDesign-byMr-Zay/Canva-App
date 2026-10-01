@@ -1,0 +1,37 @@
+services:
+  holoforge-render:
+    build:
+      context: .
+      dockerfile: Dockerfile.render
+      args:
+        BLENDER_VERSION: "${BLENDER_VERSION:-4.5.14}"
+    image: holoforge-render:4.5-lts
+    restart: unless-stopped
+    ports:
+      - "${HOLOFORGE_PORT:-8082}:8082"
+    environment:
+      CANVA_APP_ID: "${CANVA_APP_ID:?CANVA_APP_ID is required}"
+      CANVA_APP_ORIGIN: "${CANVA_APP_ORIGIN:-}"
+      HOLOFORGE_RENDER_TIMEOUT_SECONDS: "${HOLOFORGE_RENDER_TIMEOUT_SECONDS:-600}"
+      HOLOFORGE_JOB_TTL_SECONDS: "${HOLOFORGE_JOB_TTL_SECONDS:-3600}"
+      HOLOFORGE_ARTIFACT_TTL_SECONDS: "${HOLOFORGE_ARTIFACT_TTL_SECONDS:-86400}"
+      HOLOFORGE_MAX_JOBS: "${HOLOFORGE_MAX_JOBS:-256}"
+      HOLOFORGE_MAX_ARTIFACTS: "${HOLOFORGE_MAX_ARTIFACTS:-128}"
+      HOLOFORGE_ARTIFACT_ROOT: /var/lib/holoforge/artifacts
+    volumes:
+      - holoforge-artifacts:/var/lib/holoforge/artifacts
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3).read()
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  holoforge-artifacts:

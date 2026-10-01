@@ -15,7 +15,7 @@ from models.scene import (
 )
 from services.depth import DepthService
 from services.inpainting import InpaintingService
-from services.object_builder import build_depth_object
+from services.object_builder import AsyncUrlBuilder, build_depth_object
 from services.segmentation import SegmentationService
 
 StageReporter = Callable[[str, float], Awaitable[None]]
@@ -36,11 +36,11 @@ class SceneBuilderService:
         self,
         image_bytes: bytes,
         source_asset_id: str,
-        url_builder: Callable[[bytes, str], str],
+        url_builder: AsyncUrlBuilder,
         max_objects: int = 24,
         segmentation_mode: str = "auto",
         depth_quality: str = "high",
-        inpaint: bool = True,
+        inpaint: bool = False,
         stage_reporter: StageReporter | None = None,
     ) -> DepthScene:
         # 1. Decoding
@@ -72,7 +72,7 @@ class SceneBuilderService:
             count = id_counts.get(slug, 0) + 1
             id_counts[slug] = count
 
-            obj = build_depth_object(
+            obj = await build_depth_object(
                 seg_obj=seg_obj,
                 source_image=image_bytes,
                 depth_array=depth_map.depth_array,
@@ -97,8 +97,8 @@ class SceneBuilderService:
                 obj = obj.model_copy(update={"id": new_id})
             final_objects.append(obj)
 
-        # Order by measured depth
-        final_objects.sort(key=lambda o: o.depth.median, reverse=True)
+        # Canonical Order
+        final_objects.sort(key=lambda o: o.depth.median, reverse=False)
         for idx, obj in enumerate(final_objects):
             obj.order = idx
 
@@ -117,11 +117,11 @@ class SceneBuilderService:
             union_mask_img.save(u_buf, format="PNG")
 
             plate_bytes = await self.inpaint_service.inpaint_plate(image_bytes, u_buf.getvalue())
-            plate_url = url_builder(plate_bytes, "image/png")
+            plate_url = await url_builder(plate_bytes, "image/png")
         else:
-            plate_url = url_builder(image_bytes, "image/png")
+            plate_url = await url_builder(image_bytes, "image/png")
 
-        depth_map_url = depth_map.provider_url or url_builder(depth_map.raw_depth, "image/png")
+        depth_map_url = depth_map.provider_url or await url_builder(depth_map.raw_depth, "image/png")
 
         # 6. Building scene
         if stage_reporter:

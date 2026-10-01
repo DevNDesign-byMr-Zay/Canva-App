@@ -1,9 +1,11 @@
 from services.persistence import (
     BoundedJobRepository,
+    BoundedSceneAssetRepository,
     BoundedSceneRepository,
     JobRepository,
     SceneRepository,
     job_repo,
+    scene_asset_repo,
     scene_repo,
 )
 from services.segmentation import SegmentationService, get_segmentation_provider
@@ -18,8 +20,10 @@ __all__ = [
     "JobRepository",
     "BoundedSceneRepository",
     "BoundedJobRepository",
+    "BoundedSceneAssetRepository",
     "scene_repo",
     "job_repo",
+    "scene_asset_repo",
     "SegmentationService",
     "get_segmentation_provider",
     "DepthService",

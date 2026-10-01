@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import io
-import hashlib
-from typing import Callable
+from typing import Awaitable, Callable
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 from models.object import (
     BBox,
     DepthObject,
@@ -16,34 +15,39 @@ from models.object import (
 )
 from providers.segmentation_provider import SegmentedObject
 
+AsyncUrlBuilder = Callable[[bytes, str], Awaitable[str]]
 
-def build_depth_object(
+
+async def build_depth_object(
     seg_obj: SegmentedObject,
     source_image: bytes,
     depth_array: np.ndarray,
-    url_builder: Callable[[bytes, str], str],
+    url_builder: AsyncUrlBuilder,
     index: int = 1,
 ) -> DepthObject:
-    """Build a DepthObject with cutout, mask, thumbnail, depth stats, and initial transform."""
+    """Build a DepthObject with cutout, mask, thumbnail, canonical depth stats, and Z transform.
+
+    Canonical DepthPop depth convention:
+      0.0 = far (background)
+      1.0 = near (foreground)
+    """
     with Image.open(io.BytesIO(source_image)) as img:
         img_rgba = img.convert("RGBA")
         width, height = img_rgba.size
 
-    # Prepare mask array
     if seg_obj.mask_array is not None:
         mask_arr = seg_obj.mask_array
     else:
         with Image.open(io.BytesIO(seg_obj.mask_bytes)) as m_img:
             mask_arr = np.array(m_img.convert("L")) > 128
 
-    # Ensure mask dimensions match source image
     if mask_arr.shape != (height, width):
         m_pil = Image.fromarray((mask_arr * 255).astype(np.uint8), mode="L").resize(
             (width, height), Image.Resampling.NEAREST
         )
         mask_arr = np.array(m_pil) > 128
 
-    # 1. Generate Cutout PNG
+    # 1. Cutout PNG
     src_np = np.array(img_rgba)
     cutout_np = src_np.copy()
     cutout_np[:, :, 3] = np.where(mask_arr, src_np[:, :, 3], 0)
@@ -52,16 +56,16 @@ def build_depth_object(
     cutout_buf = io.BytesIO()
     cutout_img.save(cutout_buf, format="PNG")
     cutout_bytes = cutout_buf.getvalue()
-    cutout_url = url_builder(cutout_bytes, "image/png")
+    cutout_url = await url_builder(cutout_bytes, "image/png")
 
     # 2. Mask Image PNG
     mask_img = Image.fromarray((mask_arr * 255).astype(np.uint8), mode="L")
     mask_buf = io.BytesIO()
     mask_img.save(mask_buf, format="PNG")
     mask_bytes = mask_buf.getvalue()
-    mask_url = url_builder(mask_bytes, "image/png")
+    mask_url = await url_builder(mask_bytes, "image/png")
 
-    # 3. Thumbnail Image PNG (cropped to bbox)
+    # 3. Thumbnail Image PNG
     bx = max(0, min(int(seg_obj.bbox.x), width - 1))
     by = max(0, min(int(seg_obj.bbox.y), height - 1))
     bw = max(1, min(int(seg_obj.bbox.width), width - bx))
@@ -73,10 +77,10 @@ def build_depth_object(
     thumb_buf = io.BytesIO()
     thumb_crop.save(thumb_buf, format="PNG")
     thumb_bytes = thumb_buf.getvalue()
-    thumb_url = url_builder(thumb_bytes, "image/png")
+    thumb_url = await url_builder(thumb_bytes, "image/png")
 
-    # 4. Compute Per-Object Depth Statistics
-    object_depth_vals = depth_array[mask_arr]
+    # 4. Depth Statistics
+    object_depth_vals = np.clip(depth_array[mask_arr], 0.0, 1.0)
     if len(object_depth_vals) > 0:
         d_mean = float(np.mean(object_depth_vals))
         d_median = float(np.median(object_depth_vals))
@@ -85,15 +89,12 @@ def build_depth_object(
     else:
         d_mean = d_median = d_min = d_max = 0.5
 
-    # 5. ID Naming Assignment: ensure <slug>_<02d>
     slug = seg_obj.label.lower().replace(" ", "_").strip() or "object"
     obj_id = f"{slug}_{index:02d}"
 
-    # 6. Initial Transform (normalized position)
     cx_norm = (seg_obj.bbox.x + seg_obj.bbox.width / 2.0) / width
     cy_norm = (seg_obj.bbox.y + seg_obj.bbox.height / 2.0) / height
-    # Map median depth (0.0..1.0) to z position in camera space
-    z_pos = (0.5 - d_median) * 4.0
+    z_pos = (d_median - 0.5) * 4.0
 
     return DepthObject(
         id=obj_id,

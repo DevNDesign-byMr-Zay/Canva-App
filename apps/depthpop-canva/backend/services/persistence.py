@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 from typing import Protocol
 from models.job import DepthJob, JobStage, JobStatus
 from models.scene import DepthScene
@@ -10,6 +11,7 @@ JOB_TTL_SECONDS = int(os.getenv("DEPTHPOP_JOB_TTL_SECONDS", "3600"))
 SCENE_TTL_SECONDS = int(os.getenv("DEPTHPOP_SCENE_TTL_SECONDS", "3600"))
 MAX_JOBS = int(os.getenv("DEPTHPOP_MAX_JOBS", "100"))
 MAX_SCENES = int(os.getenv("DEPTHPOP_MAX_SCENES", "50"))
+MAX_SCENE_ASSETS = int(os.getenv("DEPTHPOP_MAX_SCENE_ASSETS", "500"))
 
 
 class SceneRepository(Protocol):
@@ -33,10 +35,79 @@ class JobRepository(Protocol):
     ) -> DepthJob: ...
 
 
+@dataclass(frozen=True)
+class StoredSceneAsset:
+    asset_id: str
+    scene_id: str
+    user_id: str
+    brand_id: str
+    data: bytes
+    mime_type: str
+    created_at: float
+
+
+class BoundedSceneAssetRepository:
+    def __init__(self, max_assets: int = MAX_SCENE_ASSETS, ttl_seconds: int = SCENE_TTL_SECONDS) -> None:
+        self.max_assets = max_assets
+        self.ttl_seconds = ttl_seconds
+        self._assets: dict[str, StoredSceneAsset] = {}
+
+    def _cleanup_expired(self) -> None:
+        now = time.time()
+        expired = [aid for aid, a in self._assets.items() if now - a.created_at > self.ttl_seconds]
+        for aid in expired:
+            self._assets.pop(aid, None)
+
+        if len(self._assets) >= self.max_assets:
+            oldest_id = min(self._assets, key=lambda k: self._assets[k].created_at)
+            self._assets.pop(oldest_id, None)
+
+    async def save_asset(
+        self, asset_id: str, scene_id: str, user_id: str, brand_id: str, data: bytes, mime_type: str
+    ) -> StoredSceneAsset:
+        self._cleanup_expired()
+        asset = StoredSceneAsset(
+            asset_id=asset_id,
+            scene_id=scene_id,
+            user_id=user_id,
+            brand_id=brand_id,
+            data=data,
+            mime_type=mime_type,
+            created_at=time.time(),
+        )
+        self._assets[asset_id] = asset
+        return asset
+
+    async def get_asset(self, asset_id: str, user_id: str = "", brand_id: str = "") -> StoredSceneAsset | None:
+        self._cleanup_expired()
+        asset = self._assets.get(asset_id)
+        if not asset:
+            return None
+        if time.time() - asset.created_at > self.ttl_seconds:
+            self._assets.pop(asset_id, None)
+            return None
+        if user_id and asset.user_id and asset.user_id != user_id:
+            return None
+        if brand_id and asset.brand_id and asset.brand_id != brand_id:
+            return None
+        return asset
+
+    async def cleanup_scene_assets(self, scene_id: str) -> None:
+        to_remove = [aid for aid, a in self._assets.items() if a.scene_id == scene_id]
+        for aid in to_remove:
+            self._assets.pop(aid, None)
+
+
 class BoundedSceneRepository:
-    def __init__(self, max_scenes: int = MAX_SCENES, ttl_seconds: int = SCENE_TTL_SECONDS) -> None:
+    def __init__(
+        self,
+        max_scenes: int = MAX_SCENES,
+        ttl_seconds: int = SCENE_TTL_SECONDS,
+        asset_repo: BoundedSceneAssetRepository | None = None,
+    ) -> None:
         self.max_scenes = max_scenes
         self.ttl_seconds = ttl_seconds
+        self.asset_repo = asset_repo
         self._scenes: dict[str, tuple[float, DepthScene]] = {}
 
     def _cleanup_expired(self) -> None:
@@ -44,10 +115,22 @@ class BoundedSceneRepository:
         expired = [sid for sid, (created, _) in self._scenes.items() if now - created > self.ttl_seconds]
         for sid in expired:
             self._scenes.pop(sid, None)
+            if self.asset_repo:
+                import asyncio
+                try:
+                    asyncio.create_task(self.asset_repo.cleanup_scene_assets(sid))
+                except Exception:
+                    pass
 
         if len(self._scenes) >= self.max_scenes:
             oldest_id = min(self._scenes, key=lambda k: self._scenes[k][0])
             self._scenes.pop(oldest_id, None)
+            if self.asset_repo:
+                import asyncio
+                try:
+                    asyncio.create_task(self.asset_repo.cleanup_scene_assets(oldest_id))
+                except Exception:
+                    pass
 
     async def save_scene(self, scene: DepthScene) -> None:
         self._cleanup_expired()
@@ -61,6 +144,8 @@ class BoundedSceneRepository:
         created, scene = record
         if time.time() - created > self.ttl_seconds:
             self._scenes.pop(scene_id, None)
+            if self.asset_repo:
+                await self.asset_repo.cleanup_scene_assets(scene_id)
             return None
         return scene
 
@@ -144,5 +229,6 @@ class BoundedJobRepository:
         return updated
 
 
-scene_repo = BoundedSceneRepository()
+scene_asset_repo = BoundedSceneAssetRepository()
+scene_repo = BoundedSceneRepository(asset_repo=scene_asset_repo)
 job_repo = BoundedJobRepository()

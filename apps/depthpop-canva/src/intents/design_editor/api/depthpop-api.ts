@@ -28,6 +28,7 @@ export interface JobStatusResponse {
   jobId: string;
   status: string;
   stage: JobProcessingStage;
+  progress?: number;
   sceneId?: string;
   error?: string;
 }
@@ -57,7 +58,7 @@ export class DepthPopApiClient {
     formData.append("max_objects", String(options.maxObjects ?? 24));
     formData.append("segmentation_mode", options.segmentationMode ?? "auto");
     formData.append("depth_quality", options.depthQuality ?? "high");
-    formData.append("inpaint", String(options.inpaint ?? true));
+    formData.append("inpaint", String(options.inpaint ?? false));
 
     const headers = await this.getHeaders();
     const res = await fetch(`${this.baseUrl}/api/v1/scenes`, {

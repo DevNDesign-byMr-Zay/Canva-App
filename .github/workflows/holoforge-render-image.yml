@@ -1,0 +1,80 @@
+name: HoloForge Render Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      blender_version:
+        description: Blender 4.5 LTS patch to build
+        required: false
+        default: "4.5.14"
+  pull_request:
+    paths:
+      - "apps/holoforge-canva/backend/Dockerfile.render"
+      - "apps/holoforge-canva/backend/blender_worker.py"
+      - "apps/holoforge-canva/backend/render_smoke.py"
+      - "apps/holoforge-canva/backend/renderers.py"
+      - "apps/holoforge-canva/backend/models.py"
+      - "apps/holoforge-canva/backend/spectral_material.py"
+      - "apps/holoforge-canva/backend/test_spectral_material.py"
+      - ".github/workflows/holoforge-render-image.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/holoforge-canva/backend
+    env:
+      BLENDER_VERSION: ${{ inputs.blender_version || '4.5.14' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build production render image
+        run: |
+          docker build \
+            --file Dockerfile.render \
+            --build-arg BLENDER_VERSION="$BLENDER_VERSION" \
+            --tag holoforge-render:smoke \
+            .
+
+      - name: Verify Blender version
+        run: |
+          docker run --rm holoforge-render:smoke \
+            /opt/blender/blender --background --version
+
+      - name: Generate real GLB alpha WebM and quilt smoke artifacts
+        run: |
+          docker run --rm holoforge-render:smoke \
+            python render_smoke.py
+
+      - name: Start API with Blender available
+        run: |
+          docker run -d --rm \
+            --name holoforge-render-api \
+            -p 18082:8082 \
+            holoforge-render:smoke
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18082/health > /tmp/holoforge-render-health.json; then
+              cat /tmp/holoforge-render-health.json
+              grep -q '"glb"' /tmp/holoforge-render-health.json
+              grep -q '"gltf"' /tmp/holoforge-render-health.json
+              grep -q '"webm-alpha"' /tmp/holoforge-render-health.json
+              grep -q '"mp4"' /tmp/holoforge-render-health.json
+              grep -q '"png-sequence"' /tmp/holoforge-render-health.json
+              grep -q '"lightfield-quilt"' /tmp/holoforge-render-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs holoforge-render-api
+          exit 1
+
+      - name: Stop render API
+        if: always()
+        run: docker stop holoforge-render-api || true
