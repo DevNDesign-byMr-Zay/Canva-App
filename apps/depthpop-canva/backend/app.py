@@ -20,6 +20,9 @@ from fastapi.responses import Response
 from jwt import PyJWKClient
 from PIL import Image, ImageFilter
 
+from api.jobs import router as jobs_router
+from api.scenes import router as scenes_router
+
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
 CACHE_TTL_SECONDS = 15 * 60
 CACHE_LIMIT = 32
@@ -35,9 +38,15 @@ if CANVA_APP_ORIGIN:
         CORSMiddleware,
         allow_origins=[CANVA_APP_ORIGIN],
         allow_credentials=False,
-        allow_methods=["POST", "OPTIONS"],
+        allow_methods=["POST", "GET", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
+
+for route in scenes_router.routes:
+    app.routes.append(route)
+
+for route in jobs_router.routes:
+    app.routes.append(route)
 
 _jwks_client: PyJWKClient | None = None
 _image_cache: dict[str, tuple[float, bytes, str]] = {}
