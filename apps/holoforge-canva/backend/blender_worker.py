@@ -623,6 +623,18 @@ for name, location, energy, color in [
     light.location = location
     light.rotation_euler = (0.5, 0.0, 0.5)
 
+def authored_current_frame():
+    timeline = scene_data["timeline"]
+    frame = 1 + round(
+        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
+        * float(timeline["fps"])
+    )
+    return max(scene.frame_start, min(scene.frame_end, frame))
+
+
+if not bool(request.get("includeAnimation", False)):
+    scene.frame_set(authored_current_frame())
+
 format_name = request["format"]
 stem = "".join(char if char.isalnum() or char in "-_" else "-" for char in scene_data["id"]).strip("-")[:100] or "holoforge"
 
@@ -644,12 +656,7 @@ elif format_name == "usdz":
         raise RuntimeError("Blender produced no USDZ artifact")
 elif format_name == "png-still":
     target = output_dir / (stem + "-still.png")
-    timeline = scene_data["timeline"]
-    current_frame = 1 + round(
-        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
-        * float(timeline["fps"])
-    )
-    current_frame = max(scene.frame_start, min(scene.frame_end, current_frame))
+    current_frame = authored_current_frame()
     scene.frame_set(current_frame)
     scene.render.filepath = str(target)
     scene.render.image_settings.file_format = "PNG"
@@ -783,14 +790,9 @@ elif format_name == "lightfield-quilt":
     scene.render.image_settings.color_mode = "RGBA" if request.get("transparentBackground") else "RGB"
     scene.render.image_settings.color_depth = "8"
 
-    timeline = scene_data["timeline"]
     source_frame_start = scene.frame_start
     source_frame_end = scene.frame_end
-    current_frame = 1 + round(
-        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
-        * float(timeline["fps"])
-    )
-    current_frame = max(source_frame_start, min(source_frame_end, current_frame))
+    current_frame = authored_current_frame()
     scene.frame_set(current_frame)
 
     # Freeze the authored scene at its selected timeline time. Quilt frames are
