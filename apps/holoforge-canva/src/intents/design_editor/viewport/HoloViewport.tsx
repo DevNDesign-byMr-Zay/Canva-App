@@ -14,6 +14,7 @@ import { ExportPanel } from "../export/ExportPanel";
 import { HoloCamera } from "./HoloCamera";
 import { HoloScene } from "./HoloScene";
 import { ObjectInspector, type TransformMode } from "./ObjectInspector";
+import { SceneControls } from "./SceneControls";
 import { StageEnvironment } from "./StageEnvironment";
 
 function WebGLFallback() {
@@ -203,6 +204,25 @@ export function HoloViewport({
             type: "patch_transform",
             objectId: selected.id,
             transform,
+          });
+        }}
+      />
+
+      <SceneControls
+        environment={state.scene.environment}
+        camera={state.scene.camera}
+        onPatchEnvironment={(environment) =>
+          dispatchPersistent({
+            type: "patch_environment",
+            environment,
+          })
+        }
+        onPatchCamera={(camera) => {
+          setAutoOrbit(false);
+          setControlsRevision((value) => value + 1);
+          dispatchPersistent({
+            type: "patch_camera",
+            camera,
           });
         }}
       />
