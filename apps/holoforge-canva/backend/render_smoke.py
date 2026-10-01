@@ -170,6 +170,8 @@ def verify_webm_alpha(artifact: Path) -> None:
             "-hide_banner",
             "-loglevel",
             "error",
+            "-c:v",
+            "libvpx-vp9",
             "-i",
             str(artifact),
             "-vf",
