@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import colorsys
 import json
 import math
+import re
 import sys
 import tempfile
 import zipfile
@@ -46,8 +48,19 @@ def rgba(hex_or_hsl: str):
         if len(value) == 4:
             value = "#" + "".join(char * 2 for char in value[1:])
         return tuple(int(value[index:index+2], 16) / 255 for index in (1, 3, 5)) + (1.0,)
-    # HoloScene may contain CSS hsl(...) values. Blender worker deliberately uses
-    # a neutral spectral base when a CSS color cannot be decoded directly.
+
+    match = re.fullmatch(
+        r"hsl\(\s*([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)%\s+([-+]?\d+(?:\.\d+)?)%\s*\)",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        hue = (float(match.group(1)) % 360.0) / 360.0
+        saturation = max(0.0, min(1.0, float(match.group(2)) / 100.0))
+        lightness = max(0.0, min(1.0, float(match.group(3)) / 100.0))
+        red, green, blue = colorsys.hls_to_rgb(hue, lightness, saturation)
+        return (red, green, blue, 1.0)
+
     return (0.35, 0.8, 1.0, 1.0)
 
 
@@ -71,6 +84,25 @@ def material_for(spec: dict):
             principled.inputs["Emission Strength"].default_value = float(spec.get("emissionStrength", 0.0))
     material.surface_render_method = "DITHERED" if float(spec.get("opacity", 1.0)) < 0.999 else "DITHERED"
     return material
+
+
+def animate_material(material, item: dict):
+    preset = item.get("animationPreset", "static")
+    if preset != "shimmer" or not material.use_nodes:
+        return
+
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if not principled or "Emission Strength" not in principled.inputs:
+        return
+
+    emission = principled.inputs["Emission Strength"]
+    baseline = max(0.0, float(item["material"].get("emissionStrength", 0.0)))
+    emission.default_value = baseline * 0.65
+    emission.keyframe_insert(data_path="default_value", frame=1)
+    emission.default_value = max(baseline * 1.7, baseline + 0.4)
+    emission.keyframe_insert(data_path="default_value", frame=max(2, scene.frame_end // 2))
+    emission.default_value = baseline * 0.65
+    emission.keyframe_insert(data_path="default_value", frame=scene.frame_end)
 
 
 def decode_data_image(url: str, stem: str) -> Path | None:
@@ -179,6 +211,7 @@ def create_object(item: dict):
                 links.new(texture.outputs["Color"], principled.inputs["Base Color"])
                 if texture.outputs.get("Alpha"):
                     links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
+            animate_material(material, item)
             obj.data.materials.append(material)
             material = None
         elif kind in {"glass", "chrome", "holo_logo", "holo_graphic"}:
@@ -190,7 +223,9 @@ def create_object(item: dict):
 
     obj.name = item["id"]
     if not obj.data.materials:
-        obj.data.materials.append(material_for(item["material"]))
+        generated_material = material_for(item["material"])
+        animate_material(generated_material, item)
+        obj.data.materials.append(generated_material)
     apply_transform(obj, item["transform"])
     add_keyframes(obj, item)
     obj.hide_render = not bool(item.get("visible", True))
@@ -210,7 +245,9 @@ camera.location = (
     camera_spec["position"]["y"],
     camera_spec["position"]["z"],
 )
-camera_data.lens = 50.0
+camera_data.sensor_width = 36.0
+fov_radians = math.radians(float(camera_spec["fov"]))
+camera_data.lens = 0.5 * camera_data.sensor_width / math.tan(max(0.01, fov_radians / 2.0))
 scene.camera = camera
 
 target = camera_spec["target"]
@@ -225,7 +262,9 @@ camera.rotation_euler = __import__("mathutils").Vector(direction).to_track_quat(
 world = bpy.data.worlds.new("HoloForgeWorld")
 scene.world = world
 world.use_nodes = True
-world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.005, 0.008, 0.02, 1)
+world.node_tree.nodes["Background"].inputs["Color"].default_value = rgba(
+    scene_data["environment"].get("background", "#020307")
+)
 world.node_tree.nodes["Background"].inputs["Strength"].default_value = float(
     scene_data["environment"]["ambientIntensity"]
 ) * 0.35
