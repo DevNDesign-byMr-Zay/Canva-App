@@ -429,11 +429,34 @@ elif format_name == "lightfield-quilt":
     scene.render.image_settings.color_depth = "8"
 
     timeline = scene_data["timeline"]
+    source_frame_start = scene.frame_start
+    source_frame_end = scene.frame_end
     current_frame = 1 + round(
         (float(timeline.get("currentTimeMs", 0)) / 1000.0)
         * float(timeline["fps"])
     )
-    scene.frame_set(max(scene.frame_start, min(scene.frame_end, current_frame)))
+    current_frame = max(source_frame_start, min(source_frame_end, current_frame))
+    scene.frame_set(current_frame)
+
+    # Freeze the authored scene at its selected timeline time. Quilt frames are
+    # camera views, not animation frames, so object/material animation must not
+    # advance while the camera walks through the view cone.
+    frozen_objects = []
+    for obj in scene.objects:
+        if obj == camera:
+            continue
+        frozen_objects.append((obj, obj.matrix_world.copy()))
+    for obj, matrix in frozen_objects:
+        obj.animation_data_clear()
+        obj.matrix_world = matrix
+
+    for material in bpy.data.materials:
+        if material.node_tree and material.node_tree.animation_data:
+            material.node_tree.animation_data_clear()
+
+    camera.animation_data_clear()
+    scene.frame_start = 1
+    scene.frame_end = views
 
     for slot_index in range(views):
         row_from_top = slot_index // columns
@@ -462,8 +485,18 @@ elif format_name == "lightfield-quilt":
         )
         camera.rotation_euler = view_direction.to_track_quat("-Z", "Y").to_euler()
 
-        scene.render.filepath = str(views_dir / f"slot_{slot_index:04d}.png")
-        bpy.ops.render.render(write_still=True)
+        render_frame = slot_index + 1
+        camera.keyframe_insert(data_path="location", frame=render_frame)
+        camera.keyframe_insert(data_path="rotation_euler", frame=render_frame)
+
+    # Prevent Blender from interpolating between adjacent discrete quilt views.
+    if camera.animation_data and camera.animation_data.action:
+        for fcurve in camera.animation_data.action.fcurves:
+            for keyframe in fcurve.keyframe_points:
+                keyframe.interpolation = "CONSTANT"
+
+    scene.render.filepath = str(views_dir / "slot_")
+    bpy.ops.render.render(animation=True)
 
     aspect_text = f"{view_aspect:.5f}".rstrip("0").rstrip(".")
     target = output_dir / (
@@ -482,7 +515,7 @@ elif format_name == "lightfield-quilt":
             "-framerate",
             "1",
             "-start_number",
-            "0",
+            "1",
             "-i",
             str(views_dir / "slot_%04d.png"),
             "-vf",
