@@ -1356,6 +1356,11 @@ body { margin: 0; background: #050609; color: var(--hf-text); }
   border-radius:14px;
   background:linear-gradient(135deg,rgba(156,115,255,.045),rgba(99,239,255,.035));
 }
+.hf-scene-import.is-dragging {
+  border-color:rgba(99,239,255,.42);
+  background:linear-gradient(135deg,rgba(99,239,255,.08),rgba(156,115,255,.09));
+  box-shadow:0 0 0 1px rgba(99,239,255,.08), inset 0 0 22px rgba(99,239,255,.035);
+}
 .hf-scene-import > div {
   min-width:0;
 }
