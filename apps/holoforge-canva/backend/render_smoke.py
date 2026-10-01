@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 
 
@@ -198,6 +199,23 @@ def verify_webm_alpha(artifact: Path) -> None:
         raise SystemExit("alpha WebM smoke could not extract a real alpha plane")
 
 
+def verify_usdz(artifact: Path) -> None:
+    if artifact.suffix.lower() != ".usdz":
+        raise SystemExit("USDZ smoke produced the wrong artifact extension")
+    if not zipfile.is_zipfile(artifact):
+        raise SystemExit("USDZ smoke did not produce a valid ZIP package")
+
+    with zipfile.ZipFile(artifact, "r") as archive:
+        entries = archive.infolist()
+        if not entries:
+            raise SystemExit("USDZ smoke produced an empty package")
+        first = entries[0]
+        if Path(first.filename).suffix.lower() not in {".usd", ".usda", ".usdc"}:
+            raise SystemExit("USDZ smoke package does not begin with a USD layer")
+        if any(entry.compress_type != zipfile.ZIP_STORED for entry in entries):
+            raise SystemExit("USDZ smoke package contains compressed ZIP entries")
+
+
 def verify_quilt(artifact: Path, *, width: int, height: int, views: int) -> None:
     ffprobe = shutil.which("ffprobe")
     if not ffprobe:
@@ -255,6 +273,17 @@ def main() -> int:
         if glb.suffix.lower() != ".glb":
             raise SystemExit("Blender worker smoke produced the wrong GLB artifact type")
 
+        usdz, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="usdz",
+            profile="ios-ar",
+            transparent=True,
+            include_animation=False,
+        )
+        verify_usdz(usdz)
+
         webm, _ = run_worker(
             blender,
             worker,
@@ -294,6 +323,7 @@ def main() -> int:
                 {
                     "ok": True,
                     "glb": {"artifact": glb.name, "sizeBytes": glb.stat().st_size},
+                    "usdz": {"artifact": usdz.name, "sizeBytes": usdz.stat().st_size},
                     "webmAlpha": {
                         "artifact": webm.name,
                         "sizeBytes": webm.stat().st_size,
