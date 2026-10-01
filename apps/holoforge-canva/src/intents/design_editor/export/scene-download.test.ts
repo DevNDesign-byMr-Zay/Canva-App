@@ -84,6 +84,38 @@ describe("HoloScene download", () => {
     );
   });
 
+  it("stores duplicated raster objects without repeating the same base64 payload", async () => {
+    const scene = portableScene();
+    const sourceObject = scene.objects[0]!;
+    const duplicated: HoloScene = {
+      ...scene,
+      objects: [
+        sourceObject,
+        {
+          ...sourceObject,
+          id: "object-2",
+          name: "Logo Copy",
+        },
+      ],
+    };
+
+    const prepared = await preparePortableHoloScene(duplicated);
+    const serialized = serializeHoloScene(prepared);
+    const occurrences = serialized.split("data:image/png;base64,AAAA").length - 1;
+
+    expect(occurrences).toBe(1);
+    expect(prepared.objects[0]?.geometry.sourceUrl).toBeUndefined();
+    expect(prepared.objects[1]?.geometry.sourceUrl).toBeUndefined();
+
+    const reopened = parseHoloSceneJson(serialized);
+    expect(reopened.objects[0]?.geometry.sourceUrl).toBe(
+      "data:image/png;base64,AAAA",
+    );
+    expect(reopened.objects[1]?.geometry.sourceUrl).toBe(
+      "data:image/png;base64,AAAA",
+    );
+  });
+
   it("stores a shared embedded raster once and restores it on project open", async () => {
     const scene = portableScene();
     const prepared = await preparePortableHoloScene(scene);
