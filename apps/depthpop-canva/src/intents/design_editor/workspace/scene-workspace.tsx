@@ -50,7 +50,8 @@ export function SceneWorkspace({
   const fovScale = Math.max(0.55, Math.min(2.2, 50 / scene.camera.fov));
 
   useEffect(() => {
-    if (!apiClient) return;
+    const client = apiClient;
+    if (!client) return;
 
     const controller = new AbortController();
     const createdUrls = new Set<string>();
@@ -74,7 +75,7 @@ export function SceneWorkspace({
               next[rawUrl] = rawUrl;
               return;
             }
-            const resolved = await apiClient.fetchAssetBlobUrl(
+            const resolved = await client.fetchAssetBlobUrl(
               rawUrl,
               controller.signal,
             );
