@@ -12,8 +12,14 @@ from models.scene import DepthScene
 
 JOB_TTL_SECONDS = int(os.getenv("DEPTHPOP_JOB_TTL_SECONDS", "3600"))
 SCENE_TTL_SECONDS = int(os.getenv("DEPTHPOP_SCENE_TTL_SECONDS", "3600"))
-ASSET_TTL_SECONDS = int(
-    os.getenv("DEPTHPOP_SCENE_ASSET_TTL_SECONDS", str(SCENE_TTL_SECONDS))
+ASSET_TTL_SECONDS = max(
+    SCENE_TTL_SECONDS,
+    int(
+        os.getenv(
+            "DEPTHPOP_SCENE_ASSET_TTL_SECONDS",
+            str(SCENE_TTL_SECONDS),
+        )
+    ),
 )
 MAX_JOBS = int(os.getenv("DEPTHPOP_MAX_JOBS", "100"))
 MAX_SCENES = int(os.getenv("DEPTHPOP_MAX_SCENES", "50"))
