@@ -351,32 +351,45 @@ export function App() {
       );
       const dataUrl = await blobToDataUrl(compositeBlob);
 
-      const asset = await upload({
-        type: "image",
-        name: "DepthPop Scene",
-        url: dataUrl,
-        thumbnailUrl: dataUrl,
-        mimeType: "image/png",
-        ...(activeSourceRef ? { parentRef: activeSourceRef } : {}),
-        aiDisclosure: "app_generated",
-      });
-      await asset.whenUploaded();
-
       let replacedSelection = false;
+      let renderedRef: ImageRef | null = null;
+
       if (activeSourceKind === "canva" && activeSourceRef) {
         const draft = await selectedImages.read();
         const content = draft.contents[0];
         if (content && content.ref === activeSourceRef) {
+          const asset = await upload({
+            type: "image",
+            name: "DepthPop Scene",
+            url: dataUrl,
+            thumbnailUrl: dataUrl,
+            mimeType: "image/png",
+            parentRef: content.ref,
+            aiDisclosure: "app_generated",
+          });
+          await asset.whenUploaded();
           content.ref = asset.ref;
           await draft.save();
+          renderedRef = asset.ref;
           replacedSelection = true;
         }
       }
 
       if (!replacedSelection) {
+        const asset = await upload({
+          type: "image",
+          name: "DepthPop Scene",
+          url: dataUrl,
+          thumbnailUrl: dataUrl,
+          mimeType: "image/png",
+          ...(activeSourceRef ? { parentRef: activeSourceRef } : {}),
+          aiDisclosure: "app_generated",
+        });
+        await asset.whenUploaded();
+        renderedRef = asset.ref;
         await addElementAtPoint({
           type: "image",
-          ref: asset.ref,
+          ref: renderedRef,
           altText: {
             text: "DepthPop rendered scene",
             decorative: false,
