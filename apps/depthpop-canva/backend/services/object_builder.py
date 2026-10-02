@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import io
-import hashlib
 from typing import Callable
+
 import numpy as np
-from PIL import Image, ImageFilter
+from fastapi import HTTPException
+from PIL import Image
+
 from models.object import (
-    BBox,
     DepthObject,
     ObjectAssets,
     ObjectDepthStats,
     ObjectTransform,
-    SemanticType,
     Vector3,
 )
 from providers.segmentation_provider import SegmentedObject
@@ -24,96 +24,145 @@ def build_depth_object(
     url_builder: Callable[[bytes, str], str],
     index: int = 1,
 ) -> DepthObject:
-    """Build a DepthObject with cutout, mask, thumbnail, depth stats, and initial transform."""
-    with Image.open(io.BytesIO(source_image)) as img:
-        img_rgba = img.convert("RGBA")
-        width, height = img_rgba.size
+    """Build one editable object using canonical DepthPop depth.
 
-    # Prepare mask array
-    if seg_obj.mask_array is not None:
-        mask_arr = seg_obj.mask_array
-    else:
-        with Image.open(io.BytesIO(seg_obj.mask_bytes)) as m_img:
-            mask_arr = np.array(m_img.convert("L")) > 128
+    Canonical depth is always 0.0=far and 1.0=near.
+    """
 
-    # Ensure mask dimensions match source image
-    if mask_arr.shape != (height, width):
-        m_pil = Image.fromarray((mask_arr * 255).astype(np.uint8), mode="L").resize(
-            (width, height), Image.Resampling.NEAREST
+    with Image.open(io.BytesIO(source_image)) as image:
+        source_rgba = image.convert("RGBA")
+        width, height = source_rgba.size
+
+    if depth_array.shape != (height, width):
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Depth provider returned a canonical map whose dimensions "
+                "do not match the source image."
+            ),
         )
-        mask_arr = np.array(m_pil) > 128
 
-    # 1. Generate Cutout PNG
-    src_np = np.array(img_rgba)
-    cutout_np = src_np.copy()
-    cutout_np[:, :, 3] = np.where(mask_arr, src_np[:, :, 3], 0)
-    cutout_img = Image.fromarray(cutout_np, mode="RGBA")
-
-    cutout_buf = io.BytesIO()
-    cutout_img.save(cutout_buf, format="PNG")
-    cutout_bytes = cutout_buf.getvalue()
-    cutout_url = url_builder(cutout_bytes, "image/png")
-
-    # 2. Mask Image PNG
-    mask_img = Image.fromarray((mask_arr * 255).astype(np.uint8), mode="L")
-    mask_buf = io.BytesIO()
-    mask_img.save(mask_buf, format="PNG")
-    mask_bytes = mask_buf.getvalue()
-    mask_url = url_builder(mask_bytes, "image/png")
-
-    # 3. Thumbnail Image PNG (cropped to bbox)
-    bx = max(0, min(int(seg_obj.bbox.x), width - 1))
-    by = max(0, min(int(seg_obj.bbox.y), height - 1))
-    bw = max(1, min(int(seg_obj.bbox.width), width - bx))
-    bh = max(1, min(int(seg_obj.bbox.height), height - by))
-
-    crop_box = (bx, by, bx + bw, by + bh)
-    thumb_crop = cutout_img.crop(crop_box)
-    thumb_crop.thumbnail((128, 128))
-    thumb_buf = io.BytesIO()
-    thumb_crop.save(thumb_buf, format="PNG")
-    thumb_bytes = thumb_buf.getvalue()
-    thumb_url = url_builder(thumb_bytes, "image/png")
-
-    # 4. Compute Per-Object Depth Statistics
-    object_depth_vals = depth_array[mask_arr]
-    if len(object_depth_vals) > 0:
-        d_mean = float(np.mean(object_depth_vals))
-        d_median = float(np.median(object_depth_vals))
-        d_min = float(np.min(object_depth_vals))
-        d_max = float(np.max(object_depth_vals))
+    if seg_obj.mask_array is not None:
+        mask_array = np.asarray(seg_obj.mask_array, dtype=bool)
     else:
-        d_mean = d_median = d_min = d_max = 0.5
+        with Image.open(io.BytesIO(seg_obj.mask_bytes)) as mask_image:
+            mask_array = (
+                np.asarray(
+                    mask_image.convert("L").resize(
+                        (width, height),
+                        Image.Resampling.NEAREST,
+                    )
+                )
+                > 127
+            )
 
-    # 5. ID Naming Assignment: ensure <slug>_<02d>
-    slug = seg_obj.label.lower().replace(" ", "_").strip() or "object"
-    obj_id = f"{slug}_{index:02d}"
+    if mask_array.shape != (height, width):
+        mask_image = Image.fromarray(
+            (mask_array * 255).astype(np.uint8),
+            mode="L",
+        ).resize((width, height), Image.Resampling.NEAREST)
+        mask_array = np.asarray(mask_image) > 127
 
-    # 6. Initial Transform (normalized position)
-    cx_norm = (seg_obj.bbox.x + seg_obj.bbox.width / 2.0) / width
-    cy_norm = (seg_obj.bbox.y + seg_obj.bbox.height / 2.0) / height
-    # Map median depth (0.0..1.0) to z position in camera space
-    z_pos = (0.5 - d_median) * 4.0
+    source_array = np.asarray(source_rgba)
+    cutout_array = source_array.copy()
+    cutout_array[:, :, 3] = np.where(
+        mask_array,
+        source_array[:, :, 3],
+        0,
+    )
+    cutout_image = Image.fromarray(cutout_array, mode="RGBA")
+    cutout_buffer = io.BytesIO()
+    cutout_image.save(cutout_buffer, format="PNG")
+    cutout_url = url_builder(cutout_buffer.getvalue(), "image/png")
+
+    mask_image = Image.fromarray(
+        (mask_array * 255).astype(np.uint8),
+        mode="L",
+    )
+    mask_buffer = io.BytesIO()
+    mask_image.save(mask_buffer, format="PNG")
+    mask_url = url_builder(mask_buffer.getvalue(), "image/png")
+
+    box_x = max(0, min(int(seg_obj.bbox.x), width - 1))
+    box_y = max(0, min(int(seg_obj.bbox.y), height - 1))
+    box_width = max(
+        1,
+        min(int(round(seg_obj.bbox.width)), width - box_x),
+    )
+    box_height = max(
+        1,
+        min(int(round(seg_obj.bbox.height)), height - box_y),
+    )
+    thumbnail = cutout_image.crop(
+        (
+            box_x,
+            box_y,
+            box_x + box_width,
+            box_y + box_height,
+        )
+    )
+    thumbnail.thumbnail((128, 128), Image.Resampling.LANCZOS)
+    thumbnail_buffer = io.BytesIO()
+    thumbnail.save(thumbnail_buffer, format="PNG")
+    thumbnail_url = url_builder(
+        thumbnail_buffer.getvalue(),
+        "image/png",
+    )
+
+    canonical_values = np.clip(
+        depth_array[mask_array],
+        0.0,
+        1.0,
+    )
+    if canonical_values.size:
+        depth_mean = float(np.mean(canonical_values))
+        depth_median = float(np.median(canonical_values))
+        depth_min = float(np.min(canonical_values))
+        depth_max = float(np.max(canonical_values))
+    else:
+        depth_mean = depth_median = depth_min = depth_max = 0.5
+
+    slug = (
+        "".join(
+            char if char.isalnum() else "_"
+            for char in seg_obj.label.lower()
+        ).strip("_")
+        or "object"
+    )
+    object_id = f"{slug}_{index:02d}"
+
+    center_x = (
+        seg_obj.bbox.x + seg_obj.bbox.width / 2.0
+    ) / width
+    center_y = (
+        seg_obj.bbox.y + seg_obj.bbox.height / 2.0
+    ) / height
+    z_position = (depth_median - 0.5) * 4.0
 
     return DepthObject(
-        id=obj_id,
+        id=object_id,
         label=seg_obj.label,
         semanticType=seg_obj.semantic_type,
+        extractionQuality=seg_obj.extraction_quality,
         confidence=seg_obj.confidence,
         bbox=seg_obj.bbox,
         assets=ObjectAssets(
             cutoutUrl=cutout_url,
             maskUrl=mask_url,
-            thumbnailUrl=thumb_url,
+            thumbnailUrl=thumbnail_url,
         ),
         depth=ObjectDepthStats(
-            mean=round(d_mean, 4),
-            median=round(d_median, 4),
-            min=round(d_min, 4),
-            max=round(d_max, 4),
+            mean=round(depth_mean, 4),
+            median=round(depth_median, 4),
+            min=round(depth_min, 4),
+            max=round(depth_max, 4),
         ),
         transform=ObjectTransform(
-            position=Vector3(x=round(cx_norm, 4), y=round(cy_norm, 4), z=round(z_pos, 4)),
+            position=Vector3(
+                x=round(center_x, 4),
+                y=round(center_y, 4),
+                z=round(z_position, 4),
+            ),
             rotation=Vector3(x=0.0, y=0.0, z=0.0),
             scale=Vector3(x=1.0, y=1.0, z=1.0),
         ),
