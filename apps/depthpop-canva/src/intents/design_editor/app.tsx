@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getTemporaryUrl, type ImageRef, upload } from "@canva/asset";
 import { useSelection } from "@canva/app-hooks";
 import { addElementAtPoint } from "@canva/design";
@@ -184,6 +184,14 @@ export function App() {
     if (!host) return null;
     return new DepthPopApiClient(host, () => auth.getCanvaUserToken());
   }, [host]);
+
+  useEffect(
+    () => () => {
+      runController.current?.abort();
+      exportController.current?.abort();
+    },
+    [],
+  );
 
   // Legacy compatibility path remains available in the backend and is kept
   // here as a contract marker for the historical Drive v115 runtime. The
@@ -427,6 +435,7 @@ export function App() {
     setActiveScene(null);
     setActiveSourceRef(null);
     setActiveSourceKind(null);
+    setLocalSource(null);
   };
 
   if (activeScene) {
