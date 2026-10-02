@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { DepthScene } from "../scene/depth-scene";
-import type { DepthPopApiClient } from "./depthpop-api";
+import type {
+  DepthPopApiClient,
+  JobStatusResponse,
+} from "./depthpop-api";
 import {
   abortableDelay,
   createDepthSceneFromImage,
@@ -36,7 +39,7 @@ function fakeClient(overrides: Partial<DepthPopApiClient> = {}): DepthPopApiClie
       jobId: "job_1",
       status: "queued",
     })),
-    getJobStatus: vi.fn(async () => ({
+    getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
       jobId: "job_1",
       status: "complete",
       stage: "complete",
@@ -81,7 +84,7 @@ describe("createDepthSceneFromImage", () => {
 
   it("surfaces provider job errors without a legacy fallback", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async () => ({
+      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
         jobId: "job_1",
         status: "error",
         stage: "segmenting_objects",
@@ -105,7 +108,7 @@ describe("createDepthSceneFromImage", () => {
 
   it("fails if a completed job omits its scene id", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async () => ({
+      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
         jobId: "job_1",
         status: "complete",
         stage: "complete",
@@ -125,7 +128,7 @@ describe("createDepthSceneFromImage", () => {
 
   it("times out deterministically after the configured attempts", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async () => ({
+      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
         jobId: "job_1",
         status: "processing",
         stage: "estimating_depth",
