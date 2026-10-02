@@ -86,8 +86,9 @@ describe("SceneWorkspace interactions", () => {
     });
     expect(saved.camera.fov).toBe(68);
     expect(
-      screen.getByRole("button", { name: "SAVED" }),
-    ).toBeDisabled();
+      (screen.getByRole("button", { name: "SAVED" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it("prevents transform editing while an object is locked", async () => {
