@@ -27,7 +27,7 @@ type RunStage = "idle" | "reading" | JobProcessingStage;
 type SourceKind = "canva" | "local";
 
 const MAX_CANVA_RENDER_BYTES = 20 * 1024 * 1024;
-const BACKGROUND_RECONSTRUCTION_ENABLED = false;
+const BACKGROUND_RECONSTRUCTION_ENABLED = true;
 
 function backendOrigin(): string {
   if (typeof BACKEND_HOST !== "string") return "";
