@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from PIL import Image, ImageFilter
 
+from api.assets import router as assets_router
 from api.jobs import router as jobs_router
 from api.scenes import router as scenes_router
 from auth import verify_canva_user, VerifiedCanvaUser
@@ -39,6 +40,7 @@ if CANVA_APP_ORIGIN:
         allow_headers=["Authorization", "Content-Type"],
     )
 
+app.include_router(assets_router)
 app.include_router(scenes_router)
 app.include_router(jobs_router)
 
@@ -292,8 +294,19 @@ def _public_url(request: Request, path: str) -> str:
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"service": "depthpop-canva", "status": "ok"}
+async def health() -> dict[str, Any]:
+    inpaint_mode = os.getenv("INPAINT_PROVIDER", "auto").lower().strip()
+    has_fal = bool(os.getenv("FAL_KEY", "").strip())
+    return {
+        "service": "depthpop-canva",
+        "status": "ok",
+        "capabilities": {
+            "objectScene": True,
+            "backgroundReconstruction": (
+                has_fal and inpaint_mode not in {"off", "none", "disabled"}
+            ),
+        },
+    }
 
 
 @app.get("/tool/progress/{progress_id}")
