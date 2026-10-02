@@ -33,9 +33,62 @@ export interface JobStatusResponse {
   error?: string;
 }
 
-export class DepthPopApiClient {
-  private objectUrls: string[] = [];
+export type DepthScenePatchPayload = Readonly<{
+  objects: ReadonlyArray<
+    Pick<
+      DepthScene["objects"][number],
+      "id" | "transform" | "opacity" | "feather" | "visible" | "locked" | "order"
+    >
+  >;
+  camera: DepthScene["camera"];
+  timeline: DepthScene["timeline"];
+}>;
 
+function scenePatchPayload(scene: DepthScene): DepthScenePatchPayload {
+  return {
+    objects: scene.objects.map((object) => ({
+      id: object.id,
+      transform: object.transform,
+      opacity: object.opacity,
+      feather: object.feather,
+      visible: object.visible,
+      locked: object.locked,
+      order: object.order,
+    })),
+    camera: scene.camera,
+    timeline: scene.timeline,
+  };
+}
+
+async function apiError(response: Response, fallback: string): Promise<Error> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json().catch(() => null)) as
+      | { detail?: unknown; error?: unknown; message?: unknown }
+      | null;
+    const detail = payload?.detail ?? payload?.error ?? payload?.message;
+    if (typeof detail === "string" && detail.trim()) {
+      return new Error(detail);
+    }
+  }
+
+  const text = await response.text().catch(() => "");
+  if (text.trim()) {
+    return new Error(text.trim().slice(0, 500));
+  }
+  return new Error(`${fallback}: status ${response.status}`);
+}
+
+function assertPng(blob: Blob): void {
+  if (blob.type && blob.type !== "image/png") {
+    throw new Error("DepthPop compositor returned a non-PNG artifact.");
+  }
+  if (blob.size <= 0 || blob.size > 50 * 1024 * 1024) {
+    throw new Error("DepthPop compositor returned an empty or oversized PNG.");
+  }
+}
+
+export class DepthPopApiClient {
   constructor(
     private readonly baseUrl: string,
     private readonly getAuthToken?: () => Promise<string | null>,
@@ -48,40 +101,39 @@ export class DepthPopApiClient {
     if (this.getAuthToken) {
       const token = await this.getAuthToken();
       if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+        headers.Authorization = `Bearer ${token}`;
       }
     }
     return headers;
   }
 
-  async fetchAssetBlobUrl(assetUrl: string): Promise<string> {
+  async fetchAssetBlobUrl(
+    assetUrl: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
     if (assetUrl.startsWith("data:") || assetUrl.startsWith("blob:")) {
       return assetUrl;
     }
 
     const headers = await this.getHeaders();
-    const res = await fetch(assetUrl, { method: "GET", headers });
+    const res = await fetch(assetUrl, { method: "GET", headers, signal });
     if (!res.ok) {
-      throw new Error(`Failed to fetch scene asset: status ${res.status}`);
+      throw await apiError(res, "Failed to fetch scene asset");
     }
 
     const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    this.objectUrls.push(blobUrl);
-    return blobUrl;
-  }
-
-  revokeObjectUrls(): void {
-    for (const url of this.objectUrls) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {}
+    if (!blob.type.startsWith("image/")) {
+      throw new Error("DepthPop scene asset returned a non-image payload.");
     }
-    this.objectUrls = [];
+    if (blob.size <= 0 || blob.size > 50 * 1024 * 1024) {
+      throw new Error("DepthPop scene asset is empty or exceeds 50 MB.");
+    }
+    return URL.createObjectURL(blob);
   }
 
   async createSceneJob(
     options: CreateSceneOptions,
+    signal?: AbortSignal,
   ): Promise<CreateSceneJobResponse> {
     const formData = new FormData();
     formData.append("image", options.image);
@@ -95,49 +147,55 @@ export class DepthPopApiClient {
       method: "POST",
       headers,
       body: formData,
+      signal,
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to create scene job: status ${res.status}`);
+      throw await apiError(res, "Failed to create scene job");
     }
 
     return (await res.json()) as CreateSceneJobResponse;
   }
 
-  async getJobStatus(jobId: string): Promise<JobStatusResponse> {
+  async getJobStatus(
+    jobId: string,
+    signal?: AbortSignal,
+  ): Promise<JobStatusResponse> {
     const headers = await this.getHeaders();
     const res = await fetch(
       `${this.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`,
       {
         method: "GET",
         headers,
+        signal,
       },
     );
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch job status: status ${res.status}`);
+      throw await apiError(res, "Failed to fetch job status");
     }
 
     return (await res.json()) as JobStatusResponse;
   }
 
-  async getScene(sceneId: string): Promise<DepthScene> {
+  async getScene(sceneId: string, signal?: AbortSignal): Promise<DepthScene> {
     const headers = await this.getHeaders();
     const res = await fetch(
       `${this.baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}`,
       {
         method: "GET",
         headers,
+        signal,
       },
     );
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch scene: status ${res.status}`);
+      throw await apiError(res, "Failed to fetch scene");
     }
 
     const payload: unknown = await res.json();
     if (!isDepthScene(payload)) {
-      throw new Error("Invalid DepthScene payload returned from API");
+      throw new Error("Invalid DepthScene payload returned from API.");
     }
 
     return payload;
@@ -145,7 +203,8 @@ export class DepthPopApiClient {
 
   async patchScene(
     sceneId: string,
-    payload: Partial<DepthScene>,
+    scene: DepthScene,
+    signal?: AbortSignal,
   ): Promise<DepthScene> {
     const headers = await this.getHeaders({
       "Content-Type": "application/json",
@@ -155,43 +214,44 @@ export class DepthPopApiClient {
       {
         method: "PATCH",
         headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(scenePatchPayload(scene)),
+        signal,
       },
     );
 
     if (!res.ok) {
-      throw new Error(`Failed to patch scene: status ${res.status}`);
+      throw await apiError(res, "Failed to save scene");
     }
 
-    const resData: unknown = await res.json();
-    if (!isDepthScene(resData)) {
-      throw new Error("Invalid DepthScene payload returned from PATCH");
+    const payload: unknown = await res.json();
+    if (!isDepthScene(payload)) {
+      throw new Error("Invalid DepthScene payload returned from PATCH.");
     }
-
-    return resData;
+    return payload;
   }
 
   async createSceneComposite(
     sceneId: string,
-  ): Promise<{ ok: boolean; url: string; mimeType: string; sceneId: string }> {
+    signal?: AbortSignal,
+  ): Promise<Blob> {
     const headers = await this.getHeaders();
     const res = await fetch(
       `${this.baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/composite`,
       {
         method: "POST",
         headers,
+        signal,
       },
     );
 
     if (!res.ok) {
-      throw new Error(`Failed to create scene composite: status ${res.status}`);
+      throw await apiError(res, "Failed to render scene composite");
     }
 
-    return (await res.json()) as {
-      ok: boolean;
-      url: string;
-      mimeType: string;
-      sceneId: string;
-    };
+    const blob = await res.blob();
+    assertPng(blob);
+    return blob;
   }
 }
+
+export { scenePatchPayload };
