@@ -77,10 +77,10 @@ describe("SceneWorkspace interactions", () => {
 
     render(<SceneWorkspace initialScene={scene()} onSave={onSave} />);
 
-    fireEvent.change(screen.getByLabelText(/^X\b/i), {
+    fireEvent.change(screen.getByLabelText("X position"), {
       target: { value: "0.72" },
     });
-    fireEvent.change(screen.getByLabelText(/FIELD OF VIEW/i), {
+    fireEvent.change(screen.getByLabelText("Field of view"), {
       target: { value: "68" },
     });
     fireEvent.click(screen.getByRole("button", { name: "SAVE SCENE" }));
@@ -108,7 +108,7 @@ describe("SceneWorkspace interactions", () => {
     render(<SceneWorkspace initialScene={scene()} onSave={onSave} />);
 
     fireEvent.click(screen.getByTitle("Lock object"));
-    fireEvent.change(screen.getByLabelText(/^X\b/i), {
+    fireEvent.change(screen.getByLabelText("X position"), {
       target: { value: "0.91" },
     });
     fireEvent.click(screen.getByRole("button", { name: "SAVE SCENE" }));
@@ -142,7 +142,7 @@ describe("SceneWorkspace interactions", () => {
 
     render(<SceneWorkspace initialScene={scene()} onExport={onExport} />);
 
-    fireEvent.change(screen.getByLabelText(/OPACITY/i), {
+    fireEvent.change(screen.getByLabelText("Object opacity"), {
       target: { value: "0.45" },
     });
     fireEvent.click(screen.getByRole("button", { name: "RENDER TO CANVA" }));
