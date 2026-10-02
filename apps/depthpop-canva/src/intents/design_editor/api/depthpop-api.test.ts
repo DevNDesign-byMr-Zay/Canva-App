@@ -1,92 +1,237 @@
-import { describe, expect, it, vi } from "vitest";
-import { DepthPopApiClient } from "./depthpop-api";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DepthScene } from "../scene/depth-scene";
+import {
+  DepthPopApiClient,
+  scenePatchPayload,
+} from "./depthpop-api";
+
+function validScene(): DepthScene {
+  return {
+    schemaVersion: 1,
+    id: "scene_456",
+    sourceAssetId: "asset_789",
+    width: 100,
+    height: 100,
+    objects: [
+      {
+        id: "person_01",
+        label: "Person",
+        semanticType: "person",
+        confidence: 0.98,
+        bbox: { x: 20, y: 20, width: 30, height: 40 },
+        assets: {
+          cutoutUrl: "https://api.test/api/v1/assets/cutout",
+          maskUrl: "https://api.test/api/v1/assets/mask",
+          thumbnailUrl: "https://api.test/api/v1/assets/thumb",
+        },
+        depth: { mean: 0.8, median: 0.82, min: 0.7, max: 0.9 },
+        transform: {
+          position: { x: 0.35, y: 0.4, z: 1.2 },
+          rotation: { x: 0, y: 0, z: 8 },
+          scale: { x: 1.1, y: 1.1, z: 1 },
+        },
+        opacity: 0.9,
+        feather: 2,
+        visible: true,
+        locked: false,
+        order: 0,
+        animationTracks: [],
+      },
+    ],
+    reconstructedPlate: {
+      imageUrl: "https://api.test/api/v1/assets/plate",
+      depthMapUrl: "https://api.test/api/v1/assets/depth",
+    },
+    camera: {
+      position: { x: 0, y: 0, z: 5 },
+      target: { x: 0, y: 0, z: 0 },
+      fov: 50,
+    },
+    timeline: { durationMs: 1000, fps: 30, currentTimeMs: 250 },
+    createdAt: "2026-10-01T00:00:00Z",
+    updatedAt: "2026-10-01T00:00:01Z",
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("DepthPopApiClient", () => {
-  it("sends createSceneJob request correctly", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ jobId: "job_test123", status: "queued" }),
-    });
+  it("sends the authenticated object-scene create request", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ jobId: "job_test123", status: "queued" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", mockFetch);
 
     const client = new DepthPopApiClient(
       "https://api.test",
       async () => "test-token",
     );
-    const dummyBlob = new Blob(["test"], { type: "image/png" });
+    const signal = new AbortController().signal;
+    const result = await client.createSceneJob(
+      { image: new Blob(["test"], { type: "image/png" }), inpaint: false },
+      signal,
+    );
 
-    const res = await client.createSceneJob({ image: dummyBlob });
-
-    expect(res.jobId).toBe("job_test123");
-    expect(res.status).toBe("queued");
+    expect(result.jobId).toBe("job_test123");
     expect(mockFetch).toHaveBeenCalledWith(
       "https://api.test/api/v1/scenes",
       expect.objectContaining({
         method: "POST",
         headers: { Authorization: "Bearer test-token" },
+        signal,
       }),
     );
-
-    vi.unstubAllGlobals();
+    const request = mockFetch.mock.calls[0]?.[1] as RequestInit;
+    const form = request.body as FormData;
+    expect(form.get("inpaint")).toBe("false");
+    expect(form.get("segmentation_mode")).toBe("auto");
   });
 
-  it("fetches job status correctly", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        jobId: "job_test123",
-        status: "complete",
-        stage: "complete",
-        sceneId: "scene_456",
+  it("passes AbortSignal through polling and scene retrieval", async () => {
+    const scene = validScene();
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobId: "job_test123",
+            status: "complete",
+            stage: "complete",
+            sceneId: scene.id,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(scene), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient("https://api.test");
+    const signal = new AbortController().signal;
+    const job = await client.getJobStatus("job_test123", signal);
+    const loaded = await client.getScene(job.sceneId!, signal);
+
+    expect(loaded.id).toBe(scene.id);
+    expect(mockFetch.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ signal }),
+    );
+    expect(mockFetch.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ signal }),
+    );
+  });
+
+  it("sends only editable scene fields to PATCH", async () => {
+    const scene = validScene();
+    const payload = scenePatchPayload(scene);
+
+    expect(payload.objects[0]).toEqual({
+      id: "person_01",
+      transform: scene.objects[0]!.transform,
+      opacity: 0.9,
+      feather: 2,
+      visible: true,
+      locked: false,
+      order: 0,
+    });
+    expect(JSON.stringify(payload)).not.toContain("sourceAssetId");
+    expect(JSON.stringify(payload)).not.toContain("cutoutUrl");
+    expect(JSON.stringify(payload)).not.toContain("confidence");
+
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(scene), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
       }),
-    });
+    );
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new DepthPopApiClient("https://api.test");
-    const res = await client.getJobStatus("job_test123");
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "test-token",
+    );
+    await client.patchScene(scene.id, scene);
 
-    expect(res.jobId).toBe("job_test123");
-    expect(res.status).toBe("complete");
-    expect(res.sceneId).toBe("scene_456");
-
-    vi.unstubAllGlobals();
+    const init = mockFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(String(init.body))).toEqual(payload);
   });
 
-  it("fetches scene correctly", async () => {
-    const validScene: DepthScene = {
-      schemaVersion: 1,
-      id: "scene_456",
-      sourceAssetId: "asset_789",
-      width: 100,
-      height: 100,
-      objects: [],
-      reconstructedPlate: {
-        imageUrl: "http://img",
-        depthMapUrl: "http://depth",
-      },
-      camera: {
-        position: { x: 0, y: 0, z: 5 },
-        target: { x: 0, y: 0, z: 0 },
-        fov: 50,
-      },
-      timeline: { durationMs: 0, fps: 30, currentTimeMs: 0 },
-      createdAt: "2026-10-01T00:00:00Z",
-      updatedAt: "2026-10-01T00:00:00Z",
-    };
-
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => validScene,
-    });
+  it("returns the authenticated raw composite PNG as a Blob", async () => {
+    const png = new Blob(["png-data"], { type: "image/png" });
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(png, {
+        status: 200,
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
     vi.stubGlobal("fetch", mockFetch);
 
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "test-token",
+    );
+    const result = await client.createSceneComposite("scene_456");
+
+    expect(result.type).toBe("image/png");
+    expect(result.size).toBeGreaterThan(0);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.test/api/v1/scenes/scene_456/composite",
+      expect.objectContaining({
+        method: "POST",
+        headers: { Authorization: "Bearer test-token" },
+      }),
+    );
+  });
+
+  it("loads protected scene assets through authenticated fetch", async () => {
+    const createObjectURL = vi.fn(() => "blob:depthpop-test");
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+    });
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(new Blob(["image"], { type: "image/png" }), {
+        status: 200,
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "test-token",
+    );
+    const result = await client.fetchAssetBlobUrl(
+      "https://api.test/api/v1/assets/abc",
+    );
+
+    expect(result).toBe("blob:depthpop-test");
+    expect(createObjectURL).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces backend detail messages instead of hiding provider errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "SAM provider unavailable" }), {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
     const client = new DepthPopApiClient("https://api.test");
-    const scene = await client.getScene("scene_456");
-
-    expect(scene.id).toBe("scene_456");
-    expect(scene.schemaVersion).toBe(1);
-
-    vi.unstubAllGlobals();
+    await expect(client.getJobStatus("job_bad")).rejects.toThrow(
+      "SAM provider unavailable",
+    );
   });
 });
