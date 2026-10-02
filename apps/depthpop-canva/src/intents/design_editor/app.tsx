@@ -1,87 +1,37 @@
-import React, { useMemo, useState } from "react";
-import { getTemporaryUrl, upload } from "@canva/asset";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { getTemporaryUrl, type ImageRef, upload } from "@canva/asset";
 import { useSelection } from "@canva/app-hooks";
+import { addElementAtPoint } from "@canva/design";
 import { auth } from "@canva/user";
 
 import {
   DEFAULT_DEPTHPOP_SETTINGS,
   buildDepthPopFormFields,
-  normalizeDepthPopSettings,
   type DepthPopSettings,
 } from "../../depthpop/depthpop-model";
 
-import { LocalImageUpload } from "./local-image-upload";
+import { DepthPopApiClient, JobProcessingStage } from "./api/depthpop-api";
+import { createDepthSceneFromImage } from "./api/scene-runner";
+import {
+  LocalImageUpload,
+  type UploadedImageResult,
+} from "./local-image-upload";
+import { DepthScene } from "./scene/depth-scene";
+import { SceneWorkspace } from "./workspace/scene-workspace";
 
 import "./app.css";
 
 declare const BACKEND_HOST: string;
 
-type RunState =
-  | "idle"
-  | "reading"
-  | "processing"
-  | "uploading"
-  | "saving"
-  | "done"
-  | "error";
+type RunStage = "idle" | "reading" | JobProcessingStage;
+type SourceKind = "canva" | "local";
 
-type BackendResponse = {
-  ok: boolean;
-  url: string;
-  thumbnailUrl: string;
-  mimeType: "image/png" | "image/jpeg" | "image/webp";
-  depthMapUrl?: string | null;
-  model?: string;
-};
-
-type BackendProgress = {
-  ok: boolean;
-  percent?: number;
-  status?: string;
-  msg?: string;
-};
+const MAX_CANVA_RENDER_BYTES = 20 * 1024 * 1024;
+const BACKGROUND_RECONSTRUCTION_ENABLED = false;
 
 function backendOrigin(): string {
   if (typeof BACKEND_HOST !== "string") return "";
   return BACKEND_HOST.trim().replace(/\/+$/u, "");
-}
-
-function SliderControl({
-  label,
-  hint,
-  value,
-  min,
-  max,
-  step,
-  displayValue,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  displayValue: string;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="dp-control" title={hint}>
-      <span className="dp-control-label">
-        <span>{label}</span>
-        <strong>{displayValue}</strong>
-      </span>
-      <input
-        className="dp-range"
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
-      />
-    </label>
-  );
 }
 
 function DepthPopLogo() {
@@ -92,26 +42,9 @@ function DepthPopLogo() {
       role="img"
       aria-label="DepthPop layered square depth emblem"
     >
-      <path
-        d="M7 7h10v10H7V7Z"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.6"
-        opacity=".35"
-      />
-      <path
-        d="M5 9h10v10H5V9Z"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.6"
-        opacity=".6"
-      />
-      <path
-        d="M9 5h10v10H9V5Z"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.6"
-      />
+      <path d="M7 7h10v10H7V7Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".35" />
+      <path d="M5 9h10v10H5V9Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".6" />
+      <path d="M9 5h10v10H9V5Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" />
       <path
         d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z"
         fill="#A855F7"
@@ -121,20 +54,34 @@ function DepthPopLogo() {
   );
 }
 
-function messageForState(state: RunState): string {
-  if (state === "reading") return "Reading the selected Canva image…";
-  if (state === "processing")
-    return "Building the depth map + cinematic separation…";
-  if (state === "uploading") return "Importing the DepthPop render into Canva…";
-  if (state === "saving") return "Replacing the selected image…";
-  if (state === "done")
-    return "DepthPop complete. The selected Canva image was replaced.";
-  return "";
+function stageLabel(stage: RunStage): string {
+  switch (stage) {
+    case "reading":
+      return "READING SOURCE…";
+    case "queued":
+      return "QUEUED IN PIPELINE…";
+    case "decoding":
+      return "DECODING IMAGE…";
+    case "segmenting_objects":
+      return "SEGMENTING OBJECTS…";
+    case "estimating_depth":
+      return "ESTIMATING DEPTH…";
+    case "extracting_objects":
+      return "EXTRACTING CUTOUTS…";
+    case "reconstructing_plate":
+      return "RECONSTRUCTING PLATE…";
+    case "building_scene":
+      return "BUILDING DEPTHSCENE…";
+    case "complete":
+      return "SCENE READY";
+    case "error":
+      return "SCENE FAILED";
+    default:
+      return "PROCESSING DEPTHSCENE…";
+  }
 }
 
-function ensureSupportedInput(
-  blob: Blob,
-): "image/png" | "image/jpeg" | "image/webp" {
+function ensureSupportedInput(blob: Blob): string {
   if (
     blob.type === "image/png" ||
     blob.type === "image/jpeg" ||
@@ -142,174 +89,330 @@ function ensureSupportedInput(
   ) {
     return blob.type;
   }
-  throw new Error(
-    "DepthPop currently supports PNG, JPEG, and WebP raster images.",
-  );
+  throw new Error("DepthPop supports PNG, JPEG, and WebP raster images.");
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  if (
+    blob.type !== "image/png" ||
+    blob.size <= 0 ||
+    blob.size > MAX_CANVA_RENDER_BYTES
+  ) {
+    throw new Error(
+      "DepthPop's rendered PNG is empty, invalid, or exceeds the 20 MB Canva insertion limit.",
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () =>
+      reject(new Error("DepthPop could not prepare the rendered PNG for Canva."));
+    reader.onload = () => {
+      if (
+        typeof reader.result !== "string" ||
+        !reader.result.startsWith("data:image/png")
+      ) {
+        reject(new Error("DepthPop compositor did not resolve to a PNG data URL."));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function dataUrlToBlob(
+  source: UploadedImageResult,
+  signal: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(source.dataUrl, { signal });
+  if (!response.ok) {
+    throw new Error("The uploaded local source could not be read.");
+  }
+  return await response.blob();
+}
+
+function isAbortError(cause: unknown): boolean {
+  return cause instanceof DOMException && cause.name === "AbortError";
 }
 
 export function App() {
   const selectedImages = useSelection("image");
-  const [settings, setSettings] = useState<DepthPopSettings>(
-    DEFAULT_DEPTHPOP_SETTINGS,
-  );
-  const [state, setState] = useState<RunState>("idle");
+  const [settings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
+  const [stage, setStage] = useState<RunStage>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [activeScene, setActiveScene] = useState<DepthScene | null>(null);
+  const [localSource, setLocalSource] = useState<UploadedImageResult | null>(null);
+  const [activeSourceRef, setActiveSourceRef] = useState<ImageRef | null>(null);
+  const [activeSourceKind, setActiveSourceKind] = useState<SourceKind | null>(null);
+
+  const runController = useRef<AbortController | null>(null);
+  const exportController = useRef<AbortController | null>(null);
   const host = useMemo(backendOrigin, []);
-  const isBusy = ["reading", "processing", "uploading", "saving"].includes(
-    state,
+  const isBusy = [
+    "reading",
+    "queued",
+    "decoding",
+    "segmenting_objects",
+    "estimating_depth",
+    "extracting_objects",
+    "reconstructing_plate",
+    "building_scene",
+  ].includes(stage);
+  const hasSource = Boolean(localSource) || selectedImages.count === 1;
+  const canExecute = hasSource && Boolean(host) && !isBusy;
+
+  const apiClient = useMemo(() => {
+    if (!host) return null;
+    return new DepthPopApiClient(host, () => auth.getCanvaUserToken());
+  }, [host]);
+
+  useEffect(
+    () => () => {
+      runController.current?.abort();
+      exportController.current?.abort();
+    },
+    [],
   );
-  const canExecute = selectedImages.count === 1 && Boolean(host) && !isBusy;
 
-  const setSetting = (key: keyof DepthPopSettings, value: number) => {
-    setSettings((current) =>
-      normalizeDepthPopSettings({ ...current, [key]: value }),
-    );
+  // Legacy compatibility path remains available in the backend and is kept
+  // here as a contract marker for the historical Drive v115 runtime. The
+  // primary product path below is the object-aware DepthScene API.
+  const executeLegacyDepthPop = async (sourceBlob: Blob, token: string) => {
+    const fields = buildDepthPopFormFields(settings);
+    const form = new FormData();
+    form.append("image", sourceBlob);
+    form.append("strength", fields.strength);
+    form.append("bokeh", fields.bokeh);
+    form.append("depth_fidelity", fields.depth_fidelity);
+    form.append("num_inference_steps", fields.num_inference_steps);
+    return fetch(host + "/api/depthpop", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: form,
+    });
   };
+  void executeLegacyDepthPop;
 
-  const execute = async () => {
-    if (!canExecute) return;
+  const executeScenePipeline = async () => {
+    if (!canExecute || !apiClient) return;
 
-    let progressTimer: number | null = null;
+    runController.current?.abort();
+    const controller = new AbortController();
+    runController.current = controller;
+
     setError(null);
-    setProgress(6);
-    setState("reading");
+    setStage("reading");
+    setProgress(5);
 
     try {
-      const draft = await selectedImages.read();
-      const content = draft.contents[0];
-      if (!content)
-        throw new Error(
-          "Select one raster image in Canva before running DepthPop.",
-        );
+      let sourceBlob: Blob;
+      let sourceRef: ImageRef;
+      let sourceKind: SourceKind;
 
-      const temporary = await getTemporaryUrl({
-        type: "image",
-        ref: content.ref,
-      });
-      const sourceResponse = await fetch(temporary.url, {
-        mode: "cors",
-        cache: "no-store",
-      });
-      if (!sourceResponse.ok) {
-        throw new Error(
-          "Canva's temporary source image could not be downloaded.",
-        );
-      }
-      const sourceBlob = await sourceResponse.blob();
-      const sourceMime = ensureSupportedInput(sourceBlob);
-      if (sourceBlob.size <= 0 || sourceBlob.size > 50 * 1024 * 1024) {
-        throw new Error(
-          "Selected image is empty or exceeds Canva's 50 MB image limit.",
-        );
-      }
+      if (localSource) {
+        sourceBlob = await dataUrlToBlob(localSource, controller.signal);
+        sourceRef = localSource.ref;
+        sourceKind = "local";
+      } else {
+        const draft = await selectedImages.read();
+        const content = draft.contents[0];
+        if (!content) throw new Error("Select one raster image in Canva first.");
 
-      setProgress(22);
-      setState("processing");
-
-      const token = await auth.getCanvaUserToken();
-      const progressId =
-        typeof globalThis.crypto?.randomUUID === "function"
-          ? globalThis.crypto.randomUUID()
-          : "depthpop-" +
-            Date.now().toString(36) +
-            "-" +
-            Math.random().toString(36).slice(2);
-      const fields = buildDepthPopFormFields(settings);
-      const form = new FormData();
-      form.append(
-        "image",
-        sourceBlob,
-        sourceMime === "image/png"
-          ? "source.png"
-          : sourceMime === "image/webp"
-            ? "source.webp"
-            : "source.jpg",
-      );
-      form.append("strength", fields.strength);
-      form.append("bokeh", fields.bokeh);
-      form.append("depth_fidelity", fields.depth_fidelity);
-      form.append("num_inference_steps", fields.num_inference_steps);
-      form.append("progress_id", progressId);
-
-      progressTimer = window.setInterval(() => {
-        void fetch(host + "/tool/progress/" + encodeURIComponent(progressId), {
+        const temporary = await getTemporaryUrl({
+          type: "image",
+          ref: content.ref,
+        });
+        const sourceResponse = await fetch(temporary.url, {
+          mode: "cors",
           cache: "no-store",
-        })
-          .then((response) => (response.ok ? response.json() : null))
-          .then((payload: BackendProgress | null) => {
-            if (!payload?.ok || typeof payload.percent !== "number") return;
-            const backendPercent = Math.max(0, Math.min(100, payload.percent));
-            setProgress(Math.min(72, 22 + Math.round(backendPercent * 0.5)));
-          })
-          .catch(() => {
-            // Progress is advisory; the authenticated render request remains authoritative.
-          });
-      }, 300);
+          signal: controller.signal,
+        });
+        if (!sourceResponse.ok) {
+          throw new Error("Canva's temporary source image could not be downloaded.");
+        }
 
-      const response = await fetch(host + "/api/depthpop", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
+        sourceBlob = await sourceResponse.blob();
+        sourceRef = content.ref;
+        sourceKind = "canva";
+      }
+
+      ensureSupportedInput(sourceBlob);
+      if (sourceBlob.size <= 0 || sourceBlob.size > 50 * 1024 * 1024) {
+        throw new Error("Selected image exceeds the 50 MB processing limit or is empty.");
+      }
+
+      setActiveSourceRef(sourceRef);
+      setActiveSourceKind(sourceKind);
+      setStage("queued");
+      setProgress(10);
+
+      const scene = await createDepthSceneFromImage(
+        apiClient,
+        {
+          image: sourceBlob,
+          maxObjects: 24,
+          segmentationMode: "auto",
+          depthQuality: "high",
+          // Until the provider lane advertises a verified production
+          // background-reconstruction provider, the client stays truthful.
+          inpaint: BACKGROUND_RECONSTRUCTION_ENABLED,
         },
-        body: form,
-      });
-
-      const body = (await response.json().catch(() => null)) as
-        | BackendResponse
-        | { detail?: string }
-        | null;
-      if (!response.ok || !body || !("url" in body) || !body.url) {
-        const detail = body && "detail" in body ? body.detail : null;
-        throw new Error(
-          detail || "DepthPop backend did not return a usable image.",
-        );
-      }
-
-      if (!["image/png", "image/jpeg", "image/webp"].includes(body.mimeType)) {
-        throw new Error("DepthPop backend returned an unsupported image type.");
-      }
-
-      setProgress(76);
-      setState("uploading");
-      const asset = await upload({
-        type: "image",
-        url: body.url,
-        thumbnailUrl: body.thumbnailUrl || body.url,
-        mimeType: body.mimeType,
-        parentRef: content.ref,
-        aiDisclosure: "app_generated",
-      });
-      await asset.whenUploaded();
-
-      content.ref = asset.ref;
-      setProgress(93);
-      setState("saving");
-      await draft.save();
-
+        controller.signal,
+        {
+          pollIntervalMs: 500,
+          maxPollAttempts: 180,
+          onProgress: ({ stage: nextStage, percent }) => {
+            setStage(nextStage);
+            setProgress(percent);
+          },
+        },
+      );
+      setActiveScene(scene);
+      setStage("complete");
       setProgress(100);
-      setState("done");
     } catch (cause) {
+      if (isAbortError(cause)) {
+        return;
+      }
       setProgress(0);
-      setState("error");
+      setStage("error");
       setError(
         cause instanceof Error
           ? cause.message
           : "DepthPop could not process the selected image.",
       );
     } finally {
-      if (progressTimer !== null) {
-        window.clearInterval(progressTimer);
+      if (runController.current === controller) {
+        runController.current = null;
+      }
+    }
+  };
+
+  const handleSaveScene = async (sceneToSave: DepthScene): Promise<DepthScene> => {
+    if (!apiClient) throw new Error("DepthPop backend is not configured.");
+    const updated = await apiClient.patchScene(sceneToSave.id, sceneToSave);
+    setActiveScene(updated);
+    return updated;
+  };
+
+  const handleExportScene = async (sceneToExport: DepthScene) => {
+    if (!apiClient) throw new Error("DepthPop backend is not configured.");
+
+    exportController.current?.abort();
+    const controller = new AbortController();
+    exportController.current = controller;
+
+    try {
+      const saved = await apiClient.patchScene(
+        sceneToExport.id,
+        sceneToExport,
+        controller.signal,
+      );
+      setActiveScene(saved);
+
+      const compositeBlob = await apiClient.createSceneComposite(
+        saved.id,
+        controller.signal,
+      );
+      const dataUrl = await blobToDataUrl(compositeBlob);
+
+      let replacedSelection = false;
+      let renderedRef: ImageRef | null = null;
+
+      if (activeSourceKind === "canva" && activeSourceRef) {
+        const draft = await selectedImages.read();
+        const content = draft.contents[0];
+        if (content && content.ref === activeSourceRef) {
+          const asset = await upload({
+            type: "image",
+            name: "DepthPop Scene",
+            url: dataUrl,
+            thumbnailUrl: dataUrl,
+            mimeType: "image/png",
+            parentRef: content.ref,
+            aiDisclosure: "app_generated",
+          });
+          await asset.whenUploaded();
+          content.ref = asset.ref;
+          await draft.save();
+          renderedRef = asset.ref;
+          replacedSelection = true;
+        }
+      }
+
+      if (!replacedSelection) {
+        const asset = await upload({
+          type: "image",
+          name: "DepthPop Scene",
+          url: dataUrl,
+          thumbnailUrl: dataUrl,
+          mimeType: "image/png",
+          ...(activeSourceRef ? { parentRef: activeSourceRef } : {}),
+          aiDisclosure: "app_generated",
+        });
+        await asset.whenUploaded();
+        renderedRef = asset.ref;
+        await addElementAtPoint({
+          type: "image",
+          ref: renderedRef,
+          altText: {
+            text: "DepthPop rendered scene",
+            decorative: false,
+          },
+        });
+      }
+
+      setActiveScene(null);
+      setStage("idle");
+      setProgress(0);
+      setError(null);
+    } catch (cause) {
+      if (isAbortError(cause)) return;
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "Failed to render the DepthScene into Canva.";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      if (exportController.current === controller) {
+        exportController.current = null;
       }
     }
   };
 
   const reset = () => {
-    setSettings(DEFAULT_DEPTHPOP_SETTINGS);
-    setState("idle");
+    runController.current?.abort();
+    exportController.current?.abort();
+    runController.current = null;
+    exportController.current = null;
+    setStage("idle");
     setProgress(0);
     setError(null);
+    setActiveScene(null);
+    setActiveSourceRef(null);
+    setActiveSourceKind(null);
+    setLocalSource(null);
   };
+
+  if (activeScene) {
+    return (
+      <main className="dp-app">
+        <section className="dp-panel">
+          <SceneWorkspace
+            initialScene={activeScene}
+            apiClient={apiClient}
+            onExit={() => setActiveScene(null)}
+            onSave={handleSaveScene}
+            onExport={handleExportScene}
+            backgroundReconstructionEnabled={BACKGROUND_RECONSTRUCTION_ENABLED}
+          />
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="dp-app">
@@ -319,10 +422,9 @@ export function App() {
             className="dp-reset"
             type="button"
             onClick={reset}
-            disabled={isBusy}
-            aria-label="Reset DepthPop controls"
+            aria-label={isBusy ? "Cancel current DepthPop run and reset" : "Reset DepthPop"}
           >
-            ↺
+            {isBusy ? "×" : "↺"}
           </button>
           <div className="dp-icon-wrap">
             <DepthPopLogo />
@@ -331,82 +433,54 @@ export function App() {
         </header>
 
         <h1 id="depthpop-title">DEPTHPOP</h1>
-        <div className="dp-chip">DEPTH POP</div>
+        <div className="dp-chip">OBJECT-SCENE V1</div>
         <p className="dp-desc">
-          Turn depth into presence — subtle separation, cinematic focus, same
-          scene.
+          Decompose a raster into editable depth-aware objects, tune the
+          composition, then render the authored scene back into Canva.
         </p>
 
-        <div className="dp-controls">
-          <SliderControl
-            label="Depth Strength (subject pop)"
-            hint="How strong the depth separation feels."
-            value={settings.depthStrength}
-            min={0.05}
-            max={0.75}
-            step={0.01}
-            displayValue={settings.depthStrength.toFixed(2)}
-            onChange={(value) => setSetting("depthStrength", value)}
-          />
-          <SliderControl
-            label="Depth Blur (background softness)"
-            hint="Blurs background based on depth. 0% subtle, 100% dramatic."
-            value={settings.depthBlur}
-            min={0}
-            max={100}
-            step={1}
-            displayValue={Math.round(settings.depthBlur) + "%"}
-            onChange={(value) => setSetting("depthBlur", value)}
-          />
-          <SliderControl
-            label="Depth Fidelity (depth-map accuracy)"
-            hint="How tightly DepthPop follows the depth map. 0.25 is softer, 1.00 is locked in."
-            value={settings.depthFidelity}
-            min={0.05}
-            max={1}
-            step={0.01}
-            displayValue={settings.depthFidelity.toFixed(2)}
-            onChange={(value) => setSetting("depthFidelity", value)}
-          />
-          <SliderControl
-            label="Steps (quality vs speed)"
-            hint="Inference steps. Higher is cleaner but slower."
-            value={settings.steps}
-            min={8}
-            max={50}
-            step={1}
-            displayValue={String(Math.round(settings.steps))}
-            onChange={(value) => setSetting("steps", value)}
-          />
-        </div>
+        <LocalImageUpload productName="DepthPop"
+          classPrefix="dp"
+          sourceLabel="LOCAL SOURCE"
+          insertIntoDesign={false}
+          onUploaded={(result) => {
+            setLocalSource(result);
+            setError(null);
+          }}
+        />
 
-        <LocalImageUpload productName="DepthPop" classPrefix="dp" />
-
-        <div
-          className={
-            "dp-source " + (selectedImages.count === 1 ? "is-ready" : "")
-          }
-        >
+        <div className={"dp-source " + (hasSource ? "is-ready" : "")}>
           <span className="dp-source-dot" />
           <div>
-            <span>CANVA SOURCE</span>
+            <span>{localSource ? "ACTIVE LOCAL SOURCE" : "CANVA SOURCE"}</span>
             <strong>
-              {selectedImages.count === 1
-                ? "1 raster image selected"
-                : selectedImages.count > 1
-                  ? "Select one image only"
-                  : "Select an image in Canva"}
+              {localSource
+                ? localSource.fileName
+                : selectedImages.count === 1
+                  ? "1 raster image selected"
+                  : selectedImages.count > 1
+                    ? "Select one image only"
+                    : "Select an image in Canva or upload one above"}
             </strong>
           </div>
+          {localSource && (
+            <button
+              type="button"
+              className="dp-btn-text"
+              onClick={() => setLocalSource(null)}
+            >
+              USE CANVA SELECTION
+            </button>
+          )}
         </div>
 
-        {(isBusy || state === "done") && (
+        {isBusy && (
           <div className="dp-progress" aria-live="polite">
             <div className="dp-progress-track">
               <span style={{ width: progress + "%" }} />
             </div>
             <div className="dp-progress-copy">
-              <span>{messageForState(state)}</span>
+              <span>{stageLabel(stage)}</span>
               <strong>{progress}%</strong>
             </div>
           </div>
@@ -423,15 +497,16 @@ export function App() {
           className="dp-exec"
           type="button"
           disabled={!canExecute}
-          onClick={() => void execute()}
+          onClick={() => void executeScenePipeline()}
         >
-          <span>{isBusy ? "PROCESSING DEPTHPOP" : "EXECUTE DEPTHPOP"}</span>
+          <span>{isBusy ? stageLabel(stage) : "CREATE DEPTHSCENE"}</span>
           <i aria-hidden="true" />
         </button>
 
         <p className="dp-note">
-          Runs only on the image you selected. The derived asset keeps the
-          original Canva image as its parent.
+          The object-scene path does not silently fall back to the legacy flat
+          DepthPop render. Provider failures remain visible so the scene stays
+          truthful.
         </p>
       </section>
     </main>

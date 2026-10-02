@@ -35,7 +35,7 @@ if CANVA_APP_ORIGIN:
         CORSMiddleware,
         allow_origins=[CANVA_APP_ORIGIN],
         allow_credentials=False,
-        allow_methods=["POST", "GET", "OPTIONS"],
+        allow_methods=["POST", "GET", "PATCH", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
