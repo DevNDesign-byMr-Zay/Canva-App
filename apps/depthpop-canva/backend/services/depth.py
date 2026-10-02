@@ -1,34 +1,69 @@
 from __future__ import annotations
 
 import os
+
+from fastapi import HTTPException
+
 from providers.depth_provider import (
     DepthMap,
     DepthProvider,
+    DepthQuality,
     FalDepthProvider,
     MockDepthProvider,
 )
 
 
-def get_depth_provider() -> DepthProvider:
-    mode = os.getenv("DEPTH_PROVIDER", "auto").lower().strip()
-    if mode == "fal":
+def get_depth_provider(mode: str | None = None) -> DepthProvider:
+    selected = (
+        mode or os.getenv("DEPTH_PROVIDER", "auto")
+    ).lower().strip()
+
+    if selected == "fal":
         return FalDepthProvider()
-    if mode == "mock":
+    if selected == "mock":
+        if os.getenv("ENVIRONMENT", "").lower() == "production":
+            raise HTTPException(
+                status_code=503,
+                detail="Mock depth estimation is disabled in production.",
+            )
+        return MockDepthProvider()
+    if selected != "auto":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported depth provider '{selected}'.",
+        )
+
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    has_fal_key = bool(os.getenv("FAL_KEY", "").strip())
+    if environment == "production" and not has_fal_key:
+        raise HTTPException(
+            status_code=503,
+            detail="No production provider is configured.",
+        )
+
+    if has_fal_key:
+        return FalDepthProvider()
+    if (
+        os.getenv("ENVIRONMENT", "").lower() == "test"
+        or "PYTEST_CURRENT_TEST" in os.environ
+    ):
         return MockDepthProvider()
 
-    # auto mode: check for FAL_KEY
-    if os.getenv("FAL_KEY", "").strip():
-        return FalDepthProvider()
-    return MockDepthProvider()
+    raise HTTPException(
+        status_code=503,
+        detail="No production depth provider is configured.",
+    )
 
 
 class DepthService:
     def __init__(self, provider: DepthProvider | None = None):
         self._provider = provider
 
-    @property
-    def provider(self) -> DepthProvider:
-        return self._provider or get_depth_provider()
-
-    async def estimate_depth(self, image: bytes) -> DepthMap:
-        return await self.provider.estimate(image)
+    async def estimate_depth(
+        self,
+        image: bytes,
+        *,
+        quality: DepthQuality = "high",
+    ) -> DepthMap:
+        provider = self._provider or get_depth_provider()
+        return await provider.estimate(image, quality=quality)

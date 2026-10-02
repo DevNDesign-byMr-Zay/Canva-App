@@ -15,6 +15,8 @@ SemanticType = Literal[
     "unknown",
 ]
 
+ExtractionQuality = Literal["mask", "bbox_fallback"]
+
 
 class Vector3(BaseModel):
     x: float = 0.0
@@ -70,6 +72,7 @@ class DepthObject(BaseModel):
     id: str = Field(..., min_length=1)
     label: str = Field(..., min_length=1)
     semanticType: SemanticType = Field(..., alias="semanticType")
+    extractionQuality: ExtractionQuality = Field("mask", alias="extractionQuality")
     confidence: float = Field(..., ge=0.0, le=1.0)
     bbox: BBox
     assets: ObjectAssets

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import math
+import os
 import time
 import uuid
 from typing import Callable
@@ -25,7 +26,7 @@ from models.object import DepthObject, ObjectTransform, Vector3
 from models.scene import CameraConfig, TimelineConfig
 from services.compositor import composite_scene
 import services.persistence as persistence
-from services.persistence import job_repo, scene_repo
+from services.persistence import job_repo, scene_asset_repo, scene_repo
 from services.scene_builder import SceneBuilderService
 from services.upload import validate_and_read_upload
 
@@ -157,11 +158,11 @@ async def run_scene_decomposition_job(
             depth_quality=depth_quality,
             inpaint=inpaint,
             stage_reporter=report_stage,
+            scene_id=scene_id,
         )
 
         scene = scene.model_copy(
             update={
-                "id": scene_id,
                 "userId": user_id,
                 "brandId": brand_id,
             }
@@ -178,6 +179,7 @@ async def run_scene_decomposition_job(
             brand_id=brand_id,
         )
     except Exception as exc:
+        scene_asset_repo.cleanup_scene_assets_sync(scene_id)
         await job_repo.update_job_stage(
             job_id,
             stage=current_stage if current_stage != "queued" else "error",
@@ -217,20 +219,33 @@ async def create_scene(
             ),
         )
 
-    raw_bytes, _detected_mime = await validate_and_read_upload(image)
+    raw_bytes, detected_mime = await validate_and_read_upload(image)
 
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     scene_id = f"scene_{uuid.uuid4().hex[:12]}"
-    source_asset_id = f"asset_{uuid.uuid4().hex}"
+    public_base = (
+        os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+        or str(request.base_url).rstrip("/")
+    )
 
-    # Current-main compatibility uses the bounded legacy image cache. During
-    # provider-branch integration this adapter is swapped to the scene-owned
-    # authenticated asset repository without changing the public API.
-    from app import _cache_put, _public_url
+    source_asset = scene_asset_repo.save_asset_sync(
+        scene_id=scene_id,
+        user_id=user.user_id,
+        brand_id=user.brand_id,
+        data=raw_bytes,
+        mime_type=detected_mime,
+    )
+    source_asset_id = source_asset.asset_id
 
     def build_url(data: bytes, mime: str) -> str:
-        key = _cache_put(data, mime)
-        return _public_url(request, f"/cache/image/{key}")
+        asset = scene_asset_repo.save_asset_sync(
+            scene_id=scene_id,
+            user_id=user.user_id,
+            brand_id=user.brand_id,
+            data=data,
+            mime_type=mime,
+        )
+        return f"{public_base}/api/v1/assets/{asset.asset_id}"
 
     await job_repo.update_job_stage(
         job_id,

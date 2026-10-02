@@ -380,7 +380,7 @@ def test_fixture_segmentation_provider_error():
 
 def test_fixture_depth_provider_error():
     class ErrorDepthProvider:
-        async def estimate(self, image: bytes):
+        async def estimate(self, image: bytes, quality: str = "high"):
             raise RuntimeError("Depth estimation service offline")
 
     builder = SceneBuilderService(
@@ -496,20 +496,23 @@ def test_florence2_response_parser_with_frozen_fixture():
     from providers.segmentation_provider import parse_florence2_response
 
     frozen_florence_fixture = {
-        "status": "OK",
-        "output": {
+        "results": {
             "bboxes": [
-                [10.0, 10.0, 50.0, 80.0],
-                [60.0, 60.0, 90.0, 90.0],
+                {"x": 10.0, "y": 10.0, "w": 40.0, "h": 70.0, "label": "person"},
+                {"x": 60.0, "y": 60.0, "w": 30.0, "h": 30.0, "label": "shoe"},
             ],
-            "labels": ["person", "shoe"],
         },
     }
 
-    parsed = parse_florence2_response(frozen_florence_fixture)
+    parsed = parse_florence2_response(
+        frozen_florence_fixture,
+        width=100,
+        height=100,
+    )
     assert len(parsed) == 2
     assert parsed[0]["label"] == "person"
-    assert parsed[0]["box"] == [10.0, 10.0, 50.0, 80.0]
+    assert parsed[0]["x"] == 10.0
+    assert parsed[0]["width"] == 40.0
     assert parsed[1]["label"] == "shoe"
 
 
@@ -517,11 +520,12 @@ def test_sam3_response_parser_with_frozen_fixture():
     from providers.segmentation_provider import parse_sam3_response
 
     frozen_sam3_fixture = {
-        "status": "OK",
         "masks": [
-            {"url": "https://v2.fal.media/files/mask1.png", "score": 0.96},
-            {"url": "https://v2.fal.media/files/mask2.png", "score": 0.89},
+            {"url": "https://v2.fal.media/files/mask1.png"},
+            {"url": "https://v2.fal.media/files/mask2.png"},
         ],
+        "scores": [0.96, 0.89],
+        "metadata": [{"index": 0}, {"index": 1}],
     }
 
     parsed = parse_sam3_response(frozen_sam3_fixture)
