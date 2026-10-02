@@ -216,6 +216,51 @@ describe("DepthPopApiClient", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
   });
 
+
+  it("rejects cross-origin protected assets before sending Canva authorization", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "test-token",
+    );
+
+    await expect(
+      client.fetchAssetBlobUrl("https://evil.example/assets/abc"),
+    ).rejects.toThrow(/cross-origin/i);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("resolves relative protected asset paths against the configured backend", async () => {
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:depthpop-relative");
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(new Blob(["image"], { type: "image/png" }), {
+        status: 200,
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient(
+      "https://api.test/base",
+      async () => "test-token",
+    );
+    const result = await client.fetchAssetBlobUrl("/api/v1/assets/abc");
+
+    expect(result).toBe("blob:depthpop-relative");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.test/api/v1/assets/abc",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Authorization: "Bearer test-token" },
+      }),
+    );
+    createObjectURL.mockRestore();
+  });
+
   it("surfaces backend detail messages instead of hiding provider errors", async () => {
     vi.stubGlobal(
       "fetch",
