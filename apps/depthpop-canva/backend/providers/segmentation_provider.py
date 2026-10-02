@@ -296,10 +296,10 @@ class FalSegmentationProvider:
 
         prompts = [
             {
-                "x_min": detection["x"],
-                "y_min": detection["y"],
-                "x_max": detection["x"] + detection["width"],
-                "y_max": detection["y"] + detection["height"],
+                "x_min": int(round(detection["x"])),
+                "y_min": int(round(detection["y"])),
+                "x_max": int(round(detection["x"] + detection["width"])),
+                "y_max": int(round(detection["y"] + detection["height"])),
                 "object_id": index + 1,
             }
             for index, detection in enumerate(detections)
@@ -311,6 +311,7 @@ class FalSegmentationProvider:
                 SAM_MODEL,
                 arguments={
                     "image_url": image_url,
+                    "prompt": "",
                     "box_prompts": prompts,
                     "apply_mask": False,
                     "return_multiple_masks": True,
