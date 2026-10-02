@@ -9,6 +9,7 @@ export interface SceneWorkspaceProps {
   onExit?: () => void;
   onSave?: (scene: DepthScene) => Promise<DepthScene>;
   onExport?: (scene: DepthScene) => Promise<void>;
+  backgroundReconstructionEnabled?: boolean;
 }
 
 function isInlineImageUrl(url: string): boolean {
@@ -21,6 +22,7 @@ export function SceneWorkspace({
   onExit,
   onSave,
   onExport,
+  backgroundReconstructionEnabled = false,
 }: SceneWorkspaceProps) {
   const [state, dispatch] = useReducer(sceneReducer, {
     initialScene,
@@ -177,6 +179,12 @@ export function SceneWorkspace({
         </button>
       </header>
 
+      {!backgroundReconstructionEnabled && (
+        <div className="dp-scene-warning" role="status">
+          Background reconstruction is currently unavailable. Moving an
+          extracted object can reveal its original pixels in the source plate.
+        </div>
+      )}
       {degradedObjects.length > 0 && (
         <div className="dp-scene-warning" role="status">
           {degradedObjects.length} object
