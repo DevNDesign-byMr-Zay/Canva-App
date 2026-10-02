@@ -193,11 +193,9 @@ describe("DepthPopApiClient", () => {
   });
 
   it("loads protected scene assets through authenticated fetch", async () => {
-    const createObjectURL = vi.fn(() => "blob:depthpop-test");
-    vi.stubGlobal("URL", {
-      ...URL,
-      createObjectURL,
-    });
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:depthpop-test");
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(new Blob(["image"], { type: "image/png" }), {
         status: 200,
