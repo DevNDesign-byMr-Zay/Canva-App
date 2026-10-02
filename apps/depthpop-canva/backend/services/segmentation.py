@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+
+from fastapi import HTTPException
+
 from providers.segmentation_provider import (
     FalSegmentationProvider,
     MockSegmentationProvider,
@@ -9,32 +12,53 @@ from providers.segmentation_provider import (
 )
 
 
-def get_segmentation_provider() -> SegmentationProvider:
-    mode = os.getenv("SEGMENTATION_PROVIDER", "auto").lower().strip()
-    if mode == "fal":
+def get_segmentation_provider(
+    mode: str | None = None,
+) -> SegmentationProvider:
+    selected = (
+        mode or os.getenv("SEGMENTATION_PROVIDER", "auto")
+    ).lower().strip()
+
+    if selected in {"fal", "florence_sam3"}:
         return FalSegmentationProvider()
-    if mode == "mock":
+    if selected == "mock":
+        if os.getenv("ENVIRONMENT", "").lower() == "production":
+            raise HTTPException(
+                status_code=503,
+                detail="Mock segmentation is disabled in production.",
+            )
+        return MockSegmentationProvider()
+    if selected != "auto":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported segmentation provider '{selected}'.",
+        )
+
+    if os.getenv("FAL_KEY", "").strip():
+        return FalSegmentationProvider()
+
+    if (
+        os.getenv("ENVIRONMENT", "").lower() == "test"
+        or "PYTEST_CURRENT_TEST" in os.environ
+    ):
         return MockSegmentationProvider()
 
-    # auto mode: check if FAL_KEY exists or if running in pytest/test
-    fal_key = os.getenv("FAL_KEY", "").strip()
-    is_pytest = "PYTEST_CURRENT_TEST" in os.environ or os.getenv("ENVIRONMENT") == "test"
-
-    if fal_key:
-        return FalSegmentationProvider()
-    if is_pytest:
-        return MockSegmentationProvider()
-
-    return FalSegmentationProvider()
+    raise HTTPException(
+        status_code=503,
+        detail="No production segmentation provider is configured.",
+    )
 
 
 class SegmentationService:
     def __init__(self, provider: SegmentationProvider | None = None):
         self._provider = provider
 
-    @property
-    def provider(self) -> SegmentationProvider:
-        return self._provider or get_segmentation_provider()
-
-    async def segment_objects(self, image: bytes, max_objects: int = 24) -> list[SegmentedObject]:
-        return await self.provider.segment(image, max_objects=max_objects)
+    async def segment_objects(
+        self,
+        image: bytes,
+        max_objects: int = 24,
+        *,
+        mode: str = "auto",
+    ) -> list[SegmentedObject]:
+        provider = self._provider or get_segmentation_provider(mode)
+        return await provider.segment(image, max_objects=max_objects)
