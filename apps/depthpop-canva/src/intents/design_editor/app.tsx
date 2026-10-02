@@ -11,6 +11,7 @@ import {
 } from "../../depthpop/depthpop-model";
 
 import { DepthPopApiClient, JobProcessingStage } from "./api/depthpop-api";
+import { createDepthSceneFromImage } from "./api/scene-runner";
 import {
   LocalImageUpload,
   type UploadedImageResult,
@@ -89,25 +90,6 @@ function ensureSupportedInput(blob: Blob): string {
     return blob.type;
   }
   throw new Error("DepthPop supports PNG, JPEG, and WebP raster images.");
-}
-
-function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      window.clearTimeout(timer);
-      reject(new DOMException("Aborted", "AbortError"));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-  });
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -266,7 +248,8 @@ export function App() {
       setStage("queued");
       setProgress(10);
 
-      const created = await apiClient.createSceneJob(
+      const scene = await createDepthSceneFromImage(
+        apiClient,
         {
           image: sourceBlob,
           maxObjects: 24,
@@ -277,39 +260,14 @@ export function App() {
           inpaint: BACKGROUND_RECONSTRUCTION_ENABLED,
         },
         controller.signal,
-      );
-
-      let completedSceneId: string | null = null;
-      for (let attempt = 0; attempt < 180; attempt += 1) {
-        await abortableDelay(500, controller.signal);
-        const status = await apiClient.getJobStatus(
-          created.jobId,
-          controller.signal,
-        );
-
-        setStage(status.stage);
-        if (typeof status.progress === "number") {
-          setProgress(Math.max(0, Math.min(100, Math.round(status.progress * 100))));
-        }
-
-        if (status.status === "complete" && status.sceneId) {
-          completedSceneId = status.sceneId;
-          break;
-        }
-        if (status.status === "error") {
-          throw new Error(status.error || "Scene decomposition pipeline failed.");
-        }
-      }
-
-      if (!completedSceneId) {
-        throw new Error(
-          "DepthScene creation exceeded 90 seconds. The client stopped waiting; retry when the provider is responsive.",
-        );
-      }
-
-      const scene = await apiClient.getScene(
-        completedSceneId,
-        controller.signal,
+        {
+          pollIntervalMs: 500,
+          maxPollAttempts: 180,
+          onProgress: ({ stage: nextStage, percent }) => {
+            setStage(nextStage);
+            setProgress(percent);
+          },
+        },
       );
       setActiveScene(scene);
       setStage("complete");
