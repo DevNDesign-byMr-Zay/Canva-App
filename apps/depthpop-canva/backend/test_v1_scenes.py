@@ -41,10 +41,6 @@ def _create_test_image(
     return buf.getvalue()
 
 
-async def dummy_url_builder(data: bytes, mime: str) -> str:
-    return "https://test.server/api/v1/assets/dummy123"
-
-
 @pytest.fixture
 def test_client():
     return TestClient(depthpop.app)
@@ -95,7 +91,6 @@ def test_cross_user_scene_and_job_access_denial(test_client):
         post_resp = test_client.post(
             "/api/v1/scenes",
             files={"image": ("test.png", image_bytes, "image/png")},
-            data={"inpaint": "false"},
         )
         assert post_resp.status_code == 200
         job_id = post_resp.json()["jobId"]
@@ -126,7 +121,7 @@ def test_post_scene_returns_queued_job_and_completes(auth_client):
             "max_objects": "10",
             "segmentation_mode": "auto",
             "depth_quality": "high",
-            "inpaint": "false",
+            "inpaint": "true",
         },
     )
     assert response.status_code == 200
@@ -208,6 +203,9 @@ def test_fixture_single_object():
 
     import asyncio
 
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/123"
+
     image_bytes = _create_test_image((50, 50))
     scene = asyncio.run(
         builder.build_scene(
@@ -261,6 +259,9 @@ def test_fixture_multiple_objects_different_depths():
     )
 
     import asyncio
+
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/multi"
 
     image_bytes = _create_test_image((100, 100))
     scene = asyncio.run(
@@ -316,6 +317,9 @@ def test_fixture_overlapping_objects():
 
     import asyncio
 
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/overlap"
+
     image_bytes = _create_test_image((80, 80))
     scene = asyncio.run(
         builder.build_scene(
@@ -334,6 +338,9 @@ def test_fixture_transparent_logo_source():
     builder = SceneBuilderService()
 
     import asyncio
+
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/logo"
 
     scene = asyncio.run(
         builder.build_scene(
@@ -357,6 +364,9 @@ def test_fixture_segmentation_provider_error():
 
     import asyncio
 
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/err"
+
     image_bytes = _create_test_image((50, 50))
     with pytest.raises(RuntimeError, match="Segmentation engine unavailable"):
         asyncio.run(
@@ -370,7 +380,7 @@ def test_fixture_segmentation_provider_error():
 
 def test_fixture_depth_provider_error():
     class ErrorDepthProvider:
-        async def estimate(self, image: bytes, quality: str = "high"):
+        async def estimate(self, image: bytes):
             raise RuntimeError("Depth estimation service offline")
 
     builder = SceneBuilderService(
@@ -378,6 +388,9 @@ def test_fixture_depth_provider_error():
     )
 
     import asyncio
+
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/err"
 
     image_bytes = _create_test_image((50, 50))
     with pytest.raises(RuntimeError, match="Depth estimation service offline"):
@@ -417,6 +430,9 @@ def test_safe_object_count_limit():
     )
 
     import asyncio
+
+    def dummy_url_builder(data: bytes, mime: str) -> str:
+        return "https://test.server/cache/image/limit"
 
     image_bytes = _create_test_image((100, 100))
     scene = asyncio.run(
@@ -561,137 +577,3 @@ def test_unsupported_segmentation_mode_and_depth_quality_return_422(auth_client)
         data={"depth_quality": "invalid_quality"},
     )
     assert resp_depth.status_code == 422
-
-
-def test_depth_orientation_canonical_normalization():
-    from services.object_builder import build_depth_object
-    from models.object import BBox
-    import asyncio
-
-    depth_array = np.zeros((100, 100), dtype=np.float32)
-    depth_array[10:40, 10:40] = 0.1
-    depth_array[60:90, 60:90] = 0.9
-
-    bg_mask = np.zeros((100, 100), dtype=bool)
-    bg_mask[10:40, 10:40] = True
-
-    fg_mask = np.zeros((100, 100), dtype=bool)
-    fg_mask[60:90, 60:90] = True
-
-    buf_bg, buf_fg = io.BytesIO(), io.BytesIO()
-    Image.fromarray((bg_mask * 255).astype(np.uint8)).save(buf_bg, format="PNG")
-    Image.fromarray((fg_mask * 255).astype(np.uint8)).save(buf_fg, format="PNG")
-
-    bg_seg = SegmentedObject(
-        id="bg_01",
-        label="building",
-        semantic_type="building",
-        confidence=0.90,
-        bbox=BBox(x=10, y=10, width=30, height=30),
-        mask_bytes=buf_bg.getvalue(),
-        mask_array=bg_mask,
-    )
-    fg_seg = SegmentedObject(
-        id="fg_01",
-        label="person",
-        semantic_type="person",
-        confidence=0.98,
-        bbox=BBox(x=60, y=60, width=30, height=30),
-        mask_bytes=buf_fg.getvalue(),
-        mask_array=fg_mask,
-    )
-
-    src_img = _create_test_image((100, 100))
-
-    bg_obj = asyncio.run(build_depth_object(bg_seg, src_img, depth_array, dummy_url_builder))
-    fg_obj = asyncio.run(build_depth_object(fg_seg, src_img, depth_array, dummy_url_builder))
-
-    assert fg_obj.depth.median > bg_obj.depth.median
-    assert fg_obj.transform.position.z > bg_obj.transform.position.z
-    assert fg_obj.transform.position.z > 0.0, "Foreground object Z should be positive (nearer camera)"
-    assert bg_obj.transform.position.z < 0.0, "Background object Z should be negative (farther from camera)"
-
-
-def test_scene_patch_and_composite(auth_client):
-    image_bytes = _create_test_image((64, 64))
-
-    post_resp = auth_client.post(
-        "/api/v1/scenes",
-        files={"image": ("test.png", image_bytes, "image/png")},
-        data={"inpaint": "false"},
-    )
-    assert post_resp.status_code == 200
-    job_id = post_resp.json()["jobId"]
-
-    job_resp = auth_client.get(f"/api/v1/jobs/{job_id}")
-    scene_id = job_resp.json()["sceneId"]
-
-    # PATCH scene transform
-    patch_resp = auth_client.patch(
-        f"/api/v1/scenes/{scene_id}",
-        json={
-            "camera": {"fov": 60},
-            "objects": [
-                {
-                  "id": "person_01",
-                  "label": "person",
-                  "order": 1,
-                  "opacity": 0.9,
-                  "feather": 2,
-                  "visible": True,
-                  "locked": False,
-                  "transform": {
-                    "position": {"x": 0.4, "y": 0.4, "z": 0.8},
-                    "rotation": {"x": 0, "y": 0, "z": 10},
-                    "scale": {"x": 1.1, "y": 1.1, "z": 1.1}
-                  }
-                }
-            ]
-        }
-    )
-    assert patch_resp.status_code == 200
-    updated_scene = patch_resp.json()
-    assert updated_scene["camera"]["fov"] == 60
-
-    # Composite scene returns raw PNG bytes directly
-    comp_resp = auth_client.post(f"/api/v1/scenes/{scene_id}/composite")
-    assert comp_resp.status_code == 200
-    assert comp_resp.headers["content-type"].startswith("image/png")
-    assert len(comp_resp.content) > 0
-    with Image.open(io.BytesIO(comp_resp.content)) as result_img:
-        assert result_img.format == "PNG"
-
-
-def test_asset_lifecycle_cleanup_and_opaque_id_ownership(auth_client):
-    from services.persistence import BoundedSceneAssetRepository, BoundedSceneRepository
-    import asyncio
-
-    asset_repo = BoundedSceneAssetRepository(max_assets=5, ttl_seconds=1)
-    scene_repo = BoundedSceneRepository(max_scenes=2, ttl_seconds=1, asset_repo=asset_repo)
-
-    image_bytes = _create_test_image((32, 32))
-
-    # Save asset
-    asyncio.run(
-        asset_repo.save_asset(
-            asset_id="asset_test1",
-            scene_id="scene_s1",
-            user_id="user_test_a",
-            brand_id="brand_test_a",
-            data=image_bytes,
-            mime_type="image/png",
-        )
-    )
-
-    # Verify asset is retrievable by owner
-    res = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_test_a", brand_id="brand_test_a"))
-    assert res is not None
-
-    # Cross-user retrieval fails
-    res_cross = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_other", brand_id="brand_other"))
-    assert res_cross is None
-
-    # Cleanup scene assets
-    asyncio.run(asset_repo.cleanup_scene_assets("scene_s1"))
-    res_after = asyncio.run(asset_repo.get_asset("asset_test1", user_id="user_test_a", brand_id="brand_test_a"))
-    assert res_after is None

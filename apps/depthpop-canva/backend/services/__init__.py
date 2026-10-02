@@ -1,12 +1,9 @@
-from services.compositor import composite_scene
 from services.persistence import (
     BoundedJobRepository,
-    BoundedSceneAssetRepository,
     BoundedSceneRepository,
     JobRepository,
     SceneRepository,
     job_repo,
-    scene_asset_repo,
     scene_repo,
 )
 from services.segmentation import SegmentationService, get_segmentation_provider
@@ -17,15 +14,12 @@ from services.scene_builder import SceneBuilderService
 from services.upload import validate_and_read_upload
 
 __all__ = [
-    "composite_scene",
     "SceneRepository",
     "JobRepository",
     "BoundedSceneRepository",
     "BoundedJobRepository",
-    "BoundedSceneAssetRepository",
     "scene_repo",
     "job_repo",
-    "scene_asset_repo",
     "SegmentationService",
     "get_segmentation_provider",
     "DepthService",

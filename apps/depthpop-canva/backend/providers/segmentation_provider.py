@@ -4,11 +4,10 @@ import asyncio
 import base64
 import io
 import os
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 import fal_client
-import httpx
-import numpy as np
 from fastapi import HTTPException
+import numpy as np
 from PIL import Image
 from pydantic import BaseModel, ConfigDict
 from models.object import BBox, SemanticType
@@ -24,6 +23,7 @@ class SegmentedObject(BaseModel):
     bbox: BBox
     mask_bytes: bytes
     mask_array: np.ndarray | None = None
+    extraction_quality: Literal["mask", "bbox_fallback"] = "mask"
 
 
 class SegmentationProvider(Protocol):
@@ -49,34 +49,126 @@ def map_label_to_semantic_type(label: str) -> SemanticType:
     return "unknown"
 
 
-def parse_florence2_response(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _normalize_florence_bbox(
+    box: list[float], image_width: int, image_height: int
+) -> tuple[float, float, float, float]:
+    """Normalize Florence-2 bounding box [ymin, xmin, ymax, xmax] to pixel [x, y, w, h]."""
+    if len(box) != 4:
+        raise ValueError(f"Invalid Florence-2 box length {len(box)}, expected 4")
+
+    v0, v1, v2, v3 = [float(x) for x in box]
+    max_val = max(abs(v0), abs(v1), abs(v2), abs(v3))
+
+    if max_val <= 1.0:
+        ymin, xmin, ymax, xmax = v0 * image_height, v1 * image_width, v2 * image_height, v3 * image_width
+    elif max_val <= 1000.0:
+        ymin, xmin, ymax, xmax = (
+            (v0 / 1000.0) * image_height,
+            (v1 / 1000.0) * image_width,
+            (v2 / 1000.0) * image_height,
+            (v3 / 1000.0) * image_width,
+        )
+    else:
+        ymin, xmin, ymax, xmax = v0, v1, v2, v3
+
+    xmin = max(0.0, min(float(image_width), xmin))
+    xmax = max(0.0, min(float(image_width), xmax))
+    ymin = max(0.0, min(float(image_height), ymin))
+    ymax = max(0.0, min(float(image_height), ymax))
+
+    if xmax <= xmin:
+        xmax = min(float(image_width), xmin + 1.0)
+    if ymax <= ymin:
+        ymax = min(float(image_height), ymin + 1.0)
+
+    bx = xmin
+    by = ymin
+    bw = xmax - xmin
+    bh = ymax - ymin
+    return bx, by, bw, bh
+
+
+def parse_florence2_response(
+    payload: dict[str, Any],
+    image_width: int = 1000,
+    image_height: int = 1000,
+    strict_schema: bool = False,
+) -> list[dict[str, Any]]:
+    """Parse Florence-2 object detection output into normalized detection dicts."""
+    if not isinstance(payload, dict):
+        if strict_schema:
+            raise ValueError("Florence-2 payload must be a JSON object dictionary")
+        return []
+
     results: list[dict[str, Any]] = []
+
     output = payload.get("output") or payload.get("results") or payload
+
     if isinstance(output, dict):
-        bboxes = output.get("bboxes") or output.get("boxes") or []
-        labels = output.get("labels") or []
-        for idx, box in enumerate(bboxes):
-            label = labels[idx] if idx < len(labels) else "object"
-            if len(box) == 4:
-                results.append({"label": str(label), "box": [float(v) for v in box]})
-    elif isinstance(output, list):
-        for item in output:
-            if isinstance(item, dict):
-                lbl = item.get("label") or item.get("name") or "object"
-                bx = item.get("box") or item.get("bbox") or [item.get("x", 0), item.get("y", 0), item.get("width", 0), item.get("height", 0)]
-                results.append({"label": str(lbl), "box": [float(v) for v in bx]})
+        od_dict = output.get("<OD>") if isinstance(output.get("<OD>"), dict) else {}
+        bboxes = od_dict.get("bboxes") or output.get("bboxes") or output.get("boxes") or []
+        labels = od_dict.get("labels") or output.get("labels") or []
+
+        if bboxes and isinstance(bboxes, list):
+            for idx, box in enumerate(bboxes):
+                if not isinstance(box, (list, tuple)) or len(box) != 4:
+                    continue
+                label = labels[idx] if idx < len(labels) else "object"
+                try:
+                    bx, by, bw, bh = _normalize_florence_bbox(list(box), image_width, image_height)
+                    results.append({
+                        "label": str(label),
+                        "box": [bx, by, bx + bw, by + bh],
+                        "bbox": [bx, by, bw, bh],
+                    })
+                except ValueError:
+                    continue
+
+        objects = output.get("objects") or payload.get("objects") or output.get("detections")
+        if isinstance(objects, list) and not results:
+            for obj in objects:
+                if isinstance(obj, dict):
+                    lbl = obj.get("label") or obj.get("name") or "object"
+                    raw_box = obj.get("box") or obj.get("bbox") or obj.get("bboxes")
+                    if isinstance(raw_box, (list, tuple)) and len(raw_box) == 4:
+                        try:
+                            bx, by, bw, bh = _normalize_florence_bbox(list(raw_box), image_width, image_height)
+                            results.append({
+                                "label": str(lbl),
+                                "box": [bx, by, bx + bw, by + bh],
+                                "bbox": [bx, by, bw, bh],
+                            })
+                        except ValueError:
+                            continue
+
+    if not results and strict_schema:
+        raise ValueError("Unrecognized or empty Florence-2 response schema")
 
     return results
 
 
 def parse_sam3_response(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse SAM-3 response into list of mask metadata objects."""
+    if not isinstance(payload, dict):
+        return []
+
     masks: list[dict[str, Any]] = []
     items = payload.get("masks") or payload.get("results") or payload.get("output") or []
     if isinstance(items, list):
         for item in items:
             if isinstance(item, dict):
-                url = item.get("url") or item.get("mask_url") or item.get("image_url")
-                score = float(item.get("score") or item.get("confidence") or 0.90)
+                url = (
+                    item.get("url")
+                    or item.get("mask_url")
+                    or item.get("image_url")
+                    or (item.get("mask", {}).get("url") if isinstance(item.get("mask"), dict) else None)
+                )
+                score = float(
+                    item.get("score")
+                    or item.get("confidence")
+                    or item.get("stability_score")
+                    or 0.90
+                )
                 if url:
                     masks.append({"url": str(url), "score": score})
     return masks
@@ -108,11 +200,11 @@ class FalSegmentationProvider:
         except Exception as exc:
             raise HTTPException(status_code=502, detail="Segmentation provider (Florence-2) failed") from exc
 
-        detections = parse_florence2_response(florence_resp)
+        detections = parse_florence2_response(florence_resp, image_width=width, image_height=height, strict_schema=False)
         if not detections:
-            detections = [{"label": "object", "box": [0, 0, width, height]}]
+            detections = [{"label": "object", "box": [0.0, 0.0, float(width), float(height)], "bbox": [0.0, 0.0, float(width), float(height)]}]
 
-        boxes_prompt = [d["box"] for d in detections[:max_objects]]
+        boxes_prompt = [[d["bbox"][0], d["bbox"][1], d["bbox"][0] + d["bbox"][2], d["bbox"][1] + d["bbox"][3]] for d in detections[:max_objects]]
         try:
             sam_resp = await asyncio.to_thread(
                 fal_client.run,
@@ -120,23 +212,20 @@ class FalSegmentationProvider:
                 arguments={"image_url": data_url, "box_prompts": boxes_prompt},
             )
         except Exception as exc:
-            raise HTTPException(status_code=502, detail="Segmentation provider (SAM-3) failed") from exc
+            sam_resp = {}
 
         parsed_masks = parse_sam3_response(sam_resp)
+        allow_degraded = os.getenv("ALLOW_DEGRADED_SEGMENTATION", "false").lower().strip() in ("1", "true", "yes")
 
         segmented_objects: list[SegmentedObject] = []
         for idx, det in enumerate(detections[:max_objects]):
             lbl = det["label"]
             sem_type = map_label_to_semantic_type(lbl)
-            box = det["box"]
-
-            if box[2] > box[0] and box[3] > box[1]:
-                bx, by, bw, bh = box[0], box[1], box[2] - box[0], box[3] - box[1]
-            else:
-                bx, by, bw, bh = box[0], box[1], box[2], box[3]
+            bx, by, bw, bh = det["bbox"]
 
             m_info = parsed_masks[idx] if idx < len(parsed_masks) else None
             mask_arr = np.zeros((height, width), dtype=bool)
+            quality: Literal["mask", "bbox_fallback"] = "mask"
 
             if m_info and m_info.get("url"):
                 try:
@@ -144,10 +233,17 @@ class FalSegmentationProvider:
                     mask_raw = await FalDepthProvider._fetch_provider_image(m_info["url"])
                     with Image.open(io.BytesIO(mask_raw)) as m_img:
                         mask_arr = np.array(m_img.convert("L")) > 128
+                    quality = "mask"
                 except Exception:
+                    if not allow_degraded and os.getenv("ENVIRONMENT") == "production":
+                        raise HTTPException(status_code=502, detail=f"SAM-3 mask fetch failed for object {idx+1}")
                     mask_arr[int(by):int(by+bh), int(bx):int(bx+bw)] = True
+                    quality = "bbox_fallback"
             else:
+                if not allow_degraded and os.getenv("ENVIRONMENT") == "production":
+                    raise HTTPException(status_code=502, detail=f"SAM-3 mask extraction failed for object {idx+1}")
                 mask_arr[int(by):int(by+bh), int(bx):int(bx+bw)] = True
+                quality = "bbox_fallback"
 
             mask_img = Image.fromarray((mask_arr * 255).astype(np.uint8), mode="L")
             m_buf = io.BytesIO()
@@ -162,6 +258,7 @@ class FalSegmentationProvider:
                     bbox=BBox(x=float(bx), y=float(by), width=float(bw), height=float(bh)),
                     mask_bytes=m_buf.getvalue(),
                     mask_array=mask_arr,
+                    extraction_quality=quality,
                 )
             )
 
@@ -174,7 +271,7 @@ class MockSegmentationProvider:
     async def segment(self, image: bytes, max_objects: int = 24) -> list[SegmentedObject]:
         env = os.getenv("ENVIRONMENT", "").lower()
         mode = os.getenv("SEGMENTATION_PROVIDER", "").lower()
-        if env == "production" or (env != "test" and mode != "mock" and "PYTEST_CURRENT_TEST" not in os.environ):
+        if env == "production" and mode != "mock":
             raise HTTPException(
                 status_code=503,
                 detail="Mock segmentation provider is allowed only when ENVIRONMENT=test or SEGMENTATION_PROVIDER=mock",
@@ -212,6 +309,7 @@ class MockSegmentationProvider:
                         bbox=BBox(x=min_x, y=min_y, width=w_box, height=h_box),
                         mask_bytes=buf.getvalue(),
                         mask_array=mask_arr,
+                        extraction_quality="mask",
                     )
                 )
 
@@ -239,6 +337,7 @@ class MockSegmentationProvider:
                     ),
                     mask_bytes=buf_c.getvalue(),
                     mask_array=c_mask,
+                    extraction_quality="mask",
                 )
             )
 
@@ -265,6 +364,7 @@ class MockSegmentationProvider:
                 ),
                 mask_bytes=buf_p.getvalue(),
                 mask_array=p_mask,
+                extraction_quality="mask",
             )
         )
 

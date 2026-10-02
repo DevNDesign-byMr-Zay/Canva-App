@@ -19,7 +19,7 @@ class DepthMap(BaseModel):
     raw_depth: bytes
     raw_depth_array: np.ndarray
     canonical_depth_array: np.ndarray
-    polarity: str = "normal"
+    polarity: str = "canonical_near_high"
     provider_url: str = ""
 
 
@@ -43,25 +43,14 @@ def _detect_image_mime(image_bytes: bytes) -> str:
 
 
 def normalize_depth_polarity(depth01: np.ndarray) -> tuple[np.ndarray, str]:
-    height, width = depth01.shape
-    if height < 4 or width < 4:
-        return depth01, "normal"
+    """Deterministic Depth Anything v2 polarity normalization (0.0 = FAR, 1.0 = NEAR).
 
-    cy0, cy1 = int(height * 0.35), int(height * 0.65)
-    cx0, cx1 = int(width * 0.35), int(width * 0.65)
-    center = float(depth01[cy0:cy1, cx0:cx1].mean())
-
-    top = float(depth01[: max(1, int(height * 0.12)), :].mean())
-    bottom = float(depth01[int(height * 0.88) :, :].mean())
-    left = float(depth01[int(height * 0.12) : int(height * 0.88), : max(1, int(width * 0.12))].mean())
-    right = float(depth01[int(height * 0.12) : int(height * 0.88), int(width * 0.88) :].mean())
-    edges = 0.25 * (top + bottom + left + right)
-
-    if center < edges:
-        canonical = 1.0 - depth01
-        return np.clip(canonical, 0.0, 1.0).astype(np.float32), "inverted"
-
-    return np.clip(depth01, 0.0, 1.0).astype(np.float32), "normal"
+    Depth Anything v2 grayscale output standard represents near objects as white (1.0)
+    and far background as black (0.0). Deterministic provider convention is enforced
+    without image-center heuristics.
+    """
+    canonical = np.clip(depth01, 0.0, 1.0).astype(np.float32)
+    return canonical, "canonical_near_high"
 
 
 class FalDepthProvider:
@@ -77,12 +66,17 @@ class FalDepthProvider:
                 detail="Production depth provider is not configured. Set FAL_KEY or DEPTH_PROVIDER=mock for test environment.",
             )
 
+        with Image.open(io.BytesIO(image)) as src_img:
+            src_w, src_h = src_img.size
+
         mime = _detect_image_mime(image)
         if quality == "standard":
             with Image.open(io.BytesIO(image)) as src_img:
-                src_img.thumbnail((512, 512), Image.Resampling.BILINEAR)
+                prep_img = src_img.copy()
+                prep_img.thumbnail((512, 512), Image.Resampling.BILINEAR)
                 buf = io.BytesIO()
-                src_img.save(buf, format="PNG")
+                fmt = "PNG" if mime == "image/png" else ("WEBP" if mime == "image/webp" else "JPEG")
+                prep_img.save(buf, format=fmt)
                 prep_bytes = buf.getvalue()
         else:
             prep_bytes = image
@@ -106,7 +100,7 @@ class FalDepthProvider:
         resample_mode = Image.Resampling.LANCZOS if quality == "high" else Image.Resampling.BILINEAR
 
         with Image.open(io.BytesIO(depth_bytes)) as d_img:
-            d_img_l = d_img.convert("L").resize((d_img.width, d_img.height), resample_mode)
+            d_img_l = d_img.convert("L").resize((src_w, src_h), resample_mode)
             raw_depth_arr = np.asarray(d_img_l).astype(np.float32) / 255.0
 
         canonical_arr, polarity = normalize_depth_polarity(raw_depth_arr)
@@ -186,7 +180,7 @@ class MockDepthProvider:
     async def estimate(self, image: bytes, quality: str = "high") -> DepthMap:
         env = os.getenv("ENVIRONMENT", "").lower()
         mode = os.getenv("DEPTH_PROVIDER", "").lower()
-        if env == "production" or (env != "test" and mode != "mock" and "PYTEST_CURRENT_TEST" not in os.environ):
+        if env == "production" and mode != "mock":
             raise HTTPException(
                 status_code=503,
                 detail="Mock depth provider is allowed only when ENVIRONMENT=test or DEPTH_PROVIDER=mock",
@@ -217,6 +211,6 @@ class MockDepthProvider:
             raw_depth=buf.getvalue(),
             raw_depth_array=raw_depth_array,
             canonical_depth_array=canonical_array,
-            polarity="normal",
+            polarity="canonical_near_high",
             provider_url="https://v2.fal.media/files/mock/depth.png",
         )
