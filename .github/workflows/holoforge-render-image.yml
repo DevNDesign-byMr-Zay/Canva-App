@@ -11,6 +11,10 @@ on:
     paths:
       - "apps/holoforge-canva/backend/Dockerfile.render"
       - "apps/holoforge-canva/backend/blender_worker.py"
+      - "apps/holoforge-canva/backend/animation_easing.py"
+      - "apps/holoforge-canva/backend/animation_motion.py"
+      - "apps/holoforge-canva/backend/test_animation_easing.py"
+      - "apps/holoforge-canva/backend/test_animation_motion.py"
       - "apps/holoforge-canva/backend/render_smoke.py"
       - "apps/holoforge-canva/backend/renderers.py"
       - "apps/holoforge-canva/backend/requirements.txt"
