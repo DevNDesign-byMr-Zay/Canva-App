@@ -1,10 +1,66 @@
 # DepthPop backend
 
-This is the production backend for the standalone DepthPop Canva app.
+DepthPop is the production backend for the standalone DepthPop Canva app.
 
-The production backend intentionally preserves the DepthPop-specific behavior and request/response shape from the Drive router while removing unrelated ROARY/ÆTHER routes and unsafe historical boundaries.
+The primary product path is the authenticated **DepthScene v1** object-scene API. The historical flat DepthPop render remains available for compatibility, but the Canva app now creates an editable object-aware scene, persists edits, renders the authored composition, and applies the resulting PNG back into Canva.
 
-Drive-compatible aliases are supported for integration parity:
+## Primary DepthScene API
+
+    POST  /api/v1/scenes
+    GET   /api/v1/jobs/{jobId}
+    GET   /api/v1/scenes/{sceneId}
+    PATCH /api/v1/scenes/{sceneId}
+    POST  /api/v1/scenes/{sceneId}/composite
+    GET   /api/v1/assets/{assetId}
+
+Every v1 route requires a verified Canva user JWT. Scene, job, and generated-asset access is scoped to the exact Canva user and brand.
+
+The primary production flow is:
+
+1. Canva supplies a selected raster or the user supplies a local PNG/JPEG/WebP.
+2. The Canva app sends the actual image bytes to the authenticated scene API.
+3. Florence-2 detects scene objects through fal.ai.
+4. SAM 3 creates object masks from structured box prompts.
+5. Depth Anything V2 produces relative disparity. The provider adapter converts it to the canonical DepthPop convention: **0.0 = far, 1.0 = near**.
+6. Object cutouts, masks, thumbnails, canonical depth, and the source are stored as random, scene-owned protected assets.
+7. When requested, fal.ai inpainting reconstructs the plate using the union foreground mask; white mask pixels are regenerated and black pixels are preserved.
+8. The backend returns a canonical DepthScene v1 with editable X/Y/Z, scale, rotation, opacity, feather, visibility, lock, layer order, camera, and timeline state.
+9. PATCH persists only the editable scene fields.
+10. /composite renders the latest persisted authored scene to raw PNG bytes.
+11. The Canva client uploads that PNG as a derived asset and replaces the original selected source when it is still selected; otherwise it inserts the render as a new element.
+
+## Production providers
+
+Current production integrations:
+
+- object detection: fal-ai/florence-2-large/object-detection
+- segmentation: fal-ai/sam-3/image
+- depth: fal-ai/image-preprocessors/depth-anything/v2
+- background reconstruction: fal-ai/inpaint
+- inpainting base model: diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+
+Provider selection fails closed in production. Mock providers are available only in tests or explicit non-production local development.
+
+DEPTHPOP_ALLOW_BBOX_FALLBACK=false is the recommended production setting. When explicitly enabled, any rectangular fallback is surfaced in the scene as extractionQuality=bbox_fallback instead of being presented as a real SAM mask.
+
+Depth quality is real and bounded:
+
+- standard: source preprocessing is capped at a 768 px maximum edge;
+- high: source preprocessing is capped at a 1536 px maximum edge.
+
+Regardless of provider output resolution, canonical depth is resized back to the exact source dimensions before masks index into it.
+
+## Protected asset lifecycle
+
+Generated scene media does not use the public compatibility cache.
+
+Each scene asset has an opaque random resource ID, scene ID, Canva user ID, Canva brand ID, MIME type, size, creation time, and SHA-256 integrity digest. The digest is not the resource ID. Identical bytes owned by two users still receive different resource IDs.
+
+When a scene expires or is capacity-evicted, its assets are synchronously removed. Job, scene, and asset repositories all enforce bounded capacity at insertion time.
+
+## Compatibility route
+
+The historical single-image DepthPop render remains available as:
 
     POST /api/depthpop
     POST /tool/depth_pop
@@ -12,30 +68,31 @@ Drive-compatible aliases are supported for integration parity:
     POST /tool/enhance
     GET  /tool/progress/{progress_id}
 
-The standalone Canva frontend uses /api/depthpop. The /tool/* aliases exist so the maintained backend contract can be compared directly with the historical Drive router without restoring the full Studio shell.
+That path remains isolated from the primary object-scene workflow.
 
-The production flow is:
+## Configuration
 
-1. the Canva frontend reads the single selected image;
-2. Canva's temporary asset URL is downloaded immediately inside the app iframe;
-3. the actual raster bytes are sent to this backend as authenticated multipart data;
-4. the backend verifies the fresh Canva user JWT against the JWKS for CANVA_APP_ID;
-5. Depth Anything v2 produces the depth map through fal.ai;
-6. the maintained DepthPop depth-aware lens-blur algorithm renders the result locally;
-7. a short-lived HTTPS output URL is returned;
-8. Canva imports that render as a private derived asset with parentRef, waits for upload completion, replaces the selected image ref, and saves the selection draft.
+See .env.example.
 
-The FAL key is server-side only. The browser never receives it and this backend does not accept provider keys from request headers.
-
-Configuration:
+Required production values:
 
     CANVA_APP_ID=<DepthPop Canva app id>
     CANVA_APP_ORIGIN=<allowed Canva app iframe origin>
     FAL_KEY=<server-side fal key>
     PUBLIC_BASE_URL=https://your-public-depthpop-backend.example
-    PORT=8081
+    ENVIRONMENT=production
+    SEGMENTATION_PROVIDER=auto
+    DEPTH_PROVIDER=auto
+    INPAINT_PROVIDER=auto
+    DEPTHPOP_ALLOW_BBOX_FALLBACK=false
 
-Local start:
+PUBLIC_BASE_URL should be the same backend origin configured by the Canva app. Protected scene assets reject cross-origin bearer-token delivery in the client.
+
+The FAL key is server-side only. The browser never receives it and the backend never accepts provider keys from request headers.
+
+## Local verification
+
+Linux/macOS:
 
     python -m venv .venv
     .venv/bin/pip install -r requirements.txt
@@ -49,15 +106,18 @@ Windows PowerShell:
     .\.venv\Scripts\python -m pytest -q
     .\.venv\Scripts\python -m uvicorn app:app --host 0.0.0.0 --port 8081 --reload
 
-For Canva testing, expose the backend over public HTTPS and set CANVA_BACKEND_HOST in the frontend app environment to that origin.
+For Canva testing, expose the backend over public HTTPS and set the frontend backend host to that exact origin.
 
-Security boundaries:
-- requests require a valid Canva user JWT;
-- CANVA_APP_ID is enforced as the JWT audience;
-- selected image bytes are downloaded client-side from Canva's temporary asset URL instead of asking the backend to fetch a user-controlled URL;
-- accepted inputs are PNG, JPEG, or WebP and limited to 50 MB;
-- depth-map downloads are restricted to fixed fal.media origins and never follow redirects;
-- FAL_KEY is never accepted from request headers or frontend payloads;
-- generated image cache entries expire after 15 minutes.
+## Security boundaries
 
-The exact historical Drive router remains under ../reference/drive-source as a .txt provenance artifact so source scanners do not mistake archived historical code for a live server. The reference directory is repository-only and is deliberately excluded from the final DepthPop Canva handoff ZIP.
+- all v1 requests require a valid Canva user JWT;
+- CANVA_APP_ID is enforced as JWT audience;
+- source image bytes are uploaded by the client rather than fetched from an arbitrary user-controlled URL;
+- accepted source inputs are PNG, JPEG, and WebP, capped at 50 MB;
+- provider downloads are restricted to fixed fal.media HTTPS origins and redirects are rejected;
+- scene assets are private, no-store, and owner-scoped;
+- mock AI providers are disabled in production;
+- provider errors remain visible instead of silently falling back to fake production output;
+- FAL_KEY is never returned to the frontend.
+
+The historical Drive router remains under ../reference/drive-source as provenance only and is excluded from the handoff ZIP.
