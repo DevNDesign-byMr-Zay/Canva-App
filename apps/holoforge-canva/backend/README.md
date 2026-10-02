@@ -13,7 +13,7 @@ This service is the server-side boundary for heavyweight HoloForge exports.
 - fail-closed behavior when Blender is not configured;
 - authenticated artifact status and download endpoints.
 
-The service does not pretend that USDZ or light-field quilt generation are complete. Those require dedicated conversion/device adapters and remain unavailable until implemented. Transparent WebM is now a real worker output: Blender renders RGBA frames and FFmpeg/libvpx-vp9 encodes them with an alpha plane.
+USDZ and generic light-field quilt generation are implemented worker outputs. USDZ uses Blender's native archive exporter, while light-field quilts render discrete camera views and assemble them into a real quilt PNG. Device-specific optical interlacing/calibration remains outside the generic HoloForge contract. Transparent WebM is also a real worker output: Blender renders RGBA frames and FFmpeg/libvpx-vp9 encodes them with an alpha plane.
 
 ## API
 
@@ -136,3 +136,14 @@ The `png-still` / `still-image` profile renders the HoloScene at its authored `t
 The production smoke opens the rendered PNG with Pillow, verifies the requested dimensions, requires RGBA output, and confirms that the alpha channel contains meaningful transparency rather than an opaque placeholder.
 
 The Canva-side export adapter downloads the completed artifact through the authenticated export boundary, uploads it to the operator's Canva asset library, waits for upload completion, and inserts the rendered image into the active design.
+
+
+## Production resource bounds
+
+The backend bounds heavyweight rendering in three places:
+
+- `HOLOFORGE_MAX_CONCURRENCY` limits simultaneous Blender jobs (default `2`, hard-clamped to `1..8`);
+- export requests are limited to 16,777,216 output pixels per rendered frame, which still covers the generic 3600×3600 light-field quilt profile;
+- raster animation formats (WebM, MP4, PNG sequence) are limited to 3,600 rendered frames per job.
+
+Artifact hashing streams files in chunks instead of reading large video/sequence artifacts fully into memory. When an artifact expires, is evicted, or disappears unexpectedly, HoloForge removes the complete per-export workspace—including temporary frames, job payloads, view renders and manifests—while refusing to delete paths outside `HOLOFORGE_ARTIFACT_ROOT`.
