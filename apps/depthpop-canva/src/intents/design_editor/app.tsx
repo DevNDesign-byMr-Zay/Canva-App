@@ -470,8 +470,7 @@ export function App() {
           composition, then render the authored scene back into Canva.
         </p>
 
-        <LocalImageUpload
-          productName="DepthPop"
+        <LocalImageUpload productName="DepthPop"
           classPrefix="dp"
           sourceLabel="LOCAL SOURCE"
           insertIntoDesign={false}
