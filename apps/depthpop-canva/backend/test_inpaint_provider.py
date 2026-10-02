@@ -4,7 +4,7 @@ import asyncio
 import base64
 import io
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import providers.inpaint_provider as inpaint
 
@@ -18,9 +18,9 @@ def png(size=(64, 48), color=(30, 40, 50)) -> bytes:
 
 def mask_png(size=(64, 48)) -> bytes:
     image = Image.new("L", size, 0)
-    for x in range(10, 30):
-        for y in range(8, 28):
-            image.putpixel((x, y), 255)
+    right = max(1, min(size[0] - 1, 29))
+    bottom = max(1, min(size[1] - 1, 27))
+    ImageDraw.Draw(image).rectangle((10, 8, right, bottom), fill=255)
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
