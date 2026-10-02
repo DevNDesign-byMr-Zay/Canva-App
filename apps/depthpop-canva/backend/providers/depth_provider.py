@@ -48,6 +48,24 @@ class DepthProvider(Protocol):
     ) -> DepthMap: ...
 
 
+def _detect_image_mime(image_bytes: bytes) -> str:
+    """Return the actual supported raster MIME for compatibility/tests."""
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            fmt = (image.format or "").upper()
+    except Exception:
+        return "image/png"
+
+    if fmt == "PNG":
+        return "image/png"
+    if fmt in {"JPEG", "JPG"}:
+        return "image/jpeg"
+    if fmt == "WEBP":
+        return "image/webp"
+    return "image/png"
+
+
 def _resize_within(image: Image.Image, max_edge: int) -> Image.Image:
     result = image.copy()
     if max(result.size) > max_edge:
