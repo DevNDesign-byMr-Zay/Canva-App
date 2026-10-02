@@ -89,7 +89,10 @@ export function SceneWorkspace({
           setAssetError(null);
         }
       } catch (cause) {
+        for (const url of createdUrls) URL.revokeObjectURL(url);
+        createdUrls.clear();
         if (!controller.signal.aborted && active) {
+          setAssetUrls({});
           setAssetError(
             cause instanceof Error
               ? cause.message
