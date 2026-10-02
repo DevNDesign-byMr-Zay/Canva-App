@@ -15,6 +15,26 @@ const allowed = [
   'webpack-dev-server',
 ].sort();
 
+console.log(
+  'current reviewed dev audit shape:',
+  JSON.stringify(
+    Object.fromEntries(
+      allowed.map((name) => {
+        const record = vulnerabilities[name];
+        return [
+          name,
+          {
+            severity: record?.severity ?? null,
+            isDirect: record?.isDirect ?? null,
+            fixAvailable: record?.fixAvailable ?? null,
+            via: record?.via ?? null,
+          },
+        ];
+      }),
+    ),
+  ),
+);
+
 if (JSON.stringify(names) !== JSON.stringify(allowed)) {
   throw new Error(
     `unexpected development advisory set: expected ${allowed.join(', ')}, received ${names.join(', ') || 'none'}`,
