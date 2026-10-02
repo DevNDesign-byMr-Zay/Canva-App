@@ -40,10 +40,13 @@ export type SemanticObjectType =
   | "prop"
   | "unknown";
 
+export type ExtractionQuality = "mask" | "bbox_fallback";
+
 export interface DepthObject {
   id: string;
   label: string;
   semanticType: SemanticObjectType;
+  extractionQuality?: ExtractionQuality;
   confidence: number;
   bbox: BBox;
   assets: ObjectAssets;
@@ -96,6 +99,9 @@ export function isDepthObject(obj: unknown): obj is DepthObject {
     o.id.length > 0 &&
     typeof o.label === "string" &&
     typeof o.semanticType === "string" &&
+    (o.extractionQuality === undefined ||
+      o.extractionQuality === "mask" ||
+      o.extractionQuality === "bbox_fallback") &&
     typeof o.confidence === "number" &&
     o.confidence >= 0 &&
     o.confidence <= 1 &&
