@@ -421,6 +421,7 @@ export function SceneWorkspace({
               X
               <input
                 type="range"
+                aria-label="X position"
                 min={0}
                 max={1}
                 step={0.005}
@@ -442,6 +443,7 @@ export function SceneWorkspace({
               Y
               <input
                 type="range"
+                aria-label="Y position"
                 min={0}
                 max={1}
                 step={0.005}
@@ -463,6 +465,7 @@ export function SceneWorkspace({
               Z / DEPTH
               <input
                 type="range"
+                aria-label="Z depth"
                 min={-2}
                 max={2}
                 step={0.025}
@@ -484,6 +487,7 @@ export function SceneWorkspace({
               SCALE
               <input
                 type="range"
+                aria-label="Object scale"
                 min={0.1}
                 max={3}
                 step={0.025}
@@ -504,6 +508,7 @@ export function SceneWorkspace({
               ROTATION
               <input
                 type="range"
+                aria-label="Object rotation"
                 min={-180}
                 max={180}
                 step={1}
@@ -525,6 +530,7 @@ export function SceneWorkspace({
               OPACITY
               <input
                 type="range"
+                aria-label="Object opacity"
                 min={0}
                 max={1}
                 step={0.025}
@@ -544,6 +550,7 @@ export function SceneWorkspace({
               FEATHER
               <input
                 type="range"
+                aria-label="Object feather"
                 min={0}
                 max={20}
                 step={0.5}
@@ -587,6 +594,7 @@ export function SceneWorkspace({
             PARALLAX
             <input
               type="range"
+              aria-label="Parallax strength"
               min={0}
               max={2}
               step={0.05}
@@ -604,6 +612,7 @@ export function SceneWorkspace({
             CAMERA X
             <input
               type="range"
+              aria-label="Camera X"
               min={-40}
               max={40}
               step={1}
@@ -626,6 +635,7 @@ export function SceneWorkspace({
             CAMERA Y
             <input
               type="range"
+              aria-label="Camera Y"
               min={-40}
               max={40}
               step={1}
@@ -648,6 +658,7 @@ export function SceneWorkspace({
             FIELD OF VIEW
             <input
               type="range"
+              aria-label="Field of view"
               min={20}
               max={100}
               step={1}
@@ -670,6 +681,7 @@ export function SceneWorkspace({
             TIME
             <input
               type="range"
+              aria-label="Timeline time"
               min={0}
               max={scene.timeline.durationMs}
               step={Math.max(1, Math.round(1000 / scene.timeline.fps))}
