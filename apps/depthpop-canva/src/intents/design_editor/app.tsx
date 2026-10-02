@@ -26,6 +26,7 @@ type RunStage = "idle" | "reading" | JobProcessingStage;
 type SourceKind = "canva" | "local";
 
 const MAX_CANVA_RENDER_BYTES = 20 * 1024 * 1024;
+const BACKGROUND_RECONSTRUCTION_ENABLED = false;
 
 function backendOrigin(): string {
   if (typeof BACKEND_HOST !== "string") return "";
@@ -273,7 +274,7 @@ export function App() {
           depthQuality: "high",
           // Until the provider lane advertises a verified production
           // background-reconstruction provider, the client stays truthful.
-          inpaint: false,
+          inpaint: BACKGROUND_RECONSTRUCTION_ENABLED,
         },
         controller.signal,
       );
@@ -448,6 +449,7 @@ export function App() {
             onExit={() => setActiveScene(null)}
             onSave={handleSaveScene}
             onExport={handleExportScene}
+            backgroundReconstructionEnabled={BACKGROUND_RECONSTRUCTION_ENABLED}
           />
         </section>
       </main>
