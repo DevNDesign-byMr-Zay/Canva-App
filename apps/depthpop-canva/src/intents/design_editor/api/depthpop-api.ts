@@ -89,10 +89,24 @@ function assertPng(blob: Blob): void {
 }
 
 export class DepthPopApiClient {
+  private readonly apiOrigin: string;
+
   constructor(
     private readonly baseUrl: string,
     private readonly getAuthToken?: () => Promise<string | null>,
-  ) {}
+  ) {
+    this.apiOrigin = new URL(baseUrl).origin;
+  }
+
+  private authenticatedAssetUrl(assetUrl: string): string {
+    const resolved = new URL(assetUrl, this.baseUrl + "/");
+    if (resolved.origin !== this.apiOrigin) {
+      throw new Error(
+        "DepthPop refused to send Canva authorization to a cross-origin scene asset.",
+      );
+    }
+    return resolved.toString();
+  }
 
   private async getHeaders(
     extraHeaders: Record<string, string> = {},
@@ -116,7 +130,12 @@ export class DepthPopApiClient {
     }
 
     const headers = await this.getHeaders();
-    const res = await fetch(assetUrl, { method: "GET", headers, signal });
+    const authenticatedUrl = this.authenticatedAssetUrl(assetUrl);
+    const res = await fetch(authenticatedUrl, {
+      method: "GET",
+      headers,
+      signal,
+    });
     if (!res.ok) {
       throw await apiError(res, "Failed to fetch scene asset");
     }
