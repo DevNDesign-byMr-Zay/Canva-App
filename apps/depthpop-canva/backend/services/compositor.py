@@ -105,15 +105,90 @@ def _apply_object_style(image: Image.Image, obj) -> Image.Image:
     return styled
 
 
+def _alpha_composite_clipped(
+    canvas: Image.Image,
+    overlay: Image.Image,
+    *,
+    left: int,
+    top: int,
+) -> None:
+    """Composite an RGBA overlay even when it extends beyond the viewport."""
+
+    source_left = max(0, -left)
+    source_top = max(0, -top)
+    destination_left = max(0, left)
+    destination_top = max(0, top)
+
+    width = min(
+        overlay.width - source_left,
+        canvas.width - destination_left,
+    )
+    height = min(
+        overlay.height - source_top,
+        canvas.height - destination_top,
+    )
+    if width <= 0 or height <= 0:
+        return
+
+    clipped = overlay.crop(
+        (
+            source_left,
+            source_top,
+            source_left + width,
+            source_top + height,
+        )
+    )
+    canvas.alpha_composite(
+        clipped,
+        dest=(destination_left, destination_top),
+    )
+
+
+def _apply_camera_view(canvas: Image.Image, scene: DepthScene) -> Image.Image:
+    """Apply authored camera X/Y and FOV to the final raster viewport."""
+
+    fov = max(1.0, min(179.0, float(scene.camera.fov)))
+    scale = max(0.55, min(2.2, 50.0 / fov))
+    offset_x = float(scene.camera.position.x)
+    offset_y = float(scene.camera.position.y)
+
+    if (
+        abs(scale - 1.0) < 1e-9
+        and abs(offset_x) < 1e-9
+        and abs(offset_y) < 1e-9
+    ):
+        return canvas
+
+    scaled_width = max(1, int(round(canvas.width * scale)))
+    scaled_height = max(1, int(round(canvas.height * scale)))
+    scaled = canvas.resize(
+        (scaled_width, scaled_height),
+        Image.Resampling.LANCZOS,
+    )
+
+    viewport = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    left = int(round((canvas.width - scaled_width) / 2.0 + offset_x))
+    top = int(round((canvas.height - scaled_height) / 2.0 + offset_y))
+    _alpha_composite_clipped(
+        viewport,
+        scaled,
+        left=left,
+        top=top,
+    )
+    return viewport
+
+
 async def composite_scene(
     scene: DepthScene,
     asset_fetcher: Callable[[str], Awaitable[bytes]],
 ) -> bytes:
     """Flatten an authored DepthScene into one deterministic PNG.
 
-    Static v1 compositing uses X/Y, scale, Z rotation, opacity, feather,
-    visibility and explicit layer order. Z remains scene/parallax metadata; it
-    does not invent a perspective projection for the flattened export.
+    Static v1 compositing uses object X/Y, scale, Z rotation, opacity, feather,
+    visibility and explicit layer order, then applies authored camera X/Y and
+    field of view to the finished frame. Object Z remains scene/parallax
+    metadata; the raster export does not invent an unsupported perspective
+    projection.
     """
 
     if scene.width * scene.height > MAX_COMPOSITE_PIXELS:
@@ -157,7 +232,14 @@ async def composite_scene(
         left = int(round(center_x - rendered.width / 2.0))
         top = int(round(center_y - rendered.height / 2.0))
 
-        canvas.alpha_composite(rendered, dest=(left, top))
+        _alpha_composite_clipped(
+            canvas,
+            rendered,
+            left=left,
+            top=top,
+        )
+
+    canvas = _apply_camera_view(canvas, scene)
 
     output = io.BytesIO()
     canvas.save(output, format="PNG", optimize=True)
