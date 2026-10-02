@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from auth import VerifiedCanvaUser, verify_canva_user
 from models.object import DepthObject, ObjectTransform, Vector3
-from models.scene import CameraConfig, DepthScene, TimelineConfig
+from models.scene import CameraConfig, TimelineConfig
 from services.compositor import composite_scene
 import services.persistence as persistence
 from services.persistence import job_repo, scene_repo
@@ -265,12 +265,10 @@ async def get_scene(
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
     scene = await scene_repo.get_scene(scene_id)
-    if not scene or (
-        scene.userId
-        and (
-            scene.userId != user.user_id
-            or (scene.brandId and scene.brandId != user.brand_id)
-        )
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
     ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
@@ -284,12 +282,10 @@ async def patch_scene(
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
     scene = await scene_repo.get_scene(scene_id)
-    if not scene or (
-        scene.userId
-        and (
-            scene.userId != user.user_id
-            or (scene.brandId and scene.brandId != user.brand_id)
-        )
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
     ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
@@ -438,12 +434,10 @@ async def create_scene_composite(
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> Response:
     scene = await scene_repo.get_scene(scene_id)
-    if not scene or (
-        scene.userId
-        and (
-            scene.userId != user.user_id
-            or (scene.brandId and scene.brandId != user.brand_id)
-        )
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
     ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
