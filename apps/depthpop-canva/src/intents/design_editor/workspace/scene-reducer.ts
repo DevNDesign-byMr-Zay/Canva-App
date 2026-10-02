@@ -1,11 +1,21 @@
-import { DepthObject, DepthScene } from "../scene/depth-scene";
+import {
+  DepthObject,
+  DepthScene,
+  Vector3,
+} from "../scene/depth-scene";
+
+export type TransformPatch = Readonly<{
+  position?: Partial<Vector3>;
+  rotation?: Partial<Vector3>;
+  scale?: Partial<Vector3>;
+}>;
 
 export type SceneAction =
   | { type: "SELECT_OBJECT"; objectId: string | null }
   | {
       type: "PATCH_TRANSFORM";
       objectId: string;
-      transform: Partial<DepthObject["transform"]>;
+      transform: TransformPatch;
     }
   | { type: "SET_VISIBILITY"; objectId: string; visible: boolean }
   | { type: "SET_LOCK"; objectId: string; locked: boolean }
@@ -14,14 +24,27 @@ export type SceneAction =
   | { type: "MOVE_OBJECT_ORDER"; objectId: string; direction: "up" | "down" }
   | { type: "RESET_OBJECT"; objectId: string }
   | { type: "RESET_SCENE" }
+  | { type: "COMMIT_SCENE"; scene: DepthScene }
   | { type: "PATCH_CAMERA"; camera: Partial<DepthScene["camera"]> }
-  | { type: "SET_TIME"; currentTimeMs: number };
+  | { type: "SET_TIME"; currentTimeMs: number }
+  | { type: "SET_PARALLAX_STRENGTH"; value: number };
 
 export interface SceneState {
   initialScene: DepthScene;
   currentScene: DepthScene;
   selectedObjectId: string | null;
   parallaxStrength: number;
+}
+
+function changedScene(
+  scene: DepthScene,
+  objects: DepthObject[] = scene.objects,
+): DepthScene {
+  return {
+    ...scene,
+    objects,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function sceneReducer(
@@ -33,91 +56,81 @@ export function sceneReducer(
       return { ...state, selectedObjectId: action.objectId };
 
     case "PATCH_TRANSFORM": {
-      const updatedObjects = state.currentScene.objects.map((obj) => {
-        if (obj.id !== action.objectId || obj.locked) return obj;
+      const objects = state.currentScene.objects.map((object) => {
+        if (object.id !== action.objectId || object.locked) return object;
         return {
-          ...obj,
+          ...object,
           transform: {
             position: {
-              ...obj.transform.position,
-              ...(action.transform.position || {}),
+              ...object.transform.position,
+              ...action.transform.position,
             },
             rotation: {
-              ...obj.transform.rotation,
-              ...(action.transform.rotation || {}),
+              ...object.transform.rotation,
+              ...action.transform.rotation,
             },
             scale: {
-              ...obj.transform.scale,
-              ...(action.transform.scale || {}),
+              ...object.transform.scale,
+              ...action.transform.scale,
             },
           },
         };
       });
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
     case "SET_VISIBILITY": {
-      const updatedObjects = state.currentScene.objects.map((obj) =>
-        obj.id === action.objectId ? { ...obj, visible: action.visible } : obj,
+      const objects = state.currentScene.objects.map((object) =>
+        object.id === action.objectId
+          ? { ...object, visible: action.visible }
+          : object,
       );
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
     case "SET_LOCK": {
-      const updatedObjects = state.currentScene.objects.map((obj) =>
-        obj.id === action.objectId ? { ...obj, locked: action.locked } : obj,
+      const objects = state.currentScene.objects.map((object) =>
+        object.id === action.objectId
+          ? { ...object, locked: action.locked }
+          : object,
       );
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
     case "SET_OPACITY": {
-      const updatedObjects = state.currentScene.objects.map((obj) => {
-        if (obj.id !== action.objectId || obj.locked) return obj;
-        return { ...obj, opacity: Math.max(0, Math.min(1, action.opacity)) };
+      const objects = state.currentScene.objects.map((object) => {
+        if (object.id !== action.objectId || object.locked) return object;
+        return {
+          ...object,
+          opacity: Math.max(0, Math.min(1, action.opacity)),
+        };
       });
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
     case "SET_FEATHER": {
-      const updatedObjects = state.currentScene.objects.map((obj) => {
-        if (obj.id !== action.objectId || obj.locked) return obj;
-        return { ...obj, feather: Math.max(0, Math.min(100, action.feather)) };
+      const objects = state.currentScene.objects.map((object) => {
+        if (object.id !== action.objectId || object.locked) return object;
+        return {
+          ...object,
+          feather: Math.max(0, Math.min(100, action.feather)),
+        };
       });
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
@@ -125,43 +138,37 @@ export function sceneReducer(
       const objects = [...state.currentScene.objects].sort(
         (a, b) => a.order - b.order,
       );
-      const idx = objects.findIndex((o) => o.id === action.objectId);
-      if (idx < 0) return state;
+      const index = objects.findIndex((object) => object.id === action.objectId);
+      if (index < 0 || objects[index]?.locked) return state;
 
-      const targetIdx = action.direction === "up" ? idx + 1 : idx - 1;
-      if (targetIdx < 0 || targetIdx >= objects.length) return state;
+      const targetIndex =
+        action.direction === "up" ? index + 1 : index - 1;
+      if (targetIndex < 0 || targetIndex >= objects.length) return state;
 
-      const tempOrder = objects[idx].order;
-      objects[idx] = { ...objects[idx], order: objects[targetIdx].order };
-      objects[targetIdx] = { ...objects[targetIdx], order: tempOrder };
+      const current = objects[index]!;
+      const target = objects[targetIndex]!;
+      objects[index] = { ...current, order: target.order };
+      objects[targetIndex] = { ...target, order: current.order };
 
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
     case "RESET_OBJECT": {
-      const orig = state.initialScene.objects.find(
-        (o) => o.id === action.objectId,
+      const original = state.initialScene.objects.find(
+        (object) => object.id === action.objectId,
       );
-      if (!orig) return state;
+      if (!original) return state;
 
-      const updatedObjects = state.currentScene.objects.map((o) =>
-        o.id === action.objectId ? { ...orig } : o,
+      const objects = state.currentScene.objects.map((object) =>
+        object.id === action.objectId ? original : object,
       );
 
       return {
         ...state,
-        currentScene: {
-          ...state.currentScene,
-          objects: updatedObjects,
-          updatedAt: new Date().toISOString(),
-        },
+        currentScene: changedScene(state.currentScene, objects),
       };
     }
 
@@ -170,9 +177,20 @@ export function sceneReducer(
         ...state,
         currentScene: state.initialScene,
         selectedObjectId:
-          state.initialScene.objects.length > 0
-            ? state.initialScene.objects[0].id
-            : null,
+          state.initialScene.objects[0]?.id ?? null,
+      };
+
+    case "COMMIT_SCENE":
+      return {
+        ...state,
+        initialScene: action.scene,
+        currentScene: action.scene,
+        selectedObjectId:
+          action.scene.objects.some(
+            (object) => object.id === state.selectedObjectId,
+          )
+            ? state.selectedObjectId
+            : action.scene.objects[0]?.id ?? null,
       };
 
     case "PATCH_CAMERA":
@@ -180,22 +198,37 @@ export function sceneReducer(
         ...state,
         currentScene: {
           ...state.currentScene,
-          camera: { ...state.currentScene.camera, ...action.camera },
+          camera: {
+            ...state.currentScene.camera,
+            ...action.camera,
+          },
           updatedAt: new Date().toISOString(),
         },
       };
 
-    case "SET_TIME":
+    case "SET_TIME": {
+      const duration = state.currentScene.timeline.durationMs;
+      const currentTimeMs = Math.max(
+        0,
+        Math.min(duration, action.currentTimeMs),
+      );
       return {
         ...state,
         currentScene: {
           ...state.currentScene,
           timeline: {
             ...state.currentScene.timeline,
-            currentTimeMs: action.currentTimeMs,
+            currentTimeMs,
           },
           updatedAt: new Date().toISOString(),
         },
+      };
+    }
+
+    case "SET_PARALLAX_STRENGTH":
+      return {
+        ...state,
+        parallaxStrength: Math.max(0, Math.min(2, action.value)),
       };
 
     default:
