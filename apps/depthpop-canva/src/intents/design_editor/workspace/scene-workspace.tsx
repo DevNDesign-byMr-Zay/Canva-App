@@ -52,6 +52,7 @@ export function SceneWorkspace({
   useEffect(() => {
     const client = apiClient;
     if (!client) return;
+    const requiredClient: DepthPopApiClient = client;
 
     const controller = new AbortController();
     const createdUrls = new Set<string>();
@@ -75,7 +76,7 @@ export function SceneWorkspace({
               next[rawUrl] = rawUrl;
               return;
             }
-            const resolved = await client.fetchAssetBlobUrl(
+            const resolved = await requiredClient.fetchAssetBlobUrl(
               rawUrl,
               controller.signal,
             );
