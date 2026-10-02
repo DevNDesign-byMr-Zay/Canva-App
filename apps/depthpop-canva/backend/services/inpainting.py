@@ -38,6 +38,12 @@ def get_inpaint_provider(
             detail=f"Unsupported inpainting provider '{selected}'.",
         )
 
+    if os.getenv("ENVIRONMENT", "").lower() == "production" and not os.getenv("FAL_KEY", "").strip():
+        raise HTTPException(
+            status_code=503,
+            detail="No production provider is configured.",
+        )
+
     if os.getenv("FAL_KEY", "").strip():
         return FalInpaintProvider()
     if (
