@@ -56,6 +56,13 @@ class SceneBuilderService:
 
         with Image.open(io.BytesIO(image_bytes)) as image:
             width, height = image.size
+            source_png = io.BytesIO()
+            image.convert("RGBA").save(
+                source_png,
+                format="PNG",
+                optimize=True,
+            )
+            source_png_bytes = source_png.getvalue()
 
         if stage_reporter:
             await stage_reporter("segmenting_objects", 0.25)
@@ -156,7 +163,7 @@ class SceneBuilderService:
                 union_buffer.getvalue(),
             )
         else:
-            plate_bytes = image_bytes
+            plate_bytes = source_png_bytes
 
         plate_url = url_builder(plate_bytes, "image/png")
         depth_map_url = url_builder(
