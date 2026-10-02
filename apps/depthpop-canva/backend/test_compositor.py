@@ -189,3 +189,57 @@ def test_missing_object_asset_fails_instead_of_silently_omitting():
         asyncio.run(composite_scene(scene_with([depth_object("red")]), fetch))
 
     assert exc.value.status_code == 404
+
+
+def test_partially_off_canvas_object_is_clipped_without_failure():
+    assets = {
+        "asset://plate": png_bytes((100, 100)),
+        "asset://red": png_bytes(
+            (100, 100),
+            rect=(10, 10, 29, 29),
+            rect_color=(255, 0, 0, 255),
+        ),
+    }
+
+    async def fetch(url: str) -> bytes:
+        return assets[url]
+
+    moved = depth_object(
+        "red",
+        position=(0.02, 0.02, 0.0),
+        scale=(2.0, 2.0, 1.0),
+    )
+    rendered = decode(
+        asyncio.run(composite_scene(scene_with([moved]), fetch))
+    )
+
+    assert rendered.size == (100, 100)
+    assert rendered.getbbox() is not None
+    assert rendered.getpixel((0, 0))[3] > 0
+
+
+def test_camera_xy_and_fov_are_applied_to_final_frame():
+    assets = {
+        "asset://plate": png_bytes(
+            (100, 100),
+            rect=(45, 45, 54, 54),
+            rect_color=(255, 255, 255, 255),
+        ),
+    }
+
+    async def fetch(url: str) -> bytes:
+        return assets[url]
+
+    scene = scene_with([])
+    scene.camera.position.x = 10
+    scene.camera.position.y = -5
+    scene.camera.fov = 100
+
+    rendered = decode(asyncio.run(composite_scene(scene, fetch)))
+
+    assert rendered.size == (100, 100)
+    # FOV 100 maps to the compositor's minimum 0.55 view scale. The white
+    # center marker remains visible but moves with the authored camera.
+    assert rendered.getbbox() is not None
+    assert rendered.getpixel((60, 45))[3] > 0
+    assert rendered.getpixel((5, 5))[3] == 0
