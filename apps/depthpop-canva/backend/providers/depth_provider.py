@@ -4,169 +4,253 @@ import asyncio
 import base64
 import io
 import os
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
+
 import fal_client
-import httpx
 import numpy as np
 from fastapi import HTTPException
 from PIL import Image
 from pydantic import BaseModel, ConfigDict
+
+from providers.media import fetch_fal_media
+
+DEPTH_MODEL = "fal-ai/image-preprocessors/depth-anything/v2"
+DepthQuality = Literal["standard", "high"]
+
+# FAL exposes the Depth Anything V2 grayscale preprocessor output. The
+# upstream Depth Anything V2 demo describes the raw model output as disparity
+# and normalizes it directly into the grayscale image: larger/brighter values
+# therefore represent larger disparity / nearer content.
+CANONICAL_POLARITY = "disparity_high_is_near"
+QUALITY_MAX_EDGE: dict[DepthQuality, int] = {
+    "standard": 768,
+    "high": 1536,
+}
 
 
 class DepthMap(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     raw_depth: bytes
+    canonical_depth: bytes
+    raw_depth_array: np.ndarray
     depth_array: np.ndarray
     provider_url: str = ""
+    polarity: str = CANONICAL_POLARITY
+    quality: DepthQuality = "high"
 
 
 class DepthProvider(Protocol):
-    async def estimate(self, image: bytes) -> DepthMap: ...
+    async def estimate(
+        self,
+        image: bytes,
+        quality: DepthQuality = "high",
+    ) -> DepthMap: ...
 
 
-def _detect_image_mime(image_bytes: bytes) -> str:
+def _resize_within(image: Image.Image, max_edge: int) -> Image.Image:
+    result = image.copy()
+    if max(result.size) > max_edge:
+        result.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
+    return result
+
+
+def prepare_depth_input(
+    image_bytes: bytes,
+    quality: DepthQuality,
+) -> tuple[bytes, tuple[int, int], tuple[int, int]]:
+    if quality not in QUALITY_MAX_EDGE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported depth quality '{quality}'.",
+        )
+
     try:
-        with Image.open(io.BytesIO(image_bytes)) as img:
-            fmt = (img.format or "").upper()
-            if fmt == "PNG":
-                return "image/png"
-            if fmt in ("JPEG", "JPG"):
-                return "image/jpeg"
-            if fmt == "WEBP":
-                return "image/webp"
-    except Exception:
-        pass
-    return "image/png"
+        with Image.open(io.BytesIO(image_bytes)) as source:
+            source_rgb = source.convert("RGB")
+            source_size = source_rgb.size
+            prepared = _resize_within(
+                source_rgb,
+                QUALITY_MAX_EDGE[quality],
+            )
+            prepared_size = prepared.size
+            buffer = io.BytesIO()
+            prepared.save(buffer, format="PNG", optimize=True)
+            return buffer.getvalue(), source_size, prepared_size
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=415,
+            detail="Depth provider could not decode the source raster.",
+        ) from exc
+
+
+def _extract_image_url(payload: Any) -> str | None:
+    if isinstance(payload, dict):
+        image = payload.get("image")
+        if isinstance(image, dict) and isinstance(image.get("url"), str):
+            return image["url"]
+        data = payload.get("data")
+        if isinstance(data, dict):
+            found = _extract_image_url(data)
+            if found:
+                return found
+    return None
+
+
+def canonicalize_fal_depth(
+    provider_image_bytes: bytes,
+    *,
+    source_size: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray, bytes]:
+    """Convert FAL's normalized disparity image to DepthPop 0-far / 1-near.
+
+    No content-based polarity heuristic is used. The FAL Depth Anything V2
+    adapter treats the documented grayscale output as normalized disparity,
+    matching the upstream Depth Anything V2 visualization path.
+    """
+
+    try:
+        with Image.open(io.BytesIO(provider_image_bytes)) as provider_image:
+            grayscale = provider_image.convert("L")
+            raw_array = (
+                np.asarray(grayscale, dtype=np.float32) / 255.0
+            )
+            source_sized = grayscale.resize(
+                source_size,
+                Image.Resampling.BILINEAR,
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Depth provider returned an invalid raster.",
+        ) from exc
+
+    canonical = np.asarray(source_sized, dtype=np.float32) / 255.0
+    canonical = np.clip(canonical, 0.0, 1.0).astype(np.float32)
+
+    canonical_image = Image.fromarray(
+        np.round(canonical * 255.0).astype(np.uint8),
+        mode="L",
+    )
+    output = io.BytesIO()
+    canonical_image.save(output, format="PNG", optimize=True)
+    return raw_array, canonical, output.getvalue()
 
 
 class FalDepthProvider:
-    """Wrapped FAL Depth Anything v2 provider."""
+    """FAL Depth Anything V2 adapter with deterministic canonical semantics."""
 
     def __init__(self, fal_key: str | None = None):
         self.fal_key = fal_key or os.getenv("FAL_KEY", "").strip()
 
-    async def estimate(self, image: bytes) -> DepthMap:
+    async def estimate(
+        self,
+        image: bytes,
+        quality: DepthQuality = "high",
+    ) -> DepthMap:
         if not self.fal_key:
             raise HTTPException(
                 status_code=503,
-                detail="Production depth provider is not configured. Set FAL_KEY or DEPTH_PROVIDER=mock for test environment.",
+                detail="Production depth estimation requires FAL_KEY.",
             )
 
-        mime = _detect_image_mime(image)
-        data_url = f"data:{mime};base64," + base64.b64encode(image).decode("ascii")
+        prepared, source_size, _prepared_size = prepare_depth_input(
+            image,
+            quality,
+        )
+        data_url = (
+            "data:image/png;base64,"
+            + base64.b64encode(prepared).decode("ascii")
+        )
 
         try:
             result = await asyncio.to_thread(
                 fal_client.run,
-                "fal-ai/image-preprocessors/depth-anything/v2",
+                DEPTH_MODEL,
                 arguments={"image_url": data_url},
             )
         except Exception as exc:
-            raise HTTPException(status_code=502, detail="Depth-map provider failed") from exc
+            raise HTTPException(
+                status_code=502,
+                detail="Depth Anything V2 provider failed.",
+            ) from exc
 
-        depth_url = (self._extract_image_url(result) or "").strip()
-        if not depth_url:
-            raise HTTPException(status_code=502, detail="Depth-map provider returned no image")
+        provider_url = (_extract_image_url(result) or "").strip()
+        if not provider_url:
+            raise HTTPException(
+                status_code=502,
+                detail="Depth Anything V2 returned no image URL.",
+            )
 
-        depth_bytes = await self._fetch_provider_image(depth_url)
-        with Image.open(io.BytesIO(depth_bytes)) as d_img:
-            d_img_l = d_img.convert("L")
-            depth_arr = np.asarray(d_img_l).astype(np.float32) / 255.0
+        provider_bytes = await fetch_fal_media(provider_url)
+        raw_array, canonical, canonical_bytes = canonicalize_fal_depth(
+            provider_bytes,
+            source_size=source_size,
+        )
 
-        return DepthMap(raw_depth=depth_bytes, depth_array=depth_arr, provider_url=depth_url)
-
-    @staticmethod
-    def _extract_image_url(payload: Any) -> str | None:
-        if isinstance(payload, str) and payload:
-            return payload
-        if isinstance(payload, dict):
-            for key in ("depth_map_url", "image_url", "url", "href"):
-                value = payload.get(key)
-                if isinstance(value, str) and value:
-                    return value
-            image = payload.get("image")
-            if isinstance(image, dict):
-                value = image.get("url") or image.get("href") or image.get("image_url")
-                if isinstance(value, str) and value:
-                    return value
-            if isinstance(image, str) and image:
-                return image
-            for key in ("data", "result", "output", "images"):
-                value = payload.get(key)
-                if isinstance(value, (dict, list, str)):
-                    found = FalDepthProvider._extract_image_url(value)
-                    if found:
-                        return found
-        if isinstance(payload, list) and payload:
-            return FalDepthProvider._extract_image_url(payload[0])
-        return None
-
-    @staticmethod
-    async def _fetch_provider_image(url: str) -> bytes:
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        host = (parsed.hostname or "").lower()
-        allowed_bases = {
-            "fal.media": "https://fal.media",
-            "v2.fal.media": "https://v2.fal.media",
-            "v3.fal.media": "https://v3.fal.media",
-        }
-        base = allowed_bases.get(host)
-        if parsed.scheme.lower() != "https" or not base:
-            raise HTTPException(status_code=502, detail="Depth-map provider returned an unexpected file host")
-
-        target = parsed.path
-        if parsed.query:
-            target += "?" + parsed.query
-
-        async with httpx.AsyncClient(
-            base_url=base,
-            timeout=httpx.Timeout(30.0),
-            follow_redirects=False,
-            headers={"User-Agent": "depthpop-canva/1.0"},
-        ) as client:
-            response = await client.get(target)
-
-        if response.status_code >= 400 or response.status_code in {301, 302, 303, 307, 308}:
-            raise HTTPException(status_code=502, detail="Depth-map provider image download failed")
-
-        raw = response.content
-        if not raw or len(raw) > 50 * 1024 * 1024:
-            raise HTTPException(status_code=502, detail="Depth-map provider image was empty or too large")
-        return raw
+        return DepthMap(
+            raw_depth=provider_bytes,
+            canonical_depth=canonical_bytes,
+            raw_depth_array=raw_array,
+            depth_array=canonical,
+            provider_url=provider_url,
+            polarity=CANONICAL_POLARITY,
+            quality=quality,
+        )
 
 
 class MockDepthProvider:
-    """Deterministic depth provider for testing / local execution."""
+    """Deterministic canonical 0-far / 1-near depth for tests/local dev."""
 
-    async def estimate(self, image: bytes) -> DepthMap:
-        env = os.getenv("ENVIRONMENT", "").lower()
+    async def estimate(
+        self,
+        image: bytes,
+        quality: DepthQuality = "high",
+    ) -> DepthMap:
+        environment = os.getenv("ENVIRONMENT", "").lower()
         mode = os.getenv("DEPTH_PROVIDER", "").lower()
-        if env == "production" or (env != "test" and mode != "mock" and "PYTEST_CURRENT_TEST" not in os.environ):
+        is_test = environment == "test" or "PYTEST_CURRENT_TEST" in os.environ
+        if environment == "production":
             raise HTTPException(
                 status_code=503,
-                detail="Mock depth provider is allowed only when ENVIRONMENT=test or DEPTH_PROVIDER=mock",
+                detail="Mock depth estimation is disabled in production.",
+            )
+        if not is_test and mode != "mock":
+            raise HTTPException(
+                status_code=503,
+                detail="Mock depth estimation requires DEPTH_PROVIDER=mock.",
             )
 
-        with Image.open(io.BytesIO(image)) as img:
-            width, height = img.size
+        with Image.open(io.BytesIO(image)) as source:
+            width, height = source.size
 
+        # Near center, far edges. This is already DepthPop canonical.
         yy, xx = np.indices((height, width))
         cy, cx = height / 2.0, width / 2.0
-        dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
-        max_dist = np.sqrt(cx**2 + cy**2) or 1.0
-        norm_dist = np.clip(dist / max_dist, 0.0, 1.0)
+        distance = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+        max_distance = np.sqrt(cx**2 + cy**2) or 1.0
+        canonical = np.clip(
+            1.0 - 0.8 * (distance / max_distance),
+            0.0,
+            1.0,
+        ).astype(np.float32)
 
-        depth_array = (0.2 + 0.6 * norm_dist).astype(np.float32)
-        depth_img = Image.fromarray((depth_array * 255).astype(np.uint8), mode="L")
-
-        buf = io.BytesIO()
-        depth_img.save(buf, format="PNG")
-        depth_bytes = buf.getvalue()
+        image_l = Image.fromarray(
+            np.round(canonical * 255.0).astype(np.uint8),
+            mode="L",
+        )
+        buffer = io.BytesIO()
+        image_l.save(buffer, format="PNG")
+        depth_bytes = buffer.getvalue()
 
         return DepthMap(
             raw_depth=depth_bytes,
-            depth_array=depth_array,
-            provider_url="https://v2.fal.media/files/mock/depth.png",
+            canonical_depth=depth_bytes,
+            raw_depth_array=canonical.copy(),
+            depth_array=canonical,
+            provider_url="",
+            polarity=CANONICAL_POLARITY,
+            quality=quality,
         )
