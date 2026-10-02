@@ -34,13 +34,15 @@ def get_segmentation_provider(
             detail=f"Unsupported segmentation provider '{selected}'.",
         )
 
-    if os.getenv("ENVIRONMENT", "").lower() == "production" and not os.getenv("FAL_KEY", "").strip():
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    has_fal_key = bool(os.getenv("FAL_KEY", "").strip())
+    if environment == "production" and not has_fal_key:
         raise HTTPException(
             status_code=503,
             detail="No production provider is configured.",
         )
 
-    if os.getenv("FAL_KEY", "").strip():
+    if has_fal_key:
         return FalSegmentationProvider()
 
     if (
