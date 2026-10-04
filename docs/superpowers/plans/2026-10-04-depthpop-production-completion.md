@@ -289,6 +289,7 @@
   - disable orbit while gizmo active.
   - pointer selection.
   - canonical commit only at controlled transform events.
+  - attach explicit `webglcontextlost` / `webglcontextrestored` handlers to the renderer canvas;
   - visible WebGL recovery state.
 
 - [ ] **Step 5: Add review-focus regression test**
@@ -319,20 +320,30 @@
 - Modify: `apps/depthpop-canva/backend/test_scene_api_mutation.py`
 
 **Interfaces:**
-- Produces reducer actions `RENAME_OBJECT`, `DUPLICATE_OBJECT`, `DELETE_OBJECT`, `SET_UNIFORM_SCALE` plus existing reorder/visibility/lock/reset.
-- Patch API now accepts the complete editable object list so duplicate/delete persist truthfully.
+- Produces reducer actions `RENAME_OBJECT` and `SET_UNIFORM_SCALE` plus existing reorder/visibility/lock/reset.
+- Extends scene PATCH object entries with optional `label`.
+- Produces `DepthPopApiClient.duplicateSceneObject(sceneId, objectId)` and `deleteSceneObject(sceneId, objectId)`.
+- Produces backend `POST /api/v1/scenes/{scene_id}/objects/{object_id}/duplicate` and `DELETE /api/v1/scenes/{scene_id}/objects/{object_id}`.
+- Duplicate reuses only the source object's already-owned scene assets, creates a server-generated object ID, and assigns the next unique order; delete never accepts arbitrary asset URLs.
 
 - [ ] **Step 1: Write failing reducer tests**
-  Assert rename, duplicate with unique IDs/order, delete, lock protection, reset, reorder uniqueness, uniform scale, and selection repair after delete.
+  Assert rename, lock protection, reset, reorder uniqueness, uniform scale, and selection repair when a server-returned scene no longer contains the selected object.
 
 - [ ] **Step 2: Verify reducer tests fail**
 
 - [ ] **Step 3: Write failing API mutation tests**
-  Assert exact-owner scene can persist duplicate/delete while unknown/duplicate IDs and nonunique order remain rejected.
+  Assert:
+  - exact-owner duplicate creates a new server ID and next unique order while reusing only same-scene owned assets;
+  - exact-owner delete removes the object and compacts order deterministically;
+  - wrong user/brand receives 404;
+  - unknown object receives 404;
+  - locked objects cannot be duplicated/deleted unless explicitly unlocked first;
+  - label PATCH is bounded and rejects empty/oversized values;
+  - forged asset URLs cannot enter through these operations.
 
 - [ ] **Step 4: Verify backend mutation tests fail**
 
-- [ ] **Step 5: Implement reducer, inspector panels, and complete PATCH semantics**
+- [ ] **Step 5: Implement reducer, inspector panels, API client methods, label PATCH, and dedicated duplicate/delete endpoints**
 
 - [ ] **Step 6: Run focused + full frontend/backend suites**
 
