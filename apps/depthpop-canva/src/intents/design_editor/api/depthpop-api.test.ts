@@ -12,6 +12,13 @@ function validScene(): DepthScene {
     sourceAssetId: "asset_789",
     width: 100,
     height: 100,
+    settings: {
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      renderQuality: "cinematic",
+      numInferenceSteps: 34,
+    },
     objects: [
       {
         id: "person_01",
