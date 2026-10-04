@@ -28,15 +28,43 @@ CACHE_LIMIT = 32
 
 CANVA_APP_ID = os.getenv("CANVA_APP_ID", "").strip()
 CANVA_APP_ORIGIN = os.getenv("CANVA_APP_ORIGIN", "").strip().rstrip("/")
+DEPTHPOP_DEV_ORIGINS = os.getenv("DEPTHPOP_DEV_ORIGINS", "").strip()
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
 
+
+def _resolve_cors_origins(
+    app_id: str,
+    explicit_origin: str,
+    dev_origins: str,
+) -> list[str]:
+    origins: list[str] = []
+
+    def add(origin: str) -> None:
+        normalized = origin.strip().rstrip("/")
+        if normalized and normalized not in origins:
+            origins.append(normalized)
+
+    normalized_app_id = app_id.strip().lower()
+    if normalized_app_id:
+        add(f"https://app-{normalized_app_id}.canva-apps.com")
+    add(explicit_origin)
+    for candidate in dev_origins.split(","):
+        add(candidate)
+    return origins
+
+
 app = FastAPI(title="DepthPop Canva Backend", version="1.0.1")
-if CANVA_APP_ORIGIN:
+CORS_ORIGINS = _resolve_cors_origins(
+    CANVA_APP_ID,
+    CANVA_APP_ORIGIN,
+    DEPTHPOP_DEV_ORIGINS,
+)
+if CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[CANVA_APP_ORIGIN],
+        allow_origins=CORS_ORIGINS,
         allow_credentials=False,
-        allow_methods=["POST", "GET", "PATCH", "OPTIONS"],
+        allow_methods=["POST", "GET", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
