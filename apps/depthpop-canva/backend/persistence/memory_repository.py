@@ -107,10 +107,13 @@ class MemorySceneRepository:
         max_scenes: int = 50,
         ttl_seconds: int = 3600,
         asset_store: MemorySceneAssetRepository | None = None,
+        asset_repo: MemorySceneAssetRepository | None = None,
     ) -> None:
+        if asset_store is not None and asset_repo is not None and asset_store is not asset_repo:
+            raise ValueError("provide only one scene asset repository")
         self.max_scenes = max(1, int(max_scenes))
         self.ttl_seconds = max(1, int(ttl_seconds))
-        self.asset_store = asset_store
+        self.asset_store = asset_store or asset_repo
         self._scenes: dict[str, tuple[float, DepthScene]] = {}
 
     def _remove_scene_sync(self, scene_id: str) -> None:
