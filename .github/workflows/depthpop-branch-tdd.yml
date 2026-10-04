@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: depthpop-branch-tdd-${{ github.ref }}
+  group: depthpop-branch-tdd-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
