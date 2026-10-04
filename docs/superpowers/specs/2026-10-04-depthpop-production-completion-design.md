@@ -147,12 +147,27 @@ The primary action stays product-specific and direct:
 
 `CREATE DEPTHSCENE`
 
-The settings are no longer dead compatibility state. They are sent into the scene creation request and influence the initial DepthScene:
+The settings are no longer dead compatibility state. They are sent into the scene creation request as an explicit authored intent contract:
 
-- strength controls initial Z separation/parallax intensity;
-- blur influences the initial background/plate depth-of-field profile;
-- fidelity influences how tightly object placement and depth grouping follow provider depth;
-- render quality controls the bounded provider quality lane.
+```
+depth_strength
+depth_blur
+depth_fidelity
+render_quality
+```
+
+The backend normalizes them and records the normalized values in the scene so project round-trip and export remain deterministic.
+
+The first production mapping is:
+
+- Depth Strength -> initial object Z spread and parallax amplitude only; it must not fabricate provider depth values.
+- Depth Blur -> authored scene depth-of-field/plate blur intent used by preview and render/export.
+- Depth Fidelity -> how strongly initial object placement/order follows measured provider depth versus bounded smoothing; measured provider depth remains stored unchanged.
+- Fast -> Depth Anything standard preprocessing plus a 14-step inpaint reconstruction budget.
+- Balanced -> Depth Anything high preprocessing plus a 22-step inpaint reconstruction budget.
+- Cinematic -> Depth Anything high preprocessing plus a 34-step inpaint reconstruction budget.
+
+Florence-2 and SAM 3 remain provider-contract driven and do not receive invented "steps" parameters.
 
 The legacy flat `/api/depthpop` route remains compatibility-only and is not silently invoked by the object-scene workflow.
 
@@ -446,7 +461,17 @@ For still output:
 - replace the original selected source only if it is still the same selected source;
 - otherwise insert the rendered result as a new element.
 
-For video output, add to Canva only if the current Canva asset API and app permissions support the generated video asset path used by the app build. Otherwise provide authenticated export/download without pretending Canva insertion succeeded.
+Current Canva documentation explicitly supports uploading `type: "video"` assets and inserting video elements with `addElementAtPoint` / `addElementAtCursor`.
+
+For MP4 output:
+
+- upload the authenticated generated MP4 to Canva as `type: "video"`;
+- provide a generated still thumbnail;
+- mark AI disclosure truthfully;
+- insert it as a video element when the current design supports video insertion;
+- if the current design surface does not support insertion, keep the authenticated export available and explain the limitation instead of claiming success.
+
+WebM remains an authenticated export format because Canva's documented production example uses MP4 for video insertion.
 
 ## 10. Security
 
