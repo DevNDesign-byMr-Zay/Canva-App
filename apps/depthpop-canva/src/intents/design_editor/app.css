@@ -717,3 +717,7 @@ body {
     grid-template-columns: 58px minmax(0,1fr) 36px;
   }
 }
+
+.dp-quality-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.dp-quality-row button { min-width:0; padding:7px 4px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(8,8,10,.55); color:rgba(255,255,255,.66); font:inherit; font-size:7.5px; font-weight:800; cursor:pointer; }
+.dp-quality-row button:hover, .dp-quality-row button.is-active { border-color:rgba(168,85,247,.68); color:#fff; background:rgba(168,85,247,.16); box-shadow:0 0 14px rgba(168,85,247,.12); }
