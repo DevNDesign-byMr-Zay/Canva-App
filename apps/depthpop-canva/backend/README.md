@@ -50,6 +50,23 @@ Depth quality is real and bounded:
 
 Regardless of provider output resolution, canonical depth is resized back to the exact source dimensions before masks index into it.
 
+## Restart-safe persistence
+
+DepthPop supports two repository backends:
+
+- `memory` for deterministic tests and explicit local development;
+- `sqlite` for the production single-service profile.
+
+Production should mount persistent storage and configure:
+
+    DEPTHPOP_REPOSITORY_BACKEND=sqlite
+    DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
+    DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
+
+Scene/job metadata is stored in SQLite while binary scene assets are stored beneath the owned asset root. On restart, completed scenes/jobs remain available until TTL expiry and incomplete queued/processing jobs are recovered to a truthful terminal error instead of remaining stuck forever.
+
+This SQLite profile is intentionally scoped to a persistent single-service deployment. It does not claim distributed multi-writer rendering; a future PostgreSQL/object-storage adapter can implement the same repository contracts without changing DepthScene/API contracts.
+
 ## Protected asset lifecycle
 
 Generated scene media does not use the public compatibility cache.
@@ -77,7 +94,8 @@ See .env.example.
 Required production values:
 
     CANVA_APP_ID=<DepthPop Canva app id>
-    CANVA_APP_ORIGIN=<allowed Canva app iframe origin>
+    CANVA_APP_ORIGIN=<optional explicit allowed Canva app iframe origin>
+    DEPTHPOP_DEV_ORIGINS=http://localhost:8080
     FAL_KEY=<server-side fal key>
     PUBLIC_BASE_URL=https://your-public-depthpop-backend.example
     ENVIRONMENT=production
@@ -85,6 +103,9 @@ Required production values:
     DEPTH_PROVIDER=auto
     INPAINT_PROVIDER=auto
     DEPTHPOP_ALLOW_BBOX_FALLBACK=false
+    DEPTHPOP_REPOSITORY_BACKEND=sqlite
+    DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
+    DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
 
 PUBLIC_BASE_URL should be the same backend origin configured by the Canva app. Protected scene assets reject cross-origin bearer-token delivery in the client.
 
@@ -111,6 +132,7 @@ For Canva testing, expose the backend over public HTTPS and set the frontend bac
 ## Security boundaries
 
 - all v1 requests require a valid Canva user JWT;
+- production CORS is restricted to the derived lowercase Canva app origin plus explicitly configured development origins; arbitrary origins are not authorized;
 - CANVA_APP_ID is enforced as JWT audience;
 - source image bytes are uploaded by the client rather than fetched from an arbitrary user-controlled URL;
 - accepted source inputs are PNG, JPEG, and WebP, capped at 50 MB;
