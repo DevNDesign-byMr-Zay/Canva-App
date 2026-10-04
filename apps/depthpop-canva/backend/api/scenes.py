@@ -309,12 +309,12 @@ async def get_scene(
     scene_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    scene = await scene_repo.get_scene(scene_id)
-    if (
-        not scene
-        or scene.userId != user.user_id
-        or scene.brandId != user.brand_id
-    ):
+    scene = await scene_repo.get_scene(
+        scene_id,
+        user_id=user.user_id,
+        brand_id=user.brand_id,
+    )
+    if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
 
     return scene.model_dump(mode="json", by_alias=True)
@@ -326,12 +326,12 @@ async def patch_scene(
     patch: ScenePatch,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    scene = await scene_repo.get_scene(scene_id)
-    if (
-        not scene
-        or scene.userId != user.user_id
-        or scene.brandId != user.brand_id
-    ):
+    scene = await scene_repo.get_scene(
+        scene_id,
+        user_id=user.user_id,
+        brand_id=user.brand_id,
+    )
+    if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
 
     updated = scene.model_copy(deep=True)
@@ -478,12 +478,12 @@ async def create_scene_composite(
     scene_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> Response:
-    scene = await scene_repo.get_scene(scene_id)
-    if (
-        not scene
-        or scene.userId != user.user_id
-        or scene.brandId != user.brand_id
-    ):
+    scene = await scene_repo.get_scene(
+        scene_id,
+        user_id=user.user_id,
+        brand_id=user.brand_id,
+    )
+    if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
 
     async def fetch_asset(url: str) -> bytes:
