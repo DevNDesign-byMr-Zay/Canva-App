@@ -34,12 +34,6 @@ class TimelineConfig(BaseModel):
     fps: int = Field(30, ge=1, le=120)
     currentTimeMs: int = Field(0, ge=0, alias="currentTimeMs")
 
-    @model_validator(mode="after")
-    def current_time_within_duration(self) -> "TimelineConfig":
-        if self.currentTimeMs > self.durationMs:
-            raise ValueError("timeline currentTimeMs cannot exceed durationMs")
-        return self
-
 
 class DepthPopSceneSettings(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
