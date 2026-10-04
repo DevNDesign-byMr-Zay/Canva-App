@@ -200,12 +200,15 @@
 - [ ] **Step 5: Implement disk asset store**
   Asset IDs remain opaque; metadata stores path + mime + owner + scene; all path resolution fails closed.
 
-- [ ] **Step 6: Add environment selection**
+- [ ] **Step 6: Add environment selection and exact production CORS**
   - `DEPTHPOP_REPOSITORY_BACKEND=memory|sqlite`
   - `DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3`
   - `DEPTHPOP_ASSET_ROOT=/data/depthpop/assets`
+  - derive the production Canva frontend origin from lowercase `CANVA_APP_ID`;
+  - allow only that origin plus explicitly configured local-development origins;
+  - add tests proving an arbitrary origin does not receive an allow-origin header.
 
-- [ ] **Step 7: Run persistence tests, then full backend suite**
+- [ ] **Step 7: Run persistence/CORS tests, then full backend suite**
   Expected: all pass.
 
 - [ ] **Step 8: Commit**
@@ -390,10 +393,14 @@
 - Create: `apps/depthpop-canva/src/intents/design_editor/project/ProjectControls.tsx`
 - Modify: `apps/depthpop-canva/src/intents/design_editor/workspace/scene-workspace.tsx`
 - Modify: `apps/depthpop-canva/src/intents/design_editor/api/depthpop-api.ts`
+- Modify: `apps/depthpop-canva/backend/api/scenes.py`
+- Create: `apps/depthpop-canva/backend/test_project_import.py`
 
 **Interfaces:**
 - Produces: `buildPortableDepthScene(scene, resolveAsset): Promise<PortableDepthScene>`.
 - Produces: `parsePortableDepthScene(text): DepthScene`.
+- Produces API method `importPortableScene(project, signal?): Promise<DepthScene>`.
+- Produces backend `POST /api/v1/scenes/import`, which materializes embedded assets into the authenticated owner asset store and returns a new canonical owned DepthScene.
 - Portable assets are data URLs only with bounded MIME and total byte size.
 
 - [ ] **Step 1: Write failing export/import round-trip tests**
@@ -402,14 +409,23 @@
 - [ ] **Step 2: Write failing security/size tests**
   Reject `http://`, `https://`, `file://`, malformed data URLs, unsupported MIME, duplicate IDs, non-finite numeric values, and total project bytes above the configured cap.
 
-- [ ] **Step 3: Verify tests fail**
+- [ ] **Step 3: Write failing backend import tests**
+  Assert the import route:
+  - requires verified Canva ownership;
+  - rejects remote URLs and malformed/oversized data URLs;
+  - materializes source/cutout/mask/thumbnail/plate/depth-map assets into the owner asset store;
+  - generates a new server scene ID instead of trusting the imported ID;
+  - preserves settings, transforms, camera, timeline, and typed tracks;
+  - returns a scene that can immediately PATCH and render after reopen.
 
-- [ ] **Step 4: Implement portable materialization/import**
-  Reuse authenticated `fetchAssetBlobUrl`; revoke temporary object URLs after serialization.
+- [ ] **Step 4: Verify frontend/backend project tests fail**
 
-- [ ] **Step 5: Run frontend suite + typecheck**
+- [ ] **Step 5: Implement portable materialization/import**
+  Frontend reuses authenticated `fetchAssetBlobUrl` when exporting and revokes temporary object URLs after serialization. Reopen parses locally for bounded feedback, then posts the validated project to `/api/v1/scenes/import` so further save/render operations use fresh owned server assets.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Run frontend + backend suites and typecheck**
+
+- [ ] **Step 7: Commit**
   `feat(depthpop): add portable depthscene projects`
 
 ---
@@ -531,8 +547,9 @@
 
 - [ ] **Step 2: Verify packaging guard fails on pre-change package**
 
-- [ ] **Step 3: Update preview/documentation**
+- [ ] **Step 3: Update preview/documentation and public-app UI compliance**
   Explicitly document raw Steps vs final visible named quality patch and production deployment/persistent-volume requirements.
+  Keep user-facing copy inside the existing Canva i18n provider/message system; do not add new hard-coded production strings outside the current app localization pattern.
 
 - [ ] **Step 4: Add DepthPop render-image workflow**
   Pin Blender 4.5.14 and run real render smoke.
