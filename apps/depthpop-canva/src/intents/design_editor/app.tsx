@@ -138,7 +138,7 @@ function isAbortError(cause: unknown): boolean {
 
 export function App() {
   const selectedImages = useSelection("image");
-  const [settings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
+  const [settings, setSettings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
   const [stage, setStage] = useState<RunStage>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -258,6 +258,7 @@ export function App() {
           // Until the provider lane advertises a verified production
           // background-reconstruction provider, the client stays truthful.
           inpaint: BACKGROUND_RECONSTRUCTION_ENABLED,
+          settings,
         },
         controller.signal,
         {
@@ -438,6 +439,36 @@ export function App() {
           Decompose a raster into editable depth-aware objects, tune the
           composition, then render the authored scene back into Canva.
         </p>
+
+
+        <div className="dp-controls" aria-label="DepthPop controls">
+          <label className="dp-control">
+            <span className="dp-control-label"><span>Depth Strength (subject pop)</span><strong>{settings.depthStrength.toFixed(2)}</strong></span>
+            <input className="dp-range" aria-label="Depth Strength" type="range" min={0.05} max={0.75} step={0.01} value={settings.depthStrength}
+              onChange={(event) => setSettings((current) => ({ ...current, depthStrength: Number(event.currentTarget.value) }))} />
+          </label>
+          <label className="dp-control">
+            <span className="dp-control-label"><span>Depth Blur (background softness)</span><strong>{Math.round(settings.depthBlur)}%</strong></span>
+            <input className="dp-range" aria-label="Depth Blur" type="range" min={0} max={100} step={1} value={settings.depthBlur}
+              onChange={(event) => setSettings((current) => ({ ...current, depthBlur: Number(event.currentTarget.value) }))} />
+          </label>
+          <label className="dp-control">
+            <span className="dp-control-label"><span>Depth Fidelity (depth-map accuracy)</span><strong>{settings.depthFidelity.toFixed(2)}</strong></span>
+            <input className="dp-range" aria-label="Depth Fidelity" type="range" min={0.05} max={1} step={0.01} value={settings.depthFidelity}
+              onChange={(event) => setSettings((current) => ({ ...current, depthFidelity: Number(event.currentTarget.value) }))} />
+          </label>
+          <div className="dp-control">
+            <span className="dp-control-label"><span>Render Quality</span><strong>{settings.renderQuality.toUpperCase()}</strong></span>
+            <div className="dp-quality-row" role="group" aria-label="Render Quality">
+              {(["fast", "balanced", "cinematic"] as const).map((quality) => (
+                <button key={quality} type="button" className={settings.renderQuality === quality ? "is-active" : ""} aria-pressed={settings.renderQuality === quality}
+                  onClick={() => setSettings((current) => ({ ...current, renderQuality: quality }))}>
+                  {quality === "fast" ? "Fast" : quality === "balanced" ? "Balanced" : "Cinematic"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         <LocalImageUpload productName="DepthPop"
           classPrefix="dp"
