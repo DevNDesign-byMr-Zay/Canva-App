@@ -25,8 +25,11 @@ if CANVA_APP_ORIGIN:
         allow_headers=["Authorization", "Content-Type"],
     )
 
-jobs = JobRepository()
-artifacts = ArtifactRepository()
+from persistence import create_artifact_repository, create_job_repository
+
+jobs = create_job_repository()
+artifacts = create_artifact_repository()
+jobs.recover_stale_jobs()
 renderers = RendererRegistry()
 exports = ExportService(jobs=jobs, artifacts=artifacts, renderers=renderers)
 
