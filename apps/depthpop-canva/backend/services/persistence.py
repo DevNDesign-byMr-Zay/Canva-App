@@ -1,297 +1,96 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import time
-import uuid
-from dataclasses import dataclass
-from typing import Protocol
+from pathlib import Path
 
-from models.job import DepthJob, JobStage, JobStatus
-from models.scene import DepthScene
+from persistence.asset_store import DiskSceneAssetRepository
+from persistence.contracts import JobRepository, SceneRepository, StoredSceneAsset
+from persistence.memory_repository import (
+    MemoryJobRepository,
+    MemorySceneAssetRepository,
+    MemorySceneRepository,
+)
+from persistence.sqlite_repository import SQLiteJobRepository, SQLiteSceneRepository
 
 JOB_TTL_SECONDS = int(os.getenv("DEPTHPOP_JOB_TTL_SECONDS", "3600"))
 SCENE_TTL_SECONDS = int(os.getenv("DEPTHPOP_SCENE_TTL_SECONDS", "3600"))
 ASSET_TTL_SECONDS = max(
     SCENE_TTL_SECONDS,
-    int(
-        os.getenv(
-            "DEPTHPOP_SCENE_ASSET_TTL_SECONDS",
-            str(SCENE_TTL_SECONDS),
-        )
-    ),
+    int(os.getenv("DEPTHPOP_SCENE_ASSET_TTL_SECONDS", str(SCENE_TTL_SECONDS))),
 )
 MAX_JOBS = int(os.getenv("DEPTHPOP_MAX_JOBS", "100"))
 MAX_SCENES = int(os.getenv("DEPTHPOP_MAX_SCENES", "50"))
 MAX_SCENE_ASSETS = int(os.getenv("DEPTHPOP_MAX_SCENE_ASSETS", "500"))
 
-
-class SceneRepository(Protocol):
-    async def save_scene(self, scene: DepthScene) -> None: ...
-    async def get_scene(self, scene_id: str) -> DepthScene | None: ...
-
-
-class JobRepository(Protocol):
-    async def save_job(self, job: DepthJob) -> None: ...
-    async def get_job(self, job_id: str) -> DepthJob | None: ...
-    async def update_job_stage(
-        self,
-        job_id: str,
-        stage: JobStage,
-        status: JobStatus = "processing",
-        scene_id: str | None = None,
-        error: str | None = None,
-        progress: float = 0.0,
-        user_id: str = "",
-        brand_id: str = "",
-    ) -> DepthJob: ...
+REPOSITORY_BACKEND = os.getenv("DEPTHPOP_REPOSITORY_BACKEND", "memory").strip().lower()
+DATABASE_PATH = Path(
+    os.getenv("DEPTHPOP_DATABASE_PATH", "/data/depthpop/depthpop.sqlite3")
+)
+ASSET_ROOT = Path(os.getenv("DEPTHPOP_ASSET_ROOT", "/data/depthpop/assets"))
 
 
-@dataclass(frozen=True)
-class StoredSceneAsset:
-    asset_id: str
-    scene_id: str
-    user_id: str
-    brand_id: str
-    data: bytes
-    mime_type: str
-    size: int
-    created_at: float
-    sha256: str
+if REPOSITORY_BACKEND == "sqlite":
+    scene_asset_repo = DiskSceneAssetRepository(
+        DATABASE_PATH,
+        ASSET_ROOT,
+        max_assets=MAX_SCENE_ASSETS,
+        ttl_seconds=ASSET_TTL_SECONDS,
+    )
+    scene_repo = SQLiteSceneRepository(
+        DATABASE_PATH,
+        max_scenes=MAX_SCENES,
+        ttl_seconds=SCENE_TTL_SECONDS,
+        asset_store=scene_asset_repo,
+    )
+    job_repo = SQLiteJobRepository(
+        DATABASE_PATH,
+        max_jobs=MAX_JOBS,
+        ttl_seconds=JOB_TTL_SECONDS,
+        recover_incomplete=True,
+    )
+elif REPOSITORY_BACKEND == "memory":
+    scene_asset_repo = MemorySceneAssetRepository(
+        max_assets=MAX_SCENE_ASSETS,
+        ttl_seconds=ASSET_TTL_SECONDS,
+    )
+    scene_repo = MemorySceneRepository(
+        max_scenes=MAX_SCENES,
+        ttl_seconds=SCENE_TTL_SECONDS,
+        asset_store=scene_asset_repo,
+    )
+    job_repo = MemoryJobRepository(
+        max_jobs=MAX_JOBS,
+        ttl_seconds=JOB_TTL_SECONDS,
+    )
+else:
+    raise RuntimeError(
+        "DEPTHPOP_REPOSITORY_BACKEND must be either 'memory' or 'sqlite'"
+    )
 
 
-class BoundedSceneAssetRepository:
-    def __init__(
-        self,
-        max_assets: int = MAX_SCENE_ASSETS,
-        ttl_seconds: int = ASSET_TTL_SECONDS,
-    ) -> None:
-        self.max_assets = max(1, max_assets)
-        self.ttl_seconds = max(1, ttl_seconds)
-        self._assets: dict[str, StoredSceneAsset] = {}
+# Compatibility aliases retained for existing tests and downstream imports.
+BoundedSceneAssetRepository = MemorySceneAssetRepository
+BoundedSceneRepository = MemorySceneRepository
+BoundedJobRepository = MemoryJobRepository
 
-    def _cleanup_expired_sync(self) -> None:
-        now = time.time()
-        expired = [
-            asset_id
-            for asset_id, asset in self._assets.items()
-            if now - asset.created_at > self.ttl_seconds
-        ]
-        for asset_id in expired:
-            self._assets.pop(asset_id, None)
-
-    def _evict_for_insert_sync(self) -> None:
-        self._cleanup_expired_sync()
-        while len(self._assets) >= self.max_assets and self._assets:
-            oldest_id = min(
-                self._assets,
-                key=lambda key: self._assets[key].created_at,
-            )
-            self._assets.pop(oldest_id, None)
-
-    def save_asset_sync(
-        self,
-        *,
-        scene_id: str,
-        user_id: str,
-        brand_id: str,
-        data: bytes,
-        mime_type: str,
-        asset_id: str | None = None,
-    ) -> StoredSceneAsset:
-        if not scene_id or not user_id or not brand_id:
-            raise ValueError("scene assets require scene, user, and brand ownership")
-        if not data:
-            raise ValueError("scene assets cannot be empty")
-
-        self._evict_for_insert_sync()
-        resource_id = asset_id or f"asset_{uuid.uuid4().hex}"
-        if resource_id in self._assets:
-            raise ValueError("scene asset id collision")
-
-        asset = StoredSceneAsset(
-            asset_id=resource_id,
-            scene_id=scene_id,
-            user_id=user_id,
-            brand_id=brand_id,
-            data=data,
-            mime_type=mime_type,
-            size=len(data),
-            created_at=time.time(),
-            sha256=hashlib.sha256(data).hexdigest(),
-        )
-        self._assets[resource_id] = asset
-        return asset
-
-    async def save_asset(self, **kwargs) -> StoredSceneAsset:
-        return self.save_asset_sync(**kwargs)
-
-    async def get_asset(
-        self,
-        asset_id: str,
-        *,
-        user_id: str,
-        brand_id: str,
-    ) -> StoredSceneAsset | None:
-        self._cleanup_expired_sync()
-        asset = self._assets.get(asset_id)
-        if not asset:
-            return None
-        if asset.user_id != user_id or asset.brand_id != brand_id:
-            return None
-        return asset
-
-    def cleanup_scene_assets_sync(self, scene_id: str) -> None:
-        if not scene_id:
-            return
-        for asset_id in [
-            asset_id
-            for asset_id, asset in self._assets.items()
-            if asset.scene_id == scene_id
-        ]:
-            self._assets.pop(asset_id, None)
-
-    async def cleanup_scene_assets(self, scene_id: str) -> None:
-        self.cleanup_scene_assets_sync(scene_id)
-
-
-class BoundedSceneRepository:
-    def __init__(
-        self,
-        max_scenes: int = MAX_SCENES,
-        ttl_seconds: int = SCENE_TTL_SECONDS,
-        asset_repo: BoundedSceneAssetRepository | None = None,
-    ) -> None:
-        self.max_scenes = max(1, max_scenes)
-        self.ttl_seconds = max(1, ttl_seconds)
-        self.asset_repo = asset_repo
-        self._scenes: dict[str, tuple[float, DepthScene]] = {}
-
-    def _remove_scene_sync(self, scene_id: str) -> None:
-        self._scenes.pop(scene_id, None)
-        if self.asset_repo:
-            self.asset_repo.cleanup_scene_assets_sync(scene_id)
-
-    def _cleanup_expired_sync(self) -> None:
-        now = time.time()
-        expired = [
-            scene_id
-            for scene_id, (created_at, _) in self._scenes.items()
-            if now - created_at > self.ttl_seconds
-        ]
-        for scene_id in expired:
-            self._remove_scene_sync(scene_id)
-
-    def _evict_for_insert_sync(self, scene_id: str) -> None:
-        self._cleanup_expired_sync()
-        if scene_id in self._scenes:
-            return
-        while len(self._scenes) >= self.max_scenes and self._scenes:
-            oldest_id = min(
-                self._scenes,
-                key=lambda key: self._scenes[key][0],
-            )
-            self._remove_scene_sync(oldest_id)
-
-    async def save_scene(self, scene: DepthScene) -> None:
-        self._evict_for_insert_sync(scene.id)
-        self._scenes[scene.id] = (time.time(), scene)
-
-    async def get_scene(self, scene_id: str) -> DepthScene | None:
-        self._cleanup_expired_sync()
-        record = self._scenes.get(scene_id)
-        return record[1] if record else None
-
-
-class BoundedJobRepository:
-    def __init__(
-        self,
-        max_jobs: int = MAX_JOBS,
-        ttl_seconds: int = JOB_TTL_SECONDS,
-    ) -> None:
-        self.max_jobs = max(1, max_jobs)
-        self.ttl_seconds = max(1, ttl_seconds)
-        self._jobs: dict[str, tuple[float, DepthJob]] = {}
-
-    def _cleanup_expired_sync(self) -> None:
-        now = time.time()
-        expired = [
-            job_id
-            for job_id, (created_at, _) in self._jobs.items()
-            if now - created_at > self.ttl_seconds
-        ]
-        for job_id in expired:
-            self._jobs.pop(job_id, None)
-
-    def _evict_for_insert_sync(self, job_id: str) -> None:
-        self._cleanup_expired_sync()
-        if job_id in self._jobs:
-            return
-        while len(self._jobs) >= self.max_jobs and self._jobs:
-            oldest_id = min(
-                self._jobs,
-                key=lambda key: self._jobs[key][0],
-            )
-            self._jobs.pop(oldest_id, None)
-
-    async def save_job(self, job: DepthJob) -> None:
-        self._evict_for_insert_sync(job.jobId)
-        self._jobs[job.jobId] = (time.time(), job)
-
-    async def get_job(self, job_id: str) -> DepthJob | None:
-        self._cleanup_expired_sync()
-        record = self._jobs.get(job_id)
-        return record[1] if record else None
-
-    async def update_job_stage(
-        self,
-        job_id: str,
-        stage: JobStage,
-        status: JobStatus = "processing",
-        scene_id: str | None = None,
-        error: str | None = None,
-        progress: float = 0.0,
-        user_id: str = "",
-        brand_id: str = "",
-    ) -> DepthJob:
-        self._evict_for_insert_sync(job_id)
-        existing_record = self._jobs.get(job_id)
-        existing = existing_record[1] if existing_record else None
-        now_string = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        resolved_user = user_id or (existing.userId if existing else "")
-        resolved_brand = brand_id or (existing.brandId if existing else "")
-
-        if existing:
-            updated = DepthJob(
-                jobId=job_id,
-                userId=resolved_user,
-                brandId=resolved_brand,
-                status=status,
-                stage=stage,
-                progress=progress,
-                sceneId=scene_id or existing.sceneId,
-                error=error if error is not None else existing.error,
-                createdAt=existing.createdAt,
-                updatedAt=now_string,
-            )
-        else:
-            updated = DepthJob(
-                jobId=job_id,
-                userId=resolved_user,
-                brandId=resolved_brand,
-                status=status,
-                stage=stage,
-                progress=progress,
-                sceneId=scene_id,
-                error=error,
-                createdAt=now_string,
-                updatedAt=now_string,
-            )
-
-        self._jobs[job_id] = (time.time(), updated)
-        return updated
-
-
-scene_asset_repo = BoundedSceneAssetRepository()
-scene_repo = BoundedSceneRepository(asset_repo=scene_asset_repo)
-job_repo = BoundedJobRepository()
+__all__ = [
+    "ASSET_ROOT",
+    "ASSET_TTL_SECONDS",
+    "BoundedJobRepository",
+    "BoundedSceneAssetRepository",
+    "BoundedSceneRepository",
+    "DATABASE_PATH",
+    "JOB_TTL_SECONDS",
+    "JobRepository",
+    "MAX_JOBS",
+    "MAX_SCENE_ASSETS",
+    "MAX_SCENES",
+    "REPOSITORY_BACKEND",
+    "SCENE_TTL_SECONDS",
+    "SceneRepository",
+    "StoredSceneAsset",
+    "job_repo",
+    "scene_asset_repo",
+    "scene_repo",
+]

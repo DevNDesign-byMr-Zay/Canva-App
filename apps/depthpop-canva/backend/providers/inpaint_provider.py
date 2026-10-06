@@ -23,7 +23,13 @@ DEFAULT_PROMPT = (
 
 
 class InpaintProvider(Protocol):
-    async def inpaint(self, image: bytes, mask: bytes) -> bytes: ...
+    async def inpaint(
+        self,
+        image: bytes,
+        mask: bytes,
+        *,
+        num_inference_steps: int = 30,
+    ) -> bytes: ...
 
 
 def _png_data_url(raw: bytes) -> str:
@@ -85,7 +91,13 @@ class FalInpaintProvider:
             or DEFAULT_PROMPT
         )
 
-    async def inpaint(self, image: bytes, mask: bytes) -> bytes:
+    async def inpaint(
+        self,
+        image: bytes,
+        mask: bytes,
+        *,
+        num_inference_steps: int = 30,
+    ) -> bytes:
         if not self.fal_key:
             raise HTTPException(
                 status_code=503,
@@ -125,7 +137,7 @@ class FalInpaintProvider:
                     ),
                     "image_url": _png_data_url(source_buffer.getvalue()),
                     "mask_url": _png_data_url(mask_buffer.getvalue()),
-                    "num_inference_steps": 30,
+                    "num_inference_steps": max(8, min(50, int(num_inference_steps))),
                     "guidance_scale": 7.5,
                 },
             )
@@ -149,7 +161,14 @@ class FalInpaintProvider:
 class MockInpaintProvider:
     """Deterministic blur-based inpainting for tests/explicit local dev only."""
 
-    async def inpaint(self, image: bytes, mask: bytes) -> bytes:
+    async def inpaint(
+        self,
+        image: bytes,
+        mask: bytes,
+        *,
+        num_inference_steps: int = 30,
+    ) -> bytes:
+        del num_inference_steps
         environment = os.getenv("ENVIRONMENT", "").lower()
         mode = os.getenv("INPAINT_PROVIDER", "").lower()
         is_test = environment == "test" or "PYTEST_CURRENT_TEST" in os.environ

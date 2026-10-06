@@ -11,6 +11,7 @@ from PIL import Image
 from models.object import DepthObject
 from models.scene import (
     CameraConfig,
+    DepthPopSceneSettings,
     DepthScene,
     ReconstructedPlate,
     TimelineConfig,
@@ -48,9 +49,12 @@ class SceneBuilderService:
         segmentation_mode: str = "auto",
         depth_quality: str = "high",
         inpaint: bool = True,
+        settings: DepthPopSceneSettings | None = None,
+        inpaint_steps: int = 34,
         stage_reporter: StageReporter | None = None,
         scene_id: str | None = None,
     ) -> DepthScene:
+        scene_settings = settings or DepthPopSceneSettings()
         if stage_reporter:
             await stage_reporter("decoding", 0.10)
 
@@ -105,6 +109,8 @@ class SceneBuilderService:
                     depth_array=depth_map.depth_array,
                     url_builder=url_builder,
                     index=count,
+                    depth_strength=scene_settings.depthStrength,
+                    depth_fidelity=scene_settings.depthFidelity,
                 )
             )
 
@@ -161,6 +167,7 @@ class SceneBuilderService:
             plate_bytes = await self.inpainting_service.inpaint_plate(
                 image_bytes,
                 union_buffer.getvalue(),
+                num_inference_steps=inpaint_steps,
             )
         else:
             plate_bytes = source_png_bytes
@@ -184,6 +191,7 @@ class SceneBuilderService:
             sourceAssetId=source_asset_id,
             width=width,
             height=height,
+            settings=scene_settings,
             objects=objects,
             reconstructedPlate=ReconstructedPlate(
                 imageUrl=plate_url,

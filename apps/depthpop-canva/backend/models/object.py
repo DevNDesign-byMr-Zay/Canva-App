@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SemanticType = Literal[
     "person",
@@ -16,6 +17,19 @@ SemanticType = Literal[
 ]
 
 ExtractionQuality = Literal["mask", "bbox_fallback"]
+AnimationProperty = Literal[
+    "position.x",
+    "position.y",
+    "position.z",
+    "rotation.x",
+    "rotation.y",
+    "rotation.z",
+    "scale.x",
+    "scale.y",
+    "scale.z",
+    "opacity",
+]
+AnimationEasing = Literal["linear", "ease-in", "ease-out", "ease-in-out"]
 
 
 class Vector3(BaseModel):
@@ -66,6 +80,40 @@ class ObjectTransform(BaseModel):
     scale: Vector3 = Field(default_factory=lambda: Vector3(x=1.0, y=1.0, z=1.0))
 
 
+class AnimationKeyframe(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    timeMs: int = Field(..., ge=0, alias="timeMs")
+    value: float
+    easing: AnimationEasing = "linear"
+
+    @field_validator("value")
+    @classmethod
+    def finite_value(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("animation keyframe value must be finite")
+        return value
+
+
+class AnimationTrack(BaseModel):
+    id: str = Field(..., min_length=1, max_length=160)
+    property: AnimationProperty
+    keyframes: list[AnimationKeyframe] = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def validate_track(self) -> "AnimationTrack":
+        previous = -1
+        for keyframe in self.keyframes:
+            if keyframe.timeMs <= previous:
+                raise ValueError(
+                    "animation keyframe times must be unique and strictly increasing"
+                )
+            if self.property == "opacity" and not 0.0 <= keyframe.value <= 1.0:
+                raise ValueError("opacity animation values must remain within 0..1")
+            previous = keyframe.timeMs
+        return self
+
+
 class DepthObject(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -83,4 +131,7 @@ class DepthObject(BaseModel):
     visible: bool = True
     locked: bool = False
     order: int = Field(..., ge=0)
-    animationTracks: list[Any] = Field(default_factory=list, alias="animationTracks")
+    animationTracks: list[AnimationTrack] = Field(
+        default_factory=list,
+        alias="animationTracks",
+    )
