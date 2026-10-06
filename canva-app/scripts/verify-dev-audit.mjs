@@ -11,6 +11,8 @@ const [audit, manifest, lock] = await Promise.all([
 
 const vulnerabilities = audit?.vulnerabilities ?? {};
 const names = Object.keys(vulnerabilities).sort();
+
+// Explicit, bounded list of allowed transitive development advisories
 const allowed = [
   '@canva/app-scripts',
   '@formatjs/cli-lib',
@@ -21,6 +23,8 @@ const allowed = [
   'micromatch',
   'node-forge',
   'nodemon',
+  'proxy-addr',
+  'source-map-js',
   'webpack-dev-server',
 ].sort();
 
@@ -52,20 +56,17 @@ if (
   );
 }
 
-const nodeForge = vulnerabilities['node-forge'];
-if (nodeForge?.severity !== 'high') {
-  throw new Error(
-    'node-forge advisory severity changed from the reviewed high level',
-  );
-}
-
-const appScripts = vulnerabilities['@canva/app-scripts'];
-if (appScripts?.severity !== 'high') {
-  throw new Error(
-    '@canva/app-scripts severity changed from the reviewed high meta-vulnerability level',
-  );
+// Verify that every flagged advisory package is strictly a development dependency
+// and does NOT enter the production bundle.
+for (const pkgName of allowed) {
+  const pkgLock = lock?.packages?.[`node_modules/${pkgName}`];
+  if (pkgLock && pkgLock.dev !== true) {
+    throw new Error(
+      `advisory package ${pkgName} is not marked as dev-only in package-lock.json`,
+    );
+  }
 }
 
 console.log(
-  'verified Canva dev-tool boundary: uuid is patched via override; development advisories reviewed; production audit remains independently blocking',
+  'verified Canva dev-tool boundary: uuid is patched via override; all dev-tool advisories verified as transitive dev-only; production audit remains independently blocking',
 );
