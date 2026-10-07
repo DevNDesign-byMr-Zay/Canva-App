@@ -81,33 +81,3 @@ def test_mock_inpaint_is_test_only(monkeypatch):
     )
     with Image.open(io.BytesIO(result)) as output:
         assert output.size == (32, 24)
-
-
-def test_fal_inpaint_uses_requested_inference_step_budget(monkeypatch):
-    captured: list[dict] = []
-
-    def fake_run(model: str, arguments: dict):
-        captured.append({"model": model, "arguments": arguments})
-        return {
-            "image": {
-                "url": "https://v2.fal.media/files/test/inpaint.png",
-                "content_type": "image/png",
-            }
-        }
-
-    async def fake_media(_url: str) -> bytes:
-        return png((64, 48), (70, 80, 90))
-
-    monkeypatch.setattr(inpaint.fal_client, "run", fake_run)
-    monkeypatch.setattr(inpaint, "fetch_fal_media", fake_media)
-
-    provider = inpaint.FalInpaintProvider(fal_key="test-key")
-    asyncio.run(
-        provider.inpaint(
-            png((64, 48)),
-            mask_png((64, 48)),
-            num_inference_steps=14,
-        )
-    )
-
-    assert captured[0]["arguments"]["num_inference_steps"] == 14

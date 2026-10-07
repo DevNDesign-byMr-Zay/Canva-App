@@ -1,8 +1,4 @@
 import { DepthScene, isDepthScene } from "../scene/depth-scene";
-import {
-  normalizeDepthPopSettings,
-  type DepthPopSettings,
-} from "../../../depthpop/depthpop-model";
 
 export interface CreateSceneOptions {
   image: Blob | File;
@@ -10,7 +6,6 @@ export interface CreateSceneOptions {
   segmentationMode?: string;
   depthQuality?: string;
   inpaint?: boolean;
-  settings?: DepthPopSettings;
 }
 
 export interface CreateSceneJobResponse {
@@ -165,11 +160,6 @@ export class DepthPopApiClient {
     formData.append("segmentation_mode", options.segmentationMode ?? "auto");
     formData.append("depth_quality", options.depthQuality ?? "high");
     formData.append("inpaint", String(options.inpaint ?? false));
-    const settings = normalizeDepthPopSettings(options.settings);
-    formData.append("depth_strength", String(settings.depthStrength));
-    formData.append("depth_blur", String(settings.depthBlur));
-    formData.append("depth_fidelity", String(settings.depthFidelity));
-    formData.append("render_quality", settings.renderQuality);
 
     const headers = await this.getHeaders();
     const res = await fetch(`${this.baseUrl}/api/v1/scenes`, {

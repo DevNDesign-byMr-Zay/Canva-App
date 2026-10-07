@@ -12,13 +12,6 @@ function validScene(): DepthScene {
     sourceAssetId: "asset_789",
     width: 100,
     height: 100,
-    settings: {
-      depthStrength: 0.32,
-      depthBlur: 35,
-      depthFidelity: 0.95,
-      renderQuality: "cinematic",
-      numInferenceSteps: 34,
-    },
     objects: [
       {
         id: "person_01",
@@ -284,36 +277,4 @@ describe("DepthPopApiClient", () => {
       "SAM provider unavailable",
     );
   });
-  it("sends the four maintained DepthPop settings without provider-specific invented fields", async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ jobId: "job_settings", status: "queued" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    vi.stubGlobal("fetch", mockFetch);
-
-    const client = new DepthPopApiClient("https://api.test");
-    await client.createSceneJob({
-      image: new Blob(["test"], { type: "image/png" }),
-      inpaint: true,
-      settings: {
-        depthStrength: 0.41,
-        depthBlur: 57,
-        depthFidelity: 0.88,
-        renderQuality: "fast",
-      },
-    });
-
-    const request = mockFetch.mock.calls[0]?.[1] as RequestInit;
-    const form = request.body as FormData;
-    expect(form.get("depth_strength")).toBe("0.41");
-    expect(form.get("depth_blur")).toBe("57");
-    expect(form.get("depth_fidelity")).toBe("0.88");
-    expect(form.get("render_quality")).toBe("fast");
-    expect(form.get("num_inference_steps")).toBeNull();
-    expect(form.get("florence_steps")).toBeNull();
-    expect(form.get("sam_steps")).toBeNull();
-  });
-
 });

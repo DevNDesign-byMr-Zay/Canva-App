@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -14,6 +15,23 @@ from models import (
     utc_now,
 )
 from renderers import RendererRegistry
+def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(chunk_size)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+MAX_CONCURRENT_EXPORTS = max(
+    1,
+    min(8, int(os.getenv("HOLOFORGE_MAX_CONCURRENCY", "2"))),
+)
+
+
 from repositories import (
     ARTIFACT_TTL_SECONDS,
     ArtifactRepository,
@@ -33,6 +51,7 @@ class ExportService:
         self.artifacts = artifacts
         self.renderers = renderers
         self._tasks: set[asyncio.Task[None]] = set()
+        self._render_slots = asyncio.Semaphore(MAX_CONCURRENT_EXPORTS)
 
     def create(
         self,
@@ -121,19 +140,20 @@ class ExportService:
             )
             renderer = self.renderers.resolve(submission.request.format)
 
-            job = self._update(
-                job,
-                status="rendering",
-                stage="rendering",
-                percent=30,
-                message="Rendering " + submission.request.format,
-            )
-            output_dir = self.artifacts.allocate_dir(export_id)
-            artifact_path, mime_type = await renderer.render(
-                submission.scene,
-                submission.request,
-                output_dir,
-            )
+            async with self._render_slots:
+                job = self._update(
+                    job,
+                    status="rendering",
+                    stage="rendering",
+                    percent=30,
+                    message="Rendering " + submission.request.format,
+                )
+                output_dir = self.artifacts.allocate_dir(export_id)
+                artifact_path, mime_type = await renderer.render(
+                    submission.scene,
+                    submission.request,
+                    output_dir,
+                )
 
             job = self._update(
                 job,
@@ -142,8 +162,7 @@ class ExportService:
                 percent=88,
                 message="Finalizing export artifact",
             )
-            raw = artifact_path.read_bytes()
-            digest = hashlib.sha256(raw).hexdigest()[:12]
+            digest = sha256_file(artifact_path)[:12]
             extension = "".join(artifact_path.suffixes) or ".bin"
             final_name = f"{export_id}-{digest}{extension}"
             final_path = output_dir / final_name

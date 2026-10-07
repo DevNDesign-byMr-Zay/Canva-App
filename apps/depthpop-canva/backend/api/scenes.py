@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from auth import VerifiedCanvaUser, verify_canva_user
 from models.object import DepthObject, ObjectTransform, Vector3
-from models.scene import CameraConfig, DepthPopSceneSettings, TimelineConfig
+from models.scene import CameraConfig, TimelineConfig
 from services.compositor import composite_scene
 import services.persistence as persistence
 from services.persistence import job_repo, scene_asset_repo, scene_repo
@@ -34,8 +34,6 @@ router = APIRouter(prefix="/api/v1/scenes", tags=["scenes"])
 
 SUPPORTED_SEGMENTATION_MODES = {"auto", "florence_sam3", "mock"}
 SUPPORTED_DEPTH_QUALITIES = {"high", "standard"}
-SUPPORTED_RENDER_QUALITIES = {"fast", "balanced", "cinematic"}
-QUALITY_STEPS = {"fast": 14, "balanced": 22, "cinematic": 34}
 
 
 class PartialVector3(BaseModel):
@@ -131,8 +129,6 @@ async def run_scene_decomposition_job(
     segmentation_mode: str,
     depth_quality: str,
     inpaint: bool,
-    scene_settings: DepthPopSceneSettings,
-    inpaint_steps: int,
     user_id: str,
     brand_id: str,
     builder_service: SceneBuilderService | None = None,
@@ -161,8 +157,6 @@ async def run_scene_decomposition_job(
             segmentation_mode=segmentation_mode,
             depth_quality=depth_quality,
             inpaint=inpaint,
-            settings=scene_settings,
-            inpaint_steps=inpaint_steps,
             stage_reporter=report_stage,
             scene_id=scene_id,
         )
@@ -206,10 +200,6 @@ async def create_scene(
     segmentation_mode: str = Form("auto"),
     depth_quality: str = Form("high"),
     inpaint: bool = Form(False),
-    depth_strength: float = Form(0.32, ge=0.05, le=0.75),
-    depth_blur: int = Form(35, ge=0, le=100),
-    depth_fidelity: float = Form(0.95, ge=0.05, le=1.0),
-    render_quality: str = Form("cinematic"),
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
     if segmentation_mode not in SUPPORTED_SEGMENTATION_MODES:
@@ -228,24 +218,6 @@ async def create_scene(
                 f"Supported: {sorted(SUPPORTED_DEPTH_QUALITIES)}"
             ),
         )
-
-    if render_quality not in SUPPORTED_RENDER_QUALITIES:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Unsupported render_quality '{render_quality}'. "
-                f"Supported: {sorted(SUPPORTED_RENDER_QUALITIES)}"
-            ),
-        )
-
-    resolved_depth_quality = "standard" if render_quality == "fast" else "high"
-    scene_settings = DepthPopSceneSettings(
-        depthStrength=depth_strength,
-        depthBlur=depth_blur,
-        depthFidelity=depth_fidelity,
-        renderQuality=render_quality,
-        numInferenceSteps=QUALITY_STEPS[render_quality],
-    )
 
     raw_bytes, detected_mime = await validate_and_read_upload(image)
 
@@ -293,10 +265,8 @@ async def create_scene(
         url_builder=build_url,
         max_objects=max_objects,
         segmentation_mode=segmentation_mode,
-        depth_quality=resolved_depth_quality,
+        depth_quality=depth_quality,
         inpaint=inpaint,
-        scene_settings=scene_settings,
-        inpaint_steps=scene_settings.numInferenceSteps,
         user_id=user.user_id,
         brand_id=user.brand_id,
     )
@@ -309,12 +279,12 @@ async def get_scene(
     scene_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    scene = await scene_repo.get_scene(
-        scene_id,
-        user_id=user.user_id,
-        brand_id=user.brand_id,
-    )
-    if not scene:
+    scene = await scene_repo.get_scene(scene_id)
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
+    ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
     return scene.model_dump(mode="json", by_alias=True)
@@ -326,12 +296,12 @@ async def patch_scene(
     patch: ScenePatch,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    scene = await scene_repo.get_scene(
-        scene_id,
-        user_id=user.user_id,
-        brand_id=user.brand_id,
-    )
-    if not scene:
+    scene = await scene_repo.get_scene(scene_id)
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
+    ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
     updated = scene.model_copy(deep=True)
@@ -478,12 +448,12 @@ async def create_scene_composite(
     scene_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> Response:
-    scene = await scene_repo.get_scene(
-        scene_id,
-        user_id=user.user_id,
-        brand_id=user.brand_id,
-    )
-    if not scene:
+    scene = await scene_repo.get_scene(scene_id)
+    if (
+        not scene
+        or scene.userId != user.user_id
+        or scene.brandId != user.brand_id
+    ):
         raise HTTPException(status_code=404, detail="Scene not found")
 
     async def fetch_asset(url: str) -> bytes:

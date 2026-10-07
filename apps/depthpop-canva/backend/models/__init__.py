@@ -1,8 +1,4 @@
 from models.object import (
-    AnimationEasing,
-    AnimationKeyframe,
-    AnimationProperty,
-    AnimationTrack,
     BBox,
     DepthObject,
     ObjectAssets,
@@ -13,10 +9,8 @@ from models.object import (
 )
 from models.scene import (
     CameraConfig,
-    DepthPopSceneSettings,
     DepthScene,
     ReconstructedPlate,
-    RenderQuality,
     TimelineConfig,
 )
 from models.job import DepthJob, JobStage, JobStatus
@@ -28,16 +22,10 @@ __all__ = [
     "ObjectDepthStats",
     "ObjectTransform",
     "SemanticType",
-    "AnimationProperty",
-    "AnimationEasing",
-    "AnimationKeyframe",
-    "AnimationTrack",
     "DepthObject",
     "ReconstructedPlate",
     "CameraConfig",
     "TimelineConfig",
-    "RenderQuality",
-    "DepthPopSceneSettings",
     "DepthScene",
     "JobStatus",
     "JobStage",

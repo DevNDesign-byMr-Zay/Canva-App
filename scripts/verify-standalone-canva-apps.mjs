@@ -369,13 +369,11 @@ for (const contract of [
   "depthStrength: 0.32",
   "depthBlur: 35",
   "depthFidelity: 0.95",
-  'renderQuality: "cinematic"',
-  "fast: 14",
-  "balanced: 22",
-  "cinematic: 34",
+  "steps: 28",
   "0.05, 0.75",
   "0, 100",
   "0.05, 1",
+  "8, 50",
 ]) {
   if (!depthModel.includes(contract)) {
     fail(`depthpop: Drive v115 contract marker missing: ${contract}`);

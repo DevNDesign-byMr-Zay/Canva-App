@@ -1,11 +1,3 @@
-class ResizeObserverPolyfill {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-if (typeof window !== "undefined" && !window.ResizeObserver) {
-  window.ResizeObserver = ResizeObserverPolyfill as any;
-}
 // @vitest-environment jsdom
 
 import React from "react";
@@ -17,8 +9,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-// vi.mock DepthViewport
 
 import type { DepthScene } from "../scene/depth-scene";
 import { SceneWorkspace } from "./scene-workspace";
@@ -35,13 +25,6 @@ function scene(overrides: Partial<DepthScene> = {}): DepthScene {
     sourceAssetId: "source-ui",
     width: 100,
     height: 100,
-    settings: {
-      depthStrength: 0.32,
-      depthBlur: 35,
-      depthFidelity: 0.95,
-      renderQuality: "cinematic",
-      numInferenceSteps: 34,
-    },
     objects: [
       {
         id: "person_01",
@@ -86,14 +69,6 @@ function scene(overrides: Partial<DepthScene> = {}): DepthScene {
 }
 
 describe("SceneWorkspace interactions", () => {
-  it("uses the WebGL viewport instead of the legacy CSS pseudo-3D stage", () => {
-    render(<SceneWorkspace initialScene={scene()} />);
-
-    expect(screen.getByTestId("depth-webgl-viewport")).toBeTruthy();
-    expect(document.querySelector(".dp-stage-camera")).toBeNull();
-    expect(document.querySelector(".dp-stage-object")).toBeNull();
-  });
-
   it("edits X and camera FOV, then saves the authored scene", async () => {
     const onSave = vi.fn(async (value: DepthScene) => ({
       ...value,

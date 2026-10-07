@@ -23,8 +23,6 @@ def build_depth_object(
     depth_array: np.ndarray,
     url_builder: Callable[[bytes, str], str],
     index: int = 1,
-    depth_strength: float = 0.32,
-    depth_fidelity: float = 0.95,
 ) -> DepthObject:
     """Build one editable object using canonical DepthPop depth.
 
@@ -139,10 +137,7 @@ def build_depth_object(
     center_y = (
         seg_obj.bbox.y + seg_obj.bbox.height / 2.0
     ) / height
-    # Measured provider depth stays immutable; controls author only transform Z.
-    strength_scale = max(0.05, min(0.75, depth_strength)) / 0.32
-    fidelity_scale = max(0.05, min(1.0, depth_fidelity)) / 0.95
-    z_position = (depth_median - 0.5) * 4.0 * strength_scale * fidelity_scale
+    z_position = (depth_median - 0.5) * 4.0
 
     return DepthObject(
         id=object_id,

@@ -12,12 +12,8 @@ async def get_job_status(
     job_id: str,
     user: VerifiedCanvaUser = Depends(verify_canva_user),
 ) -> dict:
-    job = await job_repo.get_job(
-        job_id,
-        user_id=user.user_id,
-        brand_id=user.brand_id,
-    )
-    if not job:
+    job = await job_repo.get_job(job_id)
+    if not job or (job.userId and job.userId != user.user_id) or (job.brandId and job.brandId != user.brand_id):
         raise HTTPException(status_code=404, detail="Job not found")
 
     return job.model_dump(mode="json", by_alias=True)

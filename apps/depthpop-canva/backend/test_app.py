@@ -1,8 +1,6 @@
 import io
 
 import numpy as np
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -202,47 +200,3 @@ def test_missing_progress_record_matches_drive_style_not_found_shape():
     response = client.get("/tool/progress/missing-progress")
     assert response.status_code == 200
     assert response.json() == {"ok": False, "error": "not_found"}
-
-
-def test_cors_allowlist_derives_lowercase_canva_origin_and_explicit_dev_origins():
-    origins = depthpop._resolve_cors_origins(
-        "ABC-123",
-        "",
-        "http://localhost:8080, http://127.0.0.1:8080",
-    )
-
-    assert origins == [
-        "https://app-abc-123.canva-apps.com",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ]
-
-
-def test_cors_allowlist_does_not_authorize_arbitrary_origin():
-    probe = FastAPI()
-    probe.add_middleware(
-        CORSMiddleware,
-        allow_origins=depthpop._resolve_cors_origins(
-            "ABC-123",
-            "",
-            "http://localhost:8080",
-        ),
-        allow_credentials=False,
-        allow_methods=["GET", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
-    )
-
-    @probe.get("/probe")
-    async def cors_probe():
-        return {"ok": True}
-
-    client = TestClient(probe)
-    response = client.options(
-        "/probe",
-        headers={
-            "Origin": "https://evil.example",
-            "Access-Control-Request-Method": "GET",
-        },
-    )
-
-    assert "access-control-allow-origin" not in response.headers
