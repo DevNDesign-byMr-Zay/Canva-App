@@ -1,3 +1,11 @@
+class ResizeObserverPolyfill {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = ResizeObserverPolyfill as any;
+}
 // @vitest-environment jsdom
 
 import React from "react";
@@ -10,11 +18,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../viewport/DepthViewport", () => ({
-  DepthViewport: ({ scene }: { scene: DepthScene }) => (
-    <div data-testid="depth-webgl-viewport" data-scene-id={scene.id} />
-  ),
-}));
+// vi.mock DepthViewport
 
 import type { DepthScene } from "../scene/depth-scene";
 import { SceneWorkspace } from "./scene-workspace";

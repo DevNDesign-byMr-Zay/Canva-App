@@ -1,3 +1,4 @@
+import { DepthViewport } from "../viewport/DepthViewport";
 import React, { useEffect, useMemo, useReducer, useState } from "react";
 import { DepthPopApiClient } from "../api/depthpop-api";
 import { DepthScene } from "../scene/depth-scene";
@@ -198,97 +199,24 @@ export function SceneWorkspace({
         </div>
       )}
 
-      <div
-        className="dp-stage"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setParallaxOffset({ x: 0, y: 0 })}
-        style={{ aspectRatio: `${scene.width} / ${scene.height}` }}
-      >
-        <div
-          className="dp-stage-camera"
-          style={{
-            transform: `translate(${scene.camera.position.x}px, ${scene.camera.position.y}px) scale(${fovScale})`,
-          }}
-        >
-          {resolveUrl(scene.reconstructedPlate.imageUrl) ? (
-            <img
-              src={resolveUrl(scene.reconstructedPlate.imageUrl)}
-              alt="DepthScene reconstructed plate"
-              className="dp-stage-plate"
-            />
-          ) : (
-            <div className="dp-stage-placeholder">LOADING PLATE…</div>
-          )}
-
-          {sortedObjects.map((object) => {
-            if (!object.visible) return null;
-
-            const cutoutUrl = resolveUrl(object.assets.cutoutUrl);
-            const selected = object.id === state.selectedObjectId;
-            const zFactor = Math.max(
-              0.25,
-              Math.min(2.5, 1 + object.transform.position.z * 0.2),
-            );
-            const parallaxX = parallaxOffset.x * zFactor;
-            const parallaxY = parallaxOffset.y * zFactor;
-            const widthPct = (object.bbox.width / scene.width) * 100;
-            const heightPct = (object.bbox.height / scene.height) * 100;
-            const sourceImageWidthPct =
-              (scene.width / object.bbox.width) * 100;
-            const sourceImageHeightPct =
-              (scene.height / object.bbox.height) * 100;
-            const sourceImageLeftPct =
-              (-object.bbox.x / object.bbox.width) * 100;
-            const sourceImageTopPct =
-              (-object.bbox.y / object.bbox.height) * 100;
-
-            return (
-              <button
-                key={object.id}
-                type="button"
-                className={
-                  "dp-stage-object" + (selected ? " is-selected" : "")
-                }
-                aria-label={`Select ${object.label}`}
-                onClick={() =>
-                  dispatch({ type: "SELECT_OBJECT", objectId: object.id })
-                }
-                style={{
-                  left: `${object.transform.position.x * 100}%`,
-                  top: `${object.transform.position.y * 100}%`,
-                  width: `${widthPct}%`,
-                  height: `${heightPct}%`,
-                  opacity: object.opacity,
-                  filter:
-                    object.feather > 0
-                      ? `blur(${Math.min(object.feather, 20)}px)`
-                      : "none",
-                  transform: `translate(-50%, -50%) translate3d(${parallaxX}px, ${parallaxY}px, 0) scale(${object.transform.scale.x}, ${object.transform.scale.y}) rotate(${object.transform.rotation.z}deg)`,
-                  zIndex: object.order + 10,
-                  overflow: "hidden",
-                }}
-              >
-                {cutoutUrl ? (
-                  <img
-                    src={cutoutUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="dp-cutout-img"
-                    style={{
-                      width: `${sourceImageWidthPct}%`,
-                      height: `${sourceImageHeightPct}%`,
-                      left: `${sourceImageLeftPct}%`,
-                      top: `${sourceImageTopPct}%`,
-                    }}
-                  />
-                ) : (
-                  <span className="dp-object-placeholder">…</span>
-                )}
-                {selected && <span className="dp-select-border" />}
-              </button>
-            );
-          })}
-        </div>
+      <div className="dp-stage" style={{ aspectRatio: `${scene.width} / ${scene.height}` }}>
+        <DepthViewport
+          scene={scene}
+          selectedObjectId={state.selectedObjectId}
+          onSelectObject={(id) =>
+            dispatch({
+              type: "SELECT_OBJECT",
+              objectId: id,
+            })
+          }
+          onTransformChange={(objectId, transform) =>
+            dispatch({
+              type: "UPDATE_OBJECT_TRANSFORM",
+              objectId,
+              transform,
+            })
+          }
+        />
       </div>
 
       {statusMessage && (
