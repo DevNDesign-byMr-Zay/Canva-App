@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import type { DepthScene, DepthSceneObject } from "../scene/depth-scene";
+import type { DepthScene, DepthObject } from "../scene/depth-scene";
 import { bindWebGLRecovery } from "./webgl-recovery";
 
 export interface DepthViewportProps {
@@ -8,7 +8,7 @@ export interface DepthViewportProps {
   onSelectObject?: (id: string | null) => void;
   onUpdateTransform?: (
     objectId: string,
-    transform: DepthSceneObject["transform"]
+    transform: DepthObject["transform"],
   ) => void;
   isFallback?: boolean;
 }
@@ -23,7 +23,7 @@ export function DepthViewport({
 
   useEffect(() => {
     const canvas = document.querySelector<HTMLCanvasElement>(
-      '[data-testid="depth-webgl-canvas"]'
+      '[data-testid="depth-webgl-canvas"]',
     );
     if (!canvas) return;
 
@@ -39,7 +39,7 @@ export function DepthViewport({
       {
         onLost: () => setHasContextError(true),
         onRestored: () => setHasContextError(false),
-      }
+      },
     );
   }, [scene.id, scene.camera, scene.timeline.currentTimeMs, selectedObjectId]);
 
@@ -97,6 +97,7 @@ export function DepthViewport({
           .filter((obj) => obj.visible)
           .map((obj) => {
             const isSelected = obj.id === selectedObjectId;
+            const cutoutUrl = obj.assets?.cutoutUrl;
             return (
               <div
                 key={obj.id}
@@ -116,9 +117,9 @@ export function DepthViewport({
                   cursor: obj.locked ? "not-allowed" : "pointer",
                 }}
               >
-                {obj.cutoutUrl && (
+                {cutoutUrl && (
                   <img
-                    src={obj.cutoutUrl}
+                    src={cutoutUrl}
                     alt={obj.label}
                     style={{
                       maxHeight: "200px",

@@ -1,6 +1,9 @@
 import type { AnimationKeyframe, AnimationTrack } from "../scene/depth-scene";
 
-export function evaluateEasing(progress: number, easing: AnimationKeyframe["easing"] = "linear"): number {
+export function evaluateEasing(
+  progress: number,
+  easing: AnimationKeyframe["easing"] = "linear",
+): number {
   const t = Math.max(0, Math.min(1, progress));
   switch (easing) {
     case "ease-in":
@@ -15,7 +18,11 @@ export function evaluateEasing(progress: number, easing: AnimationKeyframe["easi
   }
 }
 
-export function evaluateTrackValue(track: AnimationTrack, timeMs: number, defaultValue: number): number {
+export function evaluateTrackValue(
+  track: AnimationTrack,
+  timeMs: number,
+  defaultValue: number,
+): number {
   if (!track.keyframes || track.keyframes.length === 0) {
     return defaultValue;
   }

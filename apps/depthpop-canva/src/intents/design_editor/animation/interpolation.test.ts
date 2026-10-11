@@ -12,10 +12,11 @@ describe("Animation interpolation", () => {
 
   it("evaluates track interpolation between keyframes", () => {
     const track: AnimationTrack = {
+      id: "track-pos-x",
       property: "position.x",
       keyframes: [
-        { id: "k1", timeMs: 0, value: 0, easing: "linear" },
-        { id: "k2", timeMs: 1000, value: 10, easing: "linear" },
+        { timeMs: 0, value: 0, easing: "linear" },
+        { timeMs: 1000, value: 10, easing: "linear" },
       ],
     };
 
