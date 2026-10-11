@@ -9,6 +9,13 @@ function makeScene(): DepthScene {
     sourceAssetId: "asset_1",
     width: 200,
     height: 200,
+    settings: {
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      renderQuality: "cinematic",
+      numInferenceSteps: 34,
+    },
     objects: [
       {
         id: "person_01",

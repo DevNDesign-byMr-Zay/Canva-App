@@ -16,7 +16,6 @@ import {
 } from "three";
 
 import { sampleTransformTracks } from "../animation/keyframe-model";
-import { samplePresetMotion } from "../animation/preset-motion";
 import { useAlphaShape } from "../geometry/use-alpha-shape";
 import { HoloMaterial } from "../materials/HoloMaterial";
 import type { HoloObject as HoloObjectSpec } from "../scene/holo-scene";
@@ -87,7 +86,7 @@ export type HoloObjectProps = {
 };
 
 export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject(
-  { object, selected, currentTimeMs, onSelect },
+  { object, selected, playing, currentTimeMs, onSelect },
   forwardedRef,
 ) {
   const root = useRef<Group>(null);
@@ -137,22 +136,31 @@ export const HoloObject = forwardRef<Group, HoloObjectProps>(function HoloObject
       return;
     }
 
-    const motion = samplePresetMotion(object.animationPreset, time);
-    target.position.set(
-      motion.position.x,
-      motion.position.y,
-      motion.position.z,
-    );
-    target.rotation.set(
-      motion.rotation.x,
-      motion.rotation.y,
-      motion.rotation.z,
-    );
-    target.scale.set(
-      motion.scale.x,
-      motion.scale.y,
-      motion.scale.z,
-    );
+    if (!playing && object.animationPreset !== "static") return;
+
+    switch (object.animationPreset) {
+      case "shimmer":
+        target.rotation.y = Math.sin(time * 1.25) * 0.18;
+        target.rotation.x = Math.cos(time * 0.8) * 0.045;
+        break;
+      case "sweep":
+        target.rotation.y = time * 0.34;
+        break;
+      case "pulse": {
+        const pulse = 1 + Math.sin(time * 2.4) * 0.045;
+        target.scale.setScalar(pulse);
+        break;
+      }
+      case "turntable":
+        target.rotation.y = time * 0.5;
+        break;
+      case "orbit":
+        target.position.x = Math.cos(time * 0.55) * 0.32;
+        target.position.z = Math.sin(time * 0.55) * 0.18;
+        break;
+      default:
+        break;
+    }
   });
 
   if (!object.visible) return null;

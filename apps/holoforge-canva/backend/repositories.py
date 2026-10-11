@@ -50,12 +50,6 @@ class JobRepository:
     def put(self, job: ExportJob) -> None:
         with self._lock:
             self._cleanup()
-            if job.id not in self._values and len(self._values) >= MAX_JOBS:
-                oldest_key = min(
-                    self._values,
-                    key=lambda key: self._values[key][0],
-                )
-                self._values.pop(oldest_key, None)
             self._values[job.id] = (time.time(), job)
 
     def get(self, key: OwnedKey) -> ExportJob | None:
@@ -88,23 +82,6 @@ class JobRepository:
             return None
 
 
-
-def _remove_artifact_tree(artifact: ExportArtifact) -> None:
-    try:
-        path = Path(artifact.path).resolve()
-        root = ARTIFACT_ROOT.resolve()
-        export_dir = path.parent
-        export_dir.relative_to(root)
-    except (OSError, ValueError):
-        return
-
-    if export_dir == root:
-        path.unlink(missing_ok=True)
-        return
-
-    shutil.rmtree(export_dir, ignore_errors=True)
-
-
 class ArtifactRepository:
     def __init__(self) -> None:
         ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -120,12 +97,12 @@ class ArtifactRepository:
         for key in expired:
             record = self._values.pop(key, None)
             if record:
-                _remove_artifact_tree(record[1])
+                Path(record[1].path).unlink(missing_ok=True)
         if len(self._values) > MAX_ARTIFACTS:
             ordered = sorted(self._values.items(), key=lambda item: item[1][0])
             for key, (_, artifact) in ordered[: len(self._values) - MAX_ARTIFACTS]:
                 self._values.pop(key, None)
-                _remove_artifact_tree(artifact)
+                Path(artifact.path).unlink(missing_ok=True)
 
     def allocate_dir(self, export_id: str) -> Path:
         root = ARTIFACT_ROOT / export_id
@@ -137,14 +114,6 @@ class ArtifactRepository:
     def put(self, artifact: ExportArtifact) -> None:
         with self._lock:
             self._cleanup()
-            if artifact.id not in self._values and len(self._values) >= MAX_ARTIFACTS:
-                oldest_key = min(
-                    self._values,
-                    key=lambda key: self._values[key][0],
-                )
-                record = self._values.pop(oldest_key, None)
-                if record:
-                    _remove_artifact_tree(record[1])
             self._values[artifact.id] = (time.time(), artifact)
 
     def get(self, key: OwnedKey) -> ExportArtifact | None:
@@ -158,6 +127,5 @@ class ArtifactRepository:
                 return None
             if not Path(artifact.path).is_file():
                 self._values.pop(key.resource_id, None)
-                _remove_artifact_tree(artifact)
                 return None
             return artifact
