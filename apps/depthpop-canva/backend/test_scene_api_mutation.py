@@ -17,7 +17,7 @@ from models.object import (
     Vector3,
 )
 from models.scene import CameraConfig, DepthScene, ReconstructedPlate, TimelineConfig
-from services.persistence import scene_repo
+from services.persistence import scene_asset_repo, scene_repo
 
 
 def image_bytes(*, object_color=(255, 0, 0, 255), transparent=False) -> bytes:
@@ -74,6 +74,8 @@ def seeded_client():
     depthpop.app.dependency_overrides[verify_canva_user] = fake_user
     depthpop._image_cache.clear()
     scene_repo._scenes.clear()
+    if hasattr(scene_asset_repo, "_assets"):
+        scene_asset_repo._assets.clear()
 
     plate_key = depthpop._cache_put(image_bytes(), "image/png")
     red_key = depthpop._cache_put(image_bytes(transparent=True), "image/png")
@@ -118,6 +120,8 @@ def seeded_client():
         depthpop.app.dependency_overrides.clear()
         depthpop._image_cache.clear()
         scene_repo._scenes.clear()
+        if hasattr(scene_asset_repo, "_assets"):
+            scene_asset_repo._assets.clear()
 
 
 def test_patch_allows_only_editable_fields_and_preserves_partial_transform(
@@ -227,3 +231,49 @@ def test_composite_route_returns_raw_png_bytes(seeded_client):
     with Image.open(io.BytesIO(response.content)) as rendered:
         assert rendered.format == "PNG"
         assert rendered.size == (100, 100)
+
+
+def test_object_rename_duplicate_and_delete_routes(seeded_client):
+    renamed = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test/objects/red",
+        json={"label": "Hero"},
+    )
+    assert renamed.status_code == 200
+    assert next(item for item in renamed.json()["objects"] if item["id"] == "red")["label"] == "Hero"
+
+    duplicated = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/objects/red/duplicate"
+    )
+    assert duplicated.status_code == 200
+    copies = [
+        item
+        for item in duplicated.json()["objects"]
+        if item["id"].startswith("red_copy_")
+    ]
+    assert len(copies) == 1
+    assert copies[0]["label"] == "Hero Copy"
+
+    deleted = seeded_client.delete(
+        f"/api/v1/scenes/scene-api-test/objects/{copies[0]['id']}"
+    )
+    assert deleted.status_code == 200
+    assert all(
+        item["id"] != copies[0]["id"]
+        for item in deleted.json()["objects"]
+    )
+
+
+def test_merge_route_creates_owned_merged_object(seeded_client):
+    merged = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/objects/merge",
+        json={"objectIds": ["red", "blue"], "label": "Combined"},
+    )
+    assert merged.status_code == 200
+    payload = merged.json()
+    assert len(payload["objects"]) == 1
+    combined = payload["objects"][0]
+    assert combined["id"].startswith("merged_")
+    assert combined["label"] == "Combined"
+    assert combined["assets"]["cutoutUrl"].startswith(
+        "http://testserver/api/v1/assets/"
+    )
