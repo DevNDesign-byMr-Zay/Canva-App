@@ -214,6 +214,9 @@ export function SceneWorkspace({
     useState<DepthPopExportRequest["format"]>("glb");
   const [includeAnimation, setIncludeAnimation] = useState(true);
   const [exportFps, setExportFps] = useState(30);
+  const [exportWidth, setExportWidth] = useState(1920);
+  const [exportHeight, setExportHeight] = useState(1080);
+  const [objectNameDraft, setObjectNameDraft] = useState("");
   const [exportStatus, setExportStatus] =
     useState<DepthPopExportStatus | null>(null);
   const [exportBusy, setExportBusy] = useState(false);
@@ -333,6 +336,10 @@ export function SceneWorkspace({
   ]);
 
   useEffect(() => {
+    setObjectNameDraft(selectedObject?.label ?? "");
+  }, [selectedObject?.id, selectedObject?.label]);
+
+  useEffect(() => {
     setMergeSelection((current) => {
       const ids = new Set(scene.objects.map((object) => object.id));
       return new Set([...current].filter((id) => ids.has(id)));
@@ -434,10 +441,7 @@ export function SceneWorkspace({
 
   const handleRename = () => {
     if (!apiClient || !selectedObject) return;
-    const nextLabel = window.prompt(
-      "Object name",
-      selectedObject.label,
-    )?.trim();
+    const nextLabel = objectNameDraft.trim();
     if (!nextLabel || nextLabel === selectedObject.label) return;
     void runObjectOperation(
       () =>
@@ -586,6 +590,13 @@ export function SceneWorkspace({
         fps:
           exportFormat === "mp4" || exportFormat === "webm"
             ? exportFps
+            : undefined,
+        resolution:
+          exportFormat === "mp4" || exportFormat === "webm"
+            ? {
+                width: exportWidth,
+                height: exportHeight,
+              }
             : undefined,
       });
 
@@ -892,19 +903,40 @@ export function SceneWorkspace({
           {selectedObject && (
             <section className="dp-object-inspector">
               <header className="dp-inspector-header">
-                <div>
+                <div className="dp-object-name-editor">
                   <span>OBJECT</span>
-                  <h4>{selectedObject.label}</h4>
+                  <div>
+                    <input
+                      aria-label="Object name"
+                      value={objectNameDraft}
+                      maxLength={160}
+                      disabled={!apiClient || isObjectBusy}
+                      onChange={(event) =>
+                        setObjectNameDraft(event.currentTarget.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.currentTarget.blur();
+                          handleRename();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="dp-btn-small"
+                      disabled={
+                        !apiClient ||
+                        isObjectBusy ||
+                        !objectNameDraft.trim() ||
+                        objectNameDraft.trim() === selectedObject.label
+                      }
+                      onClick={handleRename}
+                    >
+                      SAVE NAME
+                    </button>
+                  </div>
                 </div>
                 <div className="dp-inline-actions">
-                  <button
-                    type="button"
-                    className="dp-btn-small"
-                    disabled={!apiClient || isObjectBusy}
-                    onClick={handleRename}
-                  >
-                    RENAME
-                  </button>
                   <button
                     type="button"
                     className="dp-btn-small"
@@ -1477,26 +1509,70 @@ export function SceneWorkspace({
           </label>
 
           {(exportFormat === "mp4" || exportFormat === "webm") && (
-            <label className="dp-field">
-              VIDEO FPS
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={exportFps}
-                onChange={(event) =>
-                  setExportFps(
-                    Math.max(
-                      1,
-                      Math.min(
-                        60,
-                        Number(event.currentTarget.value),
+            <div className="dp-video-settings">
+              <label className="dp-field">
+                VIDEO FPS
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={exportFps}
+                  onChange={(event) =>
+                    setExportFps(
+                      Math.max(
+                        1,
+                        Math.min(
+                          60,
+                          Number(event.currentTarget.value),
+                        ),
                       ),
-                    ),
-                  )
-                }
-              />
-            </label>
+                    )
+                  }
+                />
+              </label>
+              <label className="dp-field">
+                WIDTH
+                <input
+                  type="number"
+                  min={64}
+                  max={4096}
+                  step={16}
+                  value={exportWidth}
+                  onChange={(event) =>
+                    setExportWidth(
+                      Math.max(
+                        64,
+                        Math.min(
+                          4096,
+                          Number(event.currentTarget.value),
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <label className="dp-field">
+                HEIGHT
+                <input
+                  type="number"
+                  min={64}
+                  max={4096}
+                  step={16}
+                  value={exportHeight}
+                  onChange={(event) =>
+                    setExportHeight(
+                      Math.max(
+                        64,
+                        Math.min(
+                          4096,
+                          Number(event.currentTarget.value),
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </label>
+            </div>
           )}
 
           <button
