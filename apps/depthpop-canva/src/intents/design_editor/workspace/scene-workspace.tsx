@@ -820,7 +820,7 @@ export function SceneWorkspace({
                       {object.semanticType} ·{" "}
                       {Math.round(object.confidence * 100)}%
                       {object.extractionQuality === "bbox_fallback"
-                        ? " · BBOX"
+                        ? " · BBOX FALLBACK"
                         : ""}
                     </span>
                   </div>
