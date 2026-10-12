@@ -22,7 +22,7 @@ from fastapi import (
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from auth import VerifiedCanvaUser, verify_canva_user
-from models.object import DepthObject, ObjectTransform, Vector3
+from models.object import AnimationTrack, DepthObject, ObjectTransform, Vector3
 from models.scene import CameraConfig, DepthPopSceneSettings, TimelineConfig
 from services.compositor import composite_scene
 import services.persistence as persistence
@@ -73,12 +73,14 @@ class ObjectPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(..., min_length=1, max_length=160)
+    label: str | None = Field(None, min_length=1, max_length=160)
     transform: TransformPatch | None = None
     opacity: float | None = Field(None, ge=0.0, le=1.0)
     feather: float | None = Field(None, ge=0.0, le=100.0)
     visible: bool | None = None
     locked: bool | None = None
     order: int | None = Field(None, ge=0, le=127)
+    animationTracks: list[AnimationTrack] | None = Field(None, alias="animationTracks")
 
 
 class CameraPatch(BaseModel):
