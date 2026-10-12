@@ -997,3 +997,41 @@ body {
     flex-direction: column;
   }
 }
+
+
+.dp-object-name-editor {
+  min-width: 0;
+  flex: 1;
+}
+.dp-object-name-editor > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+.dp-object-name-editor input {
+  min-width: 0;
+  flex: 1;
+  padding: 7px 8px;
+  border: 1px solid rgba(177,132,255,.16);
+  border-radius: 8px;
+  outline: none;
+  background: rgba(0,0,0,.3);
+  color: rgba(255,255,255,.88);
+  font: inherit;
+  font-size: 8.5px;
+}
+.dp-object-name-editor input:focus {
+  border-color: rgba(177,132,255,.5);
+  box-shadow: 0 0 0 2px rgba(168,85,247,.08);
+}
+.dp-video-settings {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 7px;
+}
+@media (max-width: 320px) {
+  .dp-video-settings {
+    grid-template-columns: 1fr;
+  }
+}
