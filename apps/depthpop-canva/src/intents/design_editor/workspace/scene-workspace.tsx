@@ -425,9 +425,19 @@ export function SceneWorkspace({
     operation: () => Promise<DepthScene>,
     pending: string,
   ) => {
+    if (!apiClient) return;
     setIsObjectBusy(true);
     setStatusMessage(pending);
     try {
+      // Object endpoints operate on the durable server scene. Persist any
+      // local transform/keyframe/camera edits first so a duplicate, merge,
+      // split or delete cannot replace them with an older server snapshot.
+      if (dirty) {
+        const saved = onSave
+          ? await onSave(scene)
+          : await apiClient.patchScene(scene.id, scene);
+        dispatch({ type: "COMMIT_SCENE", scene: saved });
+      }
       commitServerScene(await operation());
     } catch (cause) {
       setStatusMessage(
