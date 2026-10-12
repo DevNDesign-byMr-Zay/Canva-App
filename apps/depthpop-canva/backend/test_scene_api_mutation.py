@@ -17,6 +17,7 @@ from models.object import (
     Vector3,
 )
 from models.scene import CameraConfig, DepthScene, ReconstructedPlate, TimelineConfig
+from services.export_persistence import export_repo, export_storage
 from services.persistence import scene_asset_repo, scene_repo
 
 
@@ -76,6 +77,10 @@ def seeded_client():
     scene_repo._scenes.clear()
     if hasattr(scene_asset_repo, "_assets"):
         scene_asset_repo._assets.clear()
+    if hasattr(export_repo, "_jobs"):
+        export_repo._jobs.clear()
+    if hasattr(export_repo, "_artifacts"):
+        export_repo._artifacts.clear()
 
     plate_key = depthpop._cache_put(image_bytes(), "image/png")
     red_key = depthpop._cache_put(image_bytes(transparent=True), "image/png")
@@ -277,3 +282,34 @@ def test_merge_route_creates_owned_merged_object(seeded_client):
     assert combined["assets"]["cutoutUrl"].startswith(
         "http://testserver/api/v1/assets/"
     )
+
+
+def test_export_api_creates_owned_portable_scene_artifact(seeded_client):
+    created = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/exports",
+        json={"format": "scene-json", "includeAnimation": True},
+    )
+    assert created.status_code == 202
+    job_id = created.json()["jobId"]
+
+    status = seeded_client.get(f"/api/v1/exports/{job_id}")
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["status"] == "complete"
+    assert payload["artifactId"]
+    assert payload["downloadUrl"]
+
+    downloaded = seeded_client.get(payload["downloadUrl"])
+    assert downloaded.status_code == 200
+    assert downloaded.headers["content-type"].startswith("application/json")
+    portable = downloaded.json()
+    assert portable["format"] == "depthscene-portable-v1"
+    assert portable["scene"]["id"] == "scene-api-test"
+
+    artifact = export_repo.get_artifact(
+        payload["artifactId"],
+        user_id="user-a",
+        brand_id="brand-a",
+    )
+    assert artifact is not None
+    export_storage.cleanup_workspace(artifact.path)
