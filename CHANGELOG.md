@@ -2,7 +2,32 @@
 
 All notable maintained-surface changes to this repository are documented here.
 
-## Unreleased — pre-rescore detector hardening
+## 2026-10-12 — standalone Canva production completion
+
+### HoloForge
+
+- Finalized the standalone React Three Fiber / Three.js spatial authoring workflow, persistent HoloScene editing, multi-object composition, material/geometry controls and 4D keyframe animation.
+- Added the authenticated durable render backend with persistent SQLite metadata, restart recovery, bounded Blender rendering and owner-scoped artifacts.
+- Qualified real PNG Still, GLB/glTF, USDZ, transparent WebM, MP4, PNG Sequence and light-field Quilt outputs.
+- Consolidated render-parity and artifact-lifecycle work into the canonical production implementation merged through PR #251.
+
+### DepthPop
+
+- Replaced the flat compatibility experience with the canonical DepthScene v1 object-scene architecture and real React Three Fiber / Three.js spatial editor.
+- Added direct X/Y/Z, rotation/scale gizmos, persisted camera controls, WebGL recovery, 4D timeline/keyframes and serializable motion presets.
+- Added authenticated server-backed rename, duplicate, delete, merge and provider-backed split/re-segmentation.
+- Added durable scene/export persistence and real portable scene JSON, PNG-layer ZIP, glTF/GLB and WebM/MP4 export jobs.
+- Preserved Render to Canva as a separate authenticated output path.
+- Completed the production frontend/backend integration through PR #257 and follow-up frontend completion PR #258.
+
+### Packaging and repository cleanup
+
+- Final handoff artifacts are exactly `HoloForge-Canva-App.zip` and `DepthPop-Canva-App.zip`.
+- Historical ROARY/ÆTHER material and DepthPop Drive provenance remain repository-only and are excluded from final handoff ZIPs.
+- Closed superseded open PRs #206, #213, #246 and #247 after verifying their maintained work was replaced or consolidated on current `main`.
+- Current standalone package audits reject credentials, databases, generated artifacts, cross-product source leakage and historical reference trees.
+
+## Historical pre-separation work — superseded by standalone production apps
 
 ### Fixed
 
