@@ -283,4 +283,52 @@ describe("SceneWorkspace interactions", () => {
       }),
     );
   });
+
+  it("persists dirty local edits before a server object mutation", async () => {
+    const client = new DepthPopApiClient("https://api.test");
+    const onSave = vi.fn(async (value: DepthScene) => ({
+      ...value,
+      updatedAt: "2026-10-01T00:06:00Z",
+    }));
+    const duplicated: DepthScene = {
+      ...scene(),
+      objects: [
+        {
+          ...scene().objects[0]!,
+          transform: {
+            ...scene().objects[0]!.transform,
+            position: { x: 0.77, y: 0.4, z: 1.2 },
+          },
+        },
+        {
+          ...scene().objects[0]!,
+          id: "person_01_copy",
+          label: "Person Copy",
+          order: 1,
+        },
+      ],
+      updatedAt: "2026-10-01T00:07:00Z",
+    };
+    vi.spyOn(client, "duplicateObject").mockResolvedValue(duplicated);
+
+    render(
+      <SceneWorkspace
+        initialScene={scene()}
+        apiClient={client}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("X position"), {
+      target: { value: "0.77" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "DUPLICATE" }));
+
+    await waitFor(() => expect(client.duplicateObject).toHaveBeenCalledOnce());
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0]![0].objects[0]!.transform.position.x).toBe(
+      0.77,
+    );
+  });
+
 });
