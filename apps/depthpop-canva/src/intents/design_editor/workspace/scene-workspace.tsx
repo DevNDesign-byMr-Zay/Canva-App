@@ -1396,7 +1396,7 @@ export function SceneWorkspace({
             <button
               type="button"
               className="dp-exec"
-              disabled={!selectedObject}
+              disabled={!selectedObject || selectedObject.locked}
               onClick={() => addPose()}
             >
               ADD / UPDATE KEYFRAME
@@ -1406,6 +1406,7 @@ export function SceneWorkspace({
               className="dp-btn-reset"
               disabled={
                 !selectedObject ||
+                selectedObject.locked ||
                 !selectedPoseTimes.includes(
                   scene.timeline.currentTimeMs,
                 )
@@ -1462,6 +1463,9 @@ export function SceneWorkspace({
                 <button
                   key={preset}
                   type="button"
+                  disabled={
+                    scene.objects.every((object) => object.locked)
+                  }
                   onClick={() => applyPreset(preset)}
                 >
                   {preset.replace("_", " ")}
