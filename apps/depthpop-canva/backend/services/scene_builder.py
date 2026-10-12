@@ -6,7 +6,7 @@ import uuid
 from typing import Awaitable, Callable
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from models.object import DepthObject
 from models.scene import (
@@ -171,6 +171,19 @@ class SceneBuilderService:
             )
         else:
             plate_bytes = source_png_bytes
+
+        # depthBlur is the authored background-softness control. Apply it to
+        # the reconstructed plate only; extracted foreground objects remain
+        # sharp and independently editable.
+        if scene_settings.depthBlur > 0:
+            with Image.open(io.BytesIO(plate_bytes)) as plate_image:
+                radius = min(12.0, float(scene_settings.depthBlur) * 0.12)
+                softened = plate_image.convert("RGBA").filter(
+                    ImageFilter.GaussianBlur(radius=radius)
+                )
+                softened_buffer = io.BytesIO()
+                softened.save(softened_buffer, format="PNG", optimize=True)
+                plate_bytes = softened_buffer.getvalue()
 
         plate_url = url_builder(plate_bytes, "image/png")
         depth_map_url = url_builder(
