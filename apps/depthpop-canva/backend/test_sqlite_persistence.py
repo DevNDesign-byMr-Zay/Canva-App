@@ -5,6 +5,7 @@ from pathlib import Path
 
 from models.job import DepthJob
 from models.scene import DepthScene
+from persistence.asset_store import DiskSceneAssetRepository
 from persistence.sqlite_repository import SQLiteJobRepository, SQLiteSceneRepository
 
 
@@ -145,3 +146,51 @@ def test_sqlite_job_ttl_cleanup_removes_expired_metadata(tmp_path: Path, monkeyp
 
     clock["now"] = 206.0
     assert asyncio.run(repo.get_job("job_expired")) is None
+
+
+def test_scene_capacity_eviction_cleans_owned_assets_without_nested_sqlite_writer(
+    tmp_path: Path,
+):
+    db = tmp_path / "depthpop.sqlite3"
+    asset_root = tmp_path / "assets"
+    assets = DiskSceneAssetRepository(
+        db,
+        asset_root,
+        max_assets=20,
+        ttl_seconds=3600,
+    )
+    scenes = SQLiteSceneRepository(
+        db,
+        max_scenes=1,
+        ttl_seconds=3600,
+        asset_store=assets,
+    )
+
+    first_scene = _scene("scene_first")
+    second_scene = _scene("scene_second")
+
+    stored = assets.save_asset_sync(
+        scene_id=first_scene.id,
+        user_id=first_scene.userId,
+        brand_id=first_scene.brandId,
+        data=b"first-scene-asset",
+        mime_type="application/octet-stream",
+    )
+    stored_path = assets.path_for_asset(stored.asset_id)
+    assert stored_path.is_file()
+
+    asyncio.run(scenes.save_scene(first_scene))
+    # Saving the second scene must evict the first scene and its owned assets
+    # in one SQLite write transaction rather than deadlocking on a nested writer.
+    asyncio.run(scenes.save_scene(second_scene))
+
+    assert asyncio.run(scenes.get_scene(first_scene.id)) is None
+    assert asyncio.run(scenes.get_scene(second_scene.id)) is not None
+    assert not stored_path.exists()
+    assert asyncio.run(
+        assets.get_asset(
+            stored.asset_id,
+            user_id=first_scene.userId,
+            brand_id=first_scene.brandId,
+        )
+    ) is None
