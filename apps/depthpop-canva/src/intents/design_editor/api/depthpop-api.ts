@@ -42,7 +42,15 @@ export type DepthScenePatchPayload = Readonly<{
   objects: ReadonlyArray<
     Pick<
       DepthScene["objects"][number],
-      "id" | "transform" | "opacity" | "feather" | "visible" | "locked" | "order"
+      | "id"
+      | "label"
+      | "transform"
+      | "opacity"
+      | "feather"
+      | "visible"
+      | "locked"
+      | "order"
+      | "animationTracks"
     >
   >;
   camera: DepthScene["camera"];
@@ -53,12 +61,14 @@ function scenePatchPayload(scene: DepthScene): DepthScenePatchPayload {
   return {
     objects: scene.objects.map((object) => ({
       id: object.id,
+      label: object.label,
       transform: object.transform,
       opacity: object.opacity,
       feather: object.feather,
       visible: object.visible,
       locked: object.locked,
       order: object.order,
+      animationTracks: object.animationTracks,
     })),
     camera: scene.camera,
     timeline: scene.timeline,
@@ -281,6 +291,179 @@ export class DepthPopApiClient {
     assertPng(blob);
     return blob;
   }
+
+  private async sceneMutation(
+    path: string,
+    method: "PATCH" | "POST" | "DELETE",
+    body: unknown | undefined,
+    fallback: string,
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    const headers = await this.getHeaders(
+      body === undefined ? {} : { "Content-Type": "application/json" },
+    );
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal,
+    });
+    if (!res.ok) throw await apiError(res, fallback);
+    const payload: unknown = await res.json();
+    if (!isDepthScene(payload)) {
+      throw new Error("DepthPop object operation returned an invalid DepthScene.");
+    }
+    return payload;
+  }
+
+  async renameObject(
+    sceneId: string,
+    objectId: string,
+    label: string,
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    return this.sceneMutation(
+      `/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`,
+      "PATCH",
+      { label },
+      "Failed to rename object",
+      signal,
+    );
+  }
+
+  async duplicateObject(
+    sceneId: string,
+    objectId: string,
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    return this.sceneMutation(
+      `/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/duplicate`,
+      "POST",
+      undefined,
+      "Failed to duplicate object",
+      signal,
+    );
+  }
+
+  async deleteObject(
+    sceneId: string,
+    objectId: string,
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    return this.sceneMutation(
+      `/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`,
+      "DELETE",
+      undefined,
+      "Failed to delete object",
+      signal,
+    );
+  }
+
+  async mergeObjects(
+    sceneId: string,
+    objectIds: string[],
+    label?: string,
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    return this.sceneMutation(
+      `/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/merge`,
+      "POST",
+      { objectIds, ...(label ? { label } : {}) },
+      "Failed to merge objects",
+      signal,
+    );
+  }
+
+  async splitObject(
+    sceneId: string,
+    objectId: string,
+    maxObjects = 4,
+    segmentationMode = "auto",
+    signal?: AbortSignal,
+  ): Promise<DepthScene> {
+    return this.sceneMutation(
+      `/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/split`,
+      "POST",
+      { maxObjects, segmentationMode },
+      "Failed to split object",
+      signal,
+    );
+  }
+
+  async createExportJob(
+    sceneId: string,
+    request: DepthPopExportRequest,
+    signal?: AbortSignal,
+  ): Promise<DepthPopExportCreateResponse> {
+    const headers = await this.getHeaders({
+      "Content-Type": "application/json",
+    });
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/exports`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(request),
+        signal,
+      },
+    );
+    if (!res.ok) throw await apiError(res, "Failed to create export job");
+    const payload = (await res.json()) as Partial<DepthPopExportCreateResponse>;
+    if (typeof payload.jobId !== "string" || payload.status !== "queued") {
+      throw new Error("DepthPop export creation returned an invalid job.");
+    }
+    return payload as DepthPopExportCreateResponse;
+  }
+
+  async getExportStatus(
+    jobId: string,
+    signal?: AbortSignal,
+  ): Promise<DepthPopExportStatus> {
+    const headers = await this.getHeaders();
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}`,
+      { method: "GET", headers, signal },
+    );
+    if (!res.ok) throw await apiError(res, "Failed to fetch export status");
+    return (await res.json()) as DepthPopExportStatus;
+  }
+
+  async cancelExportJob(
+    jobId: string,
+    signal?: AbortSignal,
+  ): Promise<DepthPopExportStatus> {
+    const headers = await this.getHeaders();
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}/cancel`,
+      { method: "POST", headers, signal },
+    );
+    if (!res.ok) throw await apiError(res, "Failed to cancel export job");
+    return (await res.json()) as DepthPopExportStatus;
+  }
+
+  async downloadArtifactBlob(
+    downloadUrl: string,
+    signal?: AbortSignal,
+  ): Promise<Blob> {
+    const headers = await this.getHeaders();
+    const authenticatedUrl = this.authenticatedAssetUrl(downloadUrl);
+    const res = await fetch(authenticatedUrl, {
+      method: "GET",
+      headers,
+      signal,
+    });
+    if (!res.ok) throw await apiError(res, "Failed to download artifact");
+
+    const contentLength = Number(res.headers.get("content-length") || "0");
+    if (contentLength > 512 * 1024 * 1024) {
+      throw new Error("DepthPop export artifact exceeds the 512 MB client limit.");
+    }
+    const blob = await res.blob();
+    if (blob.size <= 0 || blob.size > 512 * 1024 * 1024) {
+      throw new Error("DepthPop export artifact is empty or exceeds 512 MB.");
+    }
+    return blob;
+  }
 }
 
 export { scenePatchPayload };
@@ -292,126 +475,18 @@ export interface DepthPopExportRequest {
   fps?: number;
 }
 
-export interface DepthPopExportJob {
-  id: string;
-  sceneId: string;
-  format: string;
+export interface DepthPopExportCreateResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export interface DepthPopExportStatus {
+  jobId: string;
+  format: DepthPopExportRequest["format"];
   status: "queued" | "processing" | "complete" | "failed" | "cancelled";
-  stage?: string;
-  progress?: number;
-  error?: string;
-  artifactId?: string;
-  downloadUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  stage: string;
+  progress: number;
+  error?: string | null;
+  artifactId?: string | null;
+  downloadUrl?: string | null;
 }
-
-// Extension methods for object operations and export jobs
-declare module "./depthpop-api" {
-  interface DepthPopApiClient {
-    renameObject(sceneId: string, objectId: string, label: string): Promise<DepthScene>;
-    duplicateObject(sceneId: string, objectId: string): Promise<DepthScene>;
-    deleteObject(sceneId: string, objectId: string): Promise<DepthScene>;
-    mergeObjects(sceneId: string, objectIds: string[], label?: string): Promise<DepthScene>;
-    splitObject(sceneId: string, objectId: string, maxObjects?: number, segmentationMode?: string): Promise<DepthScene>;
-    createExportJob(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob>;
-    getExportStatus(jobId: string): Promise<DepthPopExportJob>;
-    cancelExportJob(jobId: string): Promise<DepthPopExportJob>;
-    downloadArtifactBlob(downloadUrl: string): Promise<Blob>;
-  }
-}
-
-DepthPopApiClient.prototype.renameObject = async function(sceneId: string, objectId: string, label: string): Promise<DepthScene> {
-  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ label }),
-  });
-  if (!res.ok) throw await apiError(res, "Failed to rename object");
-  return (await res.json()) as DepthScene;
-};
-
-DepthPopApiClient.prototype.duplicateObject = async function(sceneId: string, objectId: string): Promise<DepthScene> {
-  const headers = await (this as any).getHeaders();
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/duplicate`, {
-    method: "POST",
-    headers,
-  });
-  if (!res.ok) throw await apiError(res, "Failed to duplicate object");
-  return (await res.json()) as DepthScene;
-};
-
-DepthPopApiClient.prototype.deleteObject = async function(sceneId: string, objectId: string): Promise<DepthScene> {
-  const headers = await (this as any).getHeaders();
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`, {
-    method: "DELETE",
-    headers,
-  });
-  if (!res.ok) throw await apiError(res, "Failed to delete object");
-  return (await res.json()) as DepthScene;
-};
-
-DepthPopApiClient.prototype.mergeObjects = async function(sceneId: string, objectIds: string[], label?: string): Promise<DepthScene> {
-  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/merge`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ objectIds, label }),
-  });
-  if (!res.ok) throw await apiError(res, "Failed to merge objects");
-  return (await res.json()) as DepthScene;
-};
-
-DepthPopApiClient.prototype.splitObject = async function(sceneId: string, objectId: string, maxObjects = 4, segmentationMode = "auto"): Promise<DepthScene> {
-  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/split`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ maxObjects, segmentationMode }),
-  });
-  if (!res.ok) throw await apiError(res, "Failed to split object");
-  return (await res.json()) as DepthScene;
-};
-
-DepthPopApiClient.prototype.createExportJob = async function(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob> {
-  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/exports`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(request),
-  });
-  if (!res.ok) throw await apiError(res, "Failed to create export job");
-  return (await res.json()) as DepthPopExportJob;
-};
-
-DepthPopApiClient.prototype.getExportStatus = async function(jobId: string): Promise<DepthPopExportJob> {
-  const headers = await (this as any).getHeaders();
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}`, {
-    method: "GET",
-    headers,
-  });
-  if (!res.ok) throw await apiError(res, "Failed to fetch export status");
-  return (await res.json()) as DepthPopExportJob;
-};
-
-DepthPopApiClient.prototype.cancelExportJob = async function(jobId: string): Promise<DepthPopExportJob> {
-  const headers = await (this as any).getHeaders();
-  const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}/cancel`, {
-    method: "POST",
-    headers,
-  });
-  if (!res.ok) throw await apiError(res, "Failed to cancel export job");
-  return (await res.json()) as DepthPopExportJob;
-};
-
-DepthPopApiClient.prototype.downloadArtifactBlob = async function(downloadUrl: string): Promise<Blob> {
-  const headers = await (this as any).getHeaders();
-  const authenticatedUrl = (this as any).authenticatedAssetUrl(downloadUrl);
-  const res = await fetch(authenticatedUrl, {
-    method: "GET",
-    headers,
-  });
-  if (!res.ok) throw await apiError(res, "Failed to download artifact");
-  return await res.blob();
-};

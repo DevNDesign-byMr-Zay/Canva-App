@@ -1,4 +1,5 @@
 import {
+  AnimationTrack,
   DepthObject,
   DepthScene,
   Vector3,
@@ -25,8 +26,18 @@ export type SceneAction =
   | { type: "RESET_OBJECT"; objectId: string }
   | { type: "RESET_SCENE" }
   | { type: "COMMIT_SCENE"; scene: DepthScene }
+  | { type: "REPLACE_CURRENT_SCENE"; scene: DepthScene }
+  | {
+      type: "SET_ANIMATION_TRACKS";
+      objectId: string;
+      tracks: AnimationTrack[];
+    }
   | { type: "PATCH_CAMERA"; camera: Partial<DepthScene["camera"]> }
   | { type: "SET_TIME"; currentTimeMs: number }
+  | {
+      type: "PATCH_TIMELINE";
+      timeline: Partial<DepthScene["timeline"]>;
+    }
   | { type: "SET_PARALLAX_STRENGTH"; value: number };
 
 export interface SceneState {
@@ -193,6 +204,33 @@ export function sceneReducer(
             : action.scene.objects[0]?.id ?? null,
       };
 
+    case "REPLACE_CURRENT_SCENE":
+      return {
+        ...state,
+        currentScene: action.scene,
+        selectedObjectId:
+          action.scene.objects.some(
+            (object) => object.id === state.selectedObjectId,
+          )
+            ? state.selectedObjectId
+            : action.scene.objects[0]?.id ?? null,
+      };
+
+    case "SET_ANIMATION_TRACKS": {
+      const objects = state.currentScene.objects.map((object) =>
+        object.id === action.objectId && !object.locked
+          ? {
+              ...object,
+              animationTracks: action.tracks,
+            }
+          : object,
+      );
+      return {
+        ...state,
+        currentScene: changedScene(state.currentScene, objects),
+      };
+    }
+
     case "PATCH_CAMERA":
       return {
         ...state,
@@ -220,6 +258,44 @@ export function sceneReducer(
             ...state.currentScene.timeline,
             currentTimeMs,
           },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }
+
+    case "PATCH_TIMELINE": {
+      const timeline = {
+        ...state.currentScene.timeline,
+        ...action.timeline,
+      };
+      timeline.durationMs = Math.max(0, Math.round(timeline.durationMs));
+      timeline.fps = Math.max(1, Math.min(120, Math.round(timeline.fps)));
+      timeline.currentTimeMs = Math.max(
+        0,
+        Math.min(timeline.durationMs, Math.round(timeline.currentTimeMs)),
+      );
+
+      // Backend validation rejects any keyframe beyond durationMs. When a
+      // user shortens the timeline, trim future poses immediately instead of
+      // leaving a scene that can no longer be saved or exported.
+      const objects = state.currentScene.objects.map((object) => ({
+        ...object,
+        animationTracks: object.animationTracks
+          .map((track) => ({
+            ...track,
+            keyframes: track.keyframes.filter(
+              (keyframe) => keyframe.timeMs <= timeline.durationMs,
+            ),
+          }))
+          .filter((track) => track.keyframes.length > 0),
+      }));
+
+      return {
+        ...state,
+        currentScene: {
+          ...state.currentScene,
+          objects,
+          timeline,
           updatedAt: new Date().toISOString(),
         },
       };
