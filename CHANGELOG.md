@@ -2,6 +2,15 @@
 
 All notable maintained-surface changes to this repository are documented here.
 
+## Unreleased — post-production cleanup
+
+### Changed
+
+- Current root application candidate: `1.1.3`.
+- Cleaned stale standalone Canva documentation after the HoloForge and DepthPop production merges.
+- Corrected handoff documentation so repository-only Drive/provenance material is not described as part of the final Canva ZIPs.
+- Closed superseded PRs #206, #213, #246 and #247 after verifying their maintained work was replaced or consolidated on current `main`.
+
 ## 2026-10-12 — standalone Canva production completion
 
 ### HoloForge
