@@ -313,3 +313,61 @@ def test_export_api_creates_owned_portable_scene_artifact(seeded_client):
     )
     assert artifact is not None
     export_storage.cleanup_workspace(artifact.path)
+
+
+def test_patch_persists_animation_tracks_and_rejects_out_of_timeline_keyframes(
+    seeded_client,
+):
+    valid = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test",
+        json={
+            "objects": [
+                {
+                    "id": "red",
+                    "animationTracks": [
+                        {
+                            "id": "red-x",
+                            "property": "position.x",
+                            "keyframes": [
+                                {"timeMs": 0, "value": 0.2, "easing": "linear"},
+                                {
+                                    "timeMs": 1000,
+                                    "value": 0.8,
+                                    "easing": "ease-in-out",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert valid.status_code == 200
+    red = next(item for item in valid.json()["objects"] if item["id"] == "red")
+    assert red["animationTracks"][0]["id"] == "red-x"
+
+    invalid = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test",
+        json={
+            "objects": [
+                {
+                    "id": "red",
+                    "animationTracks": [
+                        {
+                            "id": "too-long",
+                            "property": "position.x",
+                            "keyframes": [
+                                {"timeMs": 0, "value": 0.2, "easing": "linear"},
+                                {
+                                    "timeMs": 1001,
+                                    "value": 0.8,
+                                    "easing": "linear",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert invalid.status_code == 422
