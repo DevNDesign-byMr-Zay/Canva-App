@@ -1,127 +1,178 @@
-# HOLOFORGE Holographic Design Studio for Canva
+# HoloForge holographic design studio for Canva
 
-HOLOFORGE is a Canva holographic design studio for creating holographic visual treatments, previewing designs spatially, and explicitly applying verified supported changes inside Canva's narrow sidebar interface.
+HoloForge is the standalone Canva Design Editor app for authoring holographic visual treatments, spatial compositions and production render/export outputs.
 
-<p align="center">
-  <img src="../canva-app/src/assets/holoforge-logo.svg" width="180" alt="HoloForge holographic prism logo" />
-</p>
+Canonical maintained source:
 
-![HoloForge Canva Studio product interface preview](images/holoforge-canva-studio-preview.svg)
+`apps/holoforge-canva/`
 
-> **Product interface preview:** the image above documents the approved slim-sidebar visual direction. It is intentionally labeled as a preview rather than a runtime screenshot; the capability matrix below remains the source of truth for what HoloForge can execute today.
+HoloForge is a digital design tool. It does not claim to actuate physical holographic hardware or provide a universal optical calibration for every display.
 
-## User workflow
+## Product workflow
 
 ```text
-CREATE
+SOURCE
   ↓
-PREVIEW
+CREATE
   ↓
 SPATIAL
   ↓
 VERIFY
-  ↓
-APPLY
-  ↓
-PROOF
 ```
 
-The studio keeps creation, spatial presentation, and verified mutation separate so unsupported visual ideas never masquerade as Canva-native writes.
-
-## Sidebar information architecture
-
-The interface is deliberately compact and optimized for Canva's slim app panel:
-
-1. **CREATE** — choose a creation type, select one of nine deterministic material presets, tune the material, preview it, and forge supported effects into Canva.
-2. **SPATIAL** — inspect a 2.5D source/candidate view and layer depth without pretending depth is a native Canva property.
-3. **VERIFY** — capture the exact design state, review trusted scenario changes, explicitly Apply, verify the post-state, and seal a receipt/attestation.
+- **SOURCE** binds one selected Canva raster image or a local PNG/JPEG/WebP.
+- **CREATE** chooses a creation type, material family/preset and authored material parameters.
+- **SPATIAL** edits the real HoloScene using React Three Fiber / Three.js.
+- **VERIFY** records the actual output route and forge/render result before final insertion/export.
 
 ## Creation types
 
-The initial studio exposes:
+The standalone app supports:
 
-- Holo Text
-- Holo Logo
-- Holo Graphic
-- Glass
-- Chrome
-- Light FX
+- Holo Text;
+- Holo Logo;
+- Holo Graphic;
+- Glass;
+- Chrome;
+- Light FX.
 
-`Holo Graphic`, `Glass`, `Chrome`, and `Light FX` currently have a real Canva execution route through editable HoloForge **app elements**. Holo Text and Holo Logo remain preview-only until a trusted source-text/source-logo binding is implemented; Forge stays disabled rather than inventing a target.
+Text and app-owned materials remain editable HoloForge content. Raster logo/graphic inputs can use selected/uploaded source imagery and produce derived holographic Canva assets.
 
-## Material presets
+## Real spatial editor
 
-The deterministic preset registry contains:
+The canonical SPATIAL workspace uses:
 
-- Iridescent Chrome
-- Aurora Glass
-- Prism Foil
-- Liquid Metal
-- Spectral Pearl
-- Neon Haze
-- Crystal Frost
-- Holo Gold
-- Holo Gunmetal
+- `three`;
+- `@react-three/fiber`;
+- `@react-three/drei`.
 
-Material data includes color shift, preview depth, reflection, glow, grain, angle, transparency, and motion intent.
+It supports:
 
-## Capability matrix
+- direct object selection;
+- translate / rotate / scale gizmos;
+- numeric X/Y/Z editing;
+- orbit, pan and zoom;
+- camera controls and presets;
+- stage background/grid/light controls;
+- material and geometry editing;
+- multi-object duplicate/reorder/hide/remove operations;
+- authored timeline/keyframe playback;
+- persistent scene state across studio tabs.
 
-| Property / effect | Route | Current behavior |
-| --- | --- | --- |
-| `x`, `y`, `rotation` | Canva native | Written only through the existing verified scenario Apply path |
-| color shift | HoloForge app element | Forged into Canva as editable app-owned effect metadata |
-| reflection | HoloForge app element | Rendered into the deterministic app element |
-| glow | HoloForge app element | Rendered into the deterministic app element |
-| grain | HoloForge app element | Rendered into the deterministic app element |
-| material angle | HoloForge app element | Controls deterministic spectral material direction |
-| transparency | HoloForge app element | Controls forged material opacity |
-| depth / z | Preview only | Used by the 2.5D spatial model; never written as fake Canva depth |
-| shimmer / sweep / pulse | Preview only | Motion intent is retained for presentation; forged elements are static today |
-| generated raster asset | Unavailable | No authenticated generation provider is configured; HoloForge fails closed |
+This is real WebGL scene authoring, not the older 2.5D preview-only contract.
 
-## Real Canva creation path
+## Source geometry
 
-Rich holographic materials use Canva **app elements**. HoloForge persists compact material metadata and deterministically renders an SVG texture into an app-owned image element. This creates a real Canva design element that remains owned/editable by HoloForge without claiming unsupported native shader APIs.
+For transparent raster sources, HoloForge analyzes the alpha channel and derives bounded silhouette geometry.
 
-The app-element path is intentionally distinct from the existing scenario Apply path:
+The browser and Blender worker preserve the same geometry intent:
 
-- **Create / Forge** adds a HoloForge-owned material element.
-- **Verify / Apply** mutates reviewed existing elements using the established trusted scenario boundary.
+- suitable transparent sources can become extruded silhouette geometry;
+- disconnected visible components can remain represented;
+- unsuitable/opaque sources fall back honestly to a holographic plate;
+- the source face remains distinct from the spectral shell.
 
-Canva app-element creation requires the app's Developer Portal configuration to grant the Design Content read/write permissions expected by the Design Editing API. The repository does not hard-code or bypass those platform permissions.
+No fake semantic 3D structure is invented for an opaque image.
 
-## Spatial presentation
+## Materials
 
-The existing `spatial-preview.ts` and `spatial-scenario-view.ts` models remain renderer-neutral. Depth is presentation data, not a hardware command and not a fabricated Canva property. The Source/Holo comparison exists to explain proposed spatial relationships before any supported write occurs.
+The authored HoloScene supports real material parameters including:
 
-## Verified execution guarantees
+- material family;
+- opacity;
+- reflection;
+- emission;
+- metalness;
+- roughness;
+- transmission;
+- IOR;
+- spectral shift;
+- diffraction;
+- shimmer;
+- scanline behavior;
+- thickness;
+- bevel size/segments.
 
-The VERIFY path preserves the repository's stronger production safety controls:
+Spectral/iridescent families use an animated shader in the WebGL editor and are normalized into the production Blender renderer for export.
 
-- `useFeatureSupport(openDesign)` capability detection
-- trusted design and page identity checks
-- immutable scenario snapshots for presentation
-- canonical provenance verification
-- stale snapshot protection
-- exact reviewed element binding
-- single-flight Apply gating
-- reviewed-context change detection during Apply
-- post-apply fingerprint verification
-- immutable verification receipt
-- reviewed Apply attestation
-- explicit user Apply only
-- no auto-apply
+## 4D animation
 
-## Generated assets
+HoloScene stores serializable authored animation rather than hiding all motion inside the preview renderer.
 
-A separate generated-asset capability exists conceptually for effects that cannot be represented with app-owned deterministic elements. No authenticated generation provider is configured in this repository today, so that path is deliberately unavailable. HoloForge reports the limitation instead of pretending a generated asset was created.
+The studio supports built-in motion presets plus custom keyframes for object transforms. Timeline time is scene data and survives save/reopen.
 
-## Non-goals
+Browser and Blender rendering share maintained preset-motion/easing contracts so export behavior tracks the authoring surface.
 
-- No hidden automatic edits.
-- No fake Canva shader or depth API.
-- No unauthenticated generation provider.
-- No physical actuation.
-- No mutation of authenticated historical replay bytes.
-- No weakening of the existing verification boundary to make the studio look more capable than it is.
+## HoloScene project round-trip
+
+HoloScene JSON is a real project format.
+
+Saved scenes preserve:
+
+- objects;
+- source geometry/material metadata;
+- transforms;
+- camera;
+- environment;
+- timeline;
+- motion presets;
+- authored keyframes.
+
+Temporary Canva source URLs are materialized into bounded embedded image data before project download. Imports reject unsupported remote references and invalid scene values before entering studio state.
+
+## Canva output routes
+
+HoloForge supports:
+
+- app-owned Canva elements for supported editable material/graphic routes;
+- derived raster assets for source-bound forging;
+- PNG Still rendering of the current authored spatial scene back into Canva.
+
+Canva asset/design access remains explicitly user-triggered and uses the app's declared Design Content and private asset permissions.
+
+## Production export backend
+
+The authenticated FastAPI render backend lives under:
+
+`apps/holoforge-canva/backend/`
+
+The production render image uses pinned Blender 4.5 LTS plus FFmpeg.
+
+Current real outputs include:
+
+- HoloScene JSON;
+- GLB;
+- glTF;
+- USDZ;
+- transparent PNG Still;
+- transparent VP9 WebM;
+- MP4;
+- PNG Sequence;
+- light-field Quilt.
+
+Blender absence fails closed and unsupported render formats are not advertised as ready.
+
+The backend enforces:
+
+- exact Canva user + brand artifact ownership;
+- persistent SQLite job/artifact metadata;
+- persistent artifact storage;
+- restart recovery;
+- bounded render concurrency;
+- pixel/frame/resource limits;
+- streamed SHA-256 hashing;
+- safe workspace cleanup beneath the configured artifact root.
+
+## Light-field boundary
+
+The generic light-field export is a real multi-view quilt render. It is not a claim that one quilt layout or optical interlacing profile works for every physical display.
+
+Device-specific calibration/interlacing remains a separate downstream concern.
+
+## Package boundary
+
+The final `HoloForge-Canva-App.zip` is the standalone handoff package.
+
+It excludes credentials, databases, render artifacts, Git metadata, `node_modules`, and historical combined-app material.
+
+Inside Canva Developer Portal, upload only the root-level `app.js` from that package. Deploy the authenticated render backend separately.
