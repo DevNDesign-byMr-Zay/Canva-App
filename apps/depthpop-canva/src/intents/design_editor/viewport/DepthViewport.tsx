@@ -86,8 +86,8 @@ function SceneObjectMesh({
   const worldY = (0.5 - posY) * 4;
   const worldZ = posZ;
 
-  const bboxW = (object.bbox.width / scene.width) * (aspect * 4);
-  const bboxH = (object.bbox.height / scene.height) * 4;
+  const bboxW = (object.bbox.width / sceneWidth) * (aspect * 4);
+  const bboxH = (object.bbox.height / sceneHeight) * 4;
 
   if (!object.visible) return null;
 

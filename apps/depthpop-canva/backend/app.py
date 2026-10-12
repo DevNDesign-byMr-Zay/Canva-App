@@ -18,13 +18,9 @@ from fastapi.responses import Response
 from PIL import Image, ImageFilter
 
 from api.assets import router as assets_router
-<<<<<<< HEAD
-from api.jobs import router as jobs_router
-=======
 from api.exports import router as exports_router
 from api.jobs import router as jobs_router
 from api.objects import router as objects_router
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 from api.scenes import router as scenes_router
 from auth import verify_canva_user, VerifiedCanvaUser
 from services.upload import validate_and_read_upload, MAX_IMAGE_BYTES, SUPPORTED_IMAGE_MIME
@@ -76,11 +72,8 @@ if CORS_ORIGINS:
 
 app.include_router(assets_router)
 app.include_router(scenes_router)
-<<<<<<< HEAD
-=======
 app.include_router(objects_router)
 app.include_router(exports_router)
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 app.include_router(jobs_router)
 
 _image_cache: dict[str, tuple[float, bytes, str]] = {}

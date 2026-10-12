@@ -5,10 +5,7 @@ from pathlib import Path
 
 from models.job import DepthJob
 from models.scene import DepthScene
-<<<<<<< HEAD
-=======
 from persistence.asset_store import DiskSceneAssetRepository
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 from persistence.sqlite_repository import SQLiteJobRepository, SQLiteSceneRepository
 
 
@@ -149,8 +146,6 @@ def test_sqlite_job_ttl_cleanup_removes_expired_metadata(tmp_path: Path, monkeyp
 
     clock["now"] = 206.0
     assert asyncio.run(repo.get_job("job_expired")) is None
-<<<<<<< HEAD
-=======
 
 
 def test_scene_capacity_eviction_cleans_owned_assets_without_nested_sqlite_writer(
@@ -199,4 +194,3 @@ def test_scene_capacity_eviction_cleans_owned_assets_without_nested_sqlite_write
             brand_id=first_scene.brandId,
         )
     ) is None
->>>>>>> origin/repair/pr257-backend-holoforge-hardening

@@ -60,9 +60,6 @@ class SQLiteSceneRepository(_SQLiteBase):
     ) -> None:
         connection.execute("DELETE FROM depthpop_scenes WHERE id = ?", (scene_id,))
         if self.asset_store is not None:
-<<<<<<< HEAD
-            self.asset_store.cleanup_scene_assets_sync(scene_id)
-=======
             cleanup_in_transaction = getattr(
                 self.asset_store,
                 "cleanup_scene_assets_with_connection_sync",
@@ -74,7 +71,6 @@ class SQLiteSceneRepository(_SQLiteBase):
                 # Compatibility path for non-SQLite asset repositories.
                 connection.commit()
                 self.asset_store.cleanup_scene_assets_sync(scene_id)
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
     def _cleanup_expired_sync(self, connection: sqlite3.Connection) -> None:
         cutoff = time.time() - self.ttl_seconds

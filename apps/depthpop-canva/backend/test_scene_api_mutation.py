@@ -17,12 +17,8 @@ from models.object import (
     Vector3,
 )
 from models.scene import CameraConfig, DepthScene, ReconstructedPlate, TimelineConfig
-<<<<<<< HEAD
-from services.persistence import scene_repo
-=======
 from services.export_persistence import export_repo, export_storage
 from services.persistence import scene_asset_repo, scene_repo
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 
 def image_bytes(*, object_color=(255, 0, 0, 255), transparent=False) -> bytes:
@@ -79,15 +75,12 @@ def seeded_client():
     depthpop.app.dependency_overrides[verify_canva_user] = fake_user
     depthpop._image_cache.clear()
     scene_repo._scenes.clear()
-<<<<<<< HEAD
-=======
     if hasattr(scene_asset_repo, "_assets"):
         scene_asset_repo._assets.clear()
     if hasattr(export_repo, "_jobs"):
         export_repo._jobs.clear()
     if hasattr(export_repo, "_artifacts"):
         export_repo._artifacts.clear()
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
     plate_key = depthpop._cache_put(image_bytes(), "image/png")
     red_key = depthpop._cache_put(image_bytes(transparent=True), "image/png")
@@ -132,15 +125,12 @@ def seeded_client():
         depthpop.app.dependency_overrides.clear()
         depthpop._image_cache.clear()
         scene_repo._scenes.clear()
-<<<<<<< HEAD
-=======
         if hasattr(scene_asset_repo, "_assets"):
             scene_asset_repo._assets.clear()
         if hasattr(export_repo, "_jobs"):
             export_repo._jobs.clear()
         if hasattr(export_repo, "_artifacts"):
             export_repo._artifacts.clear()
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 
 def test_patch_allows_only_editable_fields_and_preserves_partial_transform(
@@ -250,8 +240,6 @@ def test_composite_route_returns_raw_png_bytes(seeded_client):
     with Image.open(io.BytesIO(response.content)) as rendered:
         assert rendered.format == "PNG"
         assert rendered.size == (100, 100)
-<<<<<<< HEAD
-=======
 
 
 def test_object_rename_duplicate_and_delete_routes(seeded_client):
@@ -387,4 +375,3 @@ def test_patch_persists_animation_tracks_and_rejects_out_of_timeline_keyframes(
         },
     )
     assert invalid.status_code == 422
->>>>>>> origin/repair/pr257-backend-holoforge-hardening

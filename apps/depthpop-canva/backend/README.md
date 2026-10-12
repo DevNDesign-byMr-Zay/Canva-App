@@ -11,8 +11,6 @@ The primary product path is the authenticated **DepthScene v1** object-scene API
     GET   /api/v1/scenes/{sceneId}
     PATCH /api/v1/scenes/{sceneId}
     POST  /api/v1/scenes/{sceneId}/composite
-<<<<<<< HEAD
-=======
     PATCH /api/v1/scenes/{sceneId}/objects/{objectId}
     POST  /api/v1/scenes/{sceneId}/objects/{objectId}/duplicate
     DELETE /api/v1/scenes/{sceneId}/objects/{objectId}
@@ -22,7 +20,6 @@ The primary product path is the authenticated **DepthScene v1** object-scene API
     GET   /api/v1/exports/{jobId}
     POST  /api/v1/exports/{jobId}/cancel
     GET   /api/v1/artifacts/{artifactId}/download
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
     GET   /api/v1/assets/{assetId}
 
 Every v1 route requires a verified Canva user JWT. Scene, job, and generated-asset access is scoped to the exact Canva user and brand.
@@ -62,8 +59,6 @@ Depth quality is real and bounded:
 
 Regardless of provider output resolution, canonical depth is resized back to the exact source dimensions before masks index into it.
 
-<<<<<<< HEAD
-=======
 ## Object operations and 4D scene persistence
 
 Scene PATCH accepts authored labels, transforms, opacity, feather, visibility, lock, layer order, camera, timeline, and typed animation tracks. The server revalidates the complete scene after every edit so keyframes cannot extend beyond the timeline.
@@ -93,7 +88,6 @@ Video rendering evaluates the saved DepthScene timeline frame-by-frame and encod
 
 Export jobs are bounded by configurable concurrency, pixel, duration, frame-count and final-artifact byte ceilings. Artifact hashes are streamed in chunks. Cleanup validates every path against `DEPTHPOP_ARTIFACT_ROOT` and removes the complete export workspace.
 
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 ## Restart-safe persistence
 
 DepthPop supports two repository backends:
@@ -106,10 +100,6 @@ Production should mount persistent storage and configure:
     DEPTHPOP_REPOSITORY_BACKEND=sqlite
     DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
     DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
-<<<<<<< HEAD
-
-Scene/job metadata is stored in SQLite while binary scene assets are stored beneath the owned asset root. On restart, completed scenes/jobs remain available until TTL expiry and incomplete queued/processing jobs are recovered to a truthful terminal error instead of remaining stuck forever.
-=======
     DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
     DEPTHPOP_MAX_EXPORT_CONCURRENCY=2
     DEPTHPOP_MAX_EXPORT_PIXELS=16777216
@@ -117,7 +107,6 @@ Scene/job metadata is stored in SQLite while binary scene assets are stored bene
     DEPTHPOP_MAX_EXPORT_DURATION_MS=120000
 
 Scene/job metadata is stored in SQLite while binary scene assets are stored beneath the owned asset root. Export job/artifact metadata uses the same durable backend and export files live beneath the owned artifact root. On restart, completed scenes/jobs/artifacts remain available until TTL expiry and incomplete queued/processing jobs are recovered to a truthful terminal error instead of remaining stuck forever.
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 This SQLite profile is intentionally scoped to a persistent single-service deployment. It does not claim distributed multi-writer rendering; a future PostgreSQL/object-storage adapter can implement the same repository contracts without changing DepthScene/API contracts.
 
@@ -160,11 +149,8 @@ Required production values:
     DEPTHPOP_REPOSITORY_BACKEND=sqlite
     DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
     DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
-<<<<<<< HEAD
-=======
     DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
     DEPTHPOP_MAX_EXPORT_CONCURRENCY=2
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 PUBLIC_BASE_URL should be the same backend origin configured by the Canva app. Protected scene assets reject cross-origin bearer-token delivery in the client.
 

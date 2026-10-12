@@ -469,9 +469,6 @@ for (const app of APPS) {
             "backend/test_spectral_material.py",
             "backend/test_models.py",
           ]
-<<<<<<< HEAD
-        : []),
-=======
         : [
             "backend/auth.py",
             "backend/api/exports.py",
@@ -485,7 +482,6 @@ for (const app of APPS) {
             "backend/services/export_jobs.py",
             "backend/services/export_persistence.py",
           ]),
->>>>>>> origin/repair/pr257-backend-holoforge-hardening
     ];
     for (const required of backendRequired) {
       if (!files.includes(required)) {
