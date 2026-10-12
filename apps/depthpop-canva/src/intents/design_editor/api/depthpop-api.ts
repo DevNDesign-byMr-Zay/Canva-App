@@ -42,7 +42,15 @@ export type DepthScenePatchPayload = Readonly<{
   objects: ReadonlyArray<
     Pick<
       DepthScene["objects"][number],
-      "id" | "transform" | "opacity" | "feather" | "visible" | "locked" | "order"
+      | "id"
+      | "label"
+      | "transform"
+      | "opacity"
+      | "feather"
+      | "visible"
+      | "locked"
+      | "order"
+      | "animationTracks"
     >
   >;
   camera: DepthScene["camera"];
@@ -53,12 +61,14 @@ function scenePatchPayload(scene: DepthScene): DepthScenePatchPayload {
   return {
     objects: scene.objects.map((object) => ({
       id: object.id,
+      label: object.label,
       transform: object.transform,
       opacity: object.opacity,
       feather: object.feather,
       visible: object.visible,
       locked: object.locked,
       order: object.order,
+      animationTracks: object.animationTracks,
     })),
     camera: scene.camera,
     timeline: scene.timeline,
@@ -292,18 +302,20 @@ export interface DepthPopExportRequest {
   fps?: number;
 }
 
-export interface DepthPopExportJob {
-  id: string;
-  sceneId: string;
-  format: string;
+export interface DepthPopExportCreateResponse {
+  jobId: string;
+  status: "queued";
+}
+
+export interface DepthPopExportStatus {
+  jobId: string;
+  format: DepthPopExportRequest["format"];
   status: "queued" | "processing" | "complete" | "failed" | "cancelled";
-  stage?: string;
-  progress?: number;
-  error?: string;
-  artifactId?: string;
-  downloadUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  stage: string;
+  progress: number;
+  error?: string | null;
+  artifactId?: string | null;
+  downloadUrl?: string | null;
 }
 
 // Extension methods for object operations and export jobs
@@ -314,9 +326,9 @@ declare module "./depthpop-api" {
     deleteObject(sceneId: string, objectId: string): Promise<DepthScene>;
     mergeObjects(sceneId: string, objectIds: string[], label?: string): Promise<DepthScene>;
     splitObject(sceneId: string, objectId: string, maxObjects?: number, segmentationMode?: string): Promise<DepthScene>;
-    createExportJob(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob>;
-    getExportStatus(jobId: string): Promise<DepthPopExportJob>;
-    cancelExportJob(jobId: string): Promise<DepthPopExportJob>;
+    createExportJob(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportCreateResponse>;
+    getExportStatus(jobId: string): Promise<DepthPopExportStatus>;
+    cancelExportJob(jobId: string): Promise<DepthPopExportStatus>;
     downloadArtifactBlob(downloadUrl: string): Promise<Blob>;
   }
 }
@@ -374,7 +386,7 @@ DepthPopApiClient.prototype.splitObject = async function(sceneId: string, object
   return (await res.json()) as DepthScene;
 };
 
-DepthPopApiClient.prototype.createExportJob = async function(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob> {
+DepthPopApiClient.prototype.createExportJob = async function(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportCreateResponse> {
   const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
   const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/exports`, {
     method: "POST",
@@ -382,27 +394,27 @@ DepthPopApiClient.prototype.createExportJob = async function(sceneId: string, re
     body: JSON.stringify(request),
   });
   if (!res.ok) throw await apiError(res, "Failed to create export job");
-  return (await res.json()) as DepthPopExportJob;
+  return (await res.json()) as DepthPopExportCreateResponse;
 };
 
-DepthPopApiClient.prototype.getExportStatus = async function(jobId: string): Promise<DepthPopExportJob> {
+DepthPopApiClient.prototype.getExportStatus = async function(jobId: string): Promise<DepthPopExportStatus> {
   const headers = await (this as any).getHeaders();
   const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}`, {
     method: "GET",
     headers,
   });
   if (!res.ok) throw await apiError(res, "Failed to fetch export status");
-  return (await res.json()) as DepthPopExportJob;
+  return (await res.json()) as DepthPopExportStatus;
 };
 
-DepthPopApiClient.prototype.cancelExportJob = async function(jobId: string): Promise<DepthPopExportJob> {
+DepthPopApiClient.prototype.cancelExportJob = async function(jobId: string): Promise<DepthPopExportStatus> {
   const headers = await (this as any).getHeaders();
   const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}/cancel`, {
     method: "POST",
     headers,
   });
   if (!res.ok) throw await apiError(res, "Failed to cancel export job");
-  return (await res.json()) as DepthPopExportJob;
+  return (await res.json()) as DepthPopExportStatus;
 };
 
 DepthPopApiClient.prototype.downloadArtifactBlob = async function(downloadUrl: string): Promise<Blob> {
