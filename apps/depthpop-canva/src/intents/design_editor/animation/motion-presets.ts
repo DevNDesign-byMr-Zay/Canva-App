@@ -48,6 +48,8 @@ export function applyMotionPreset(
   const threeQuarter = Math.round((durationMs * 3) / 4);
 
   const objects = scene.objects.map((object, index) => {
+    if (object.locked) return object;
+
     const x = object.transform.position.x;
     const y = object.transform.position.y;
     const z = object.transform.position.z;
