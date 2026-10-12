@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from auth import VerifiedCanvaUser, verify_canva_user
 from models.object import AnimationTrack, DepthObject, ObjectTransform, Vector3
-from models.scene import CameraConfig, DepthPopSceneSettings, TimelineConfig
+from models.scene import CameraConfig, DepthPopSceneSettings, DepthScene, TimelineConfig
 from services.compositor import composite_scene
 import services.persistence as persistence
 from services.persistence import job_repo, scene_asset_repo, scene_repo
@@ -417,6 +417,15 @@ async def patch_scene(
         updated.timeline = next_timeline
 
     updated.updatedAt = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        updated = DepthScene.model_validate(
+            updated.model_dump(mode="python", by_alias=True)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"DepthScene edit is invalid: {exc}",
+        ) from exc
     await scene_repo.save_scene(updated)
     return updated.model_dump(mode="json", by_alias=True)
 
