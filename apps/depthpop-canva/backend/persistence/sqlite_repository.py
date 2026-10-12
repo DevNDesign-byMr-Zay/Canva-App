@@ -60,7 +60,17 @@ class SQLiteSceneRepository(_SQLiteBase):
     ) -> None:
         connection.execute("DELETE FROM depthpop_scenes WHERE id = ?", (scene_id,))
         if self.asset_store is not None:
-            self.asset_store.cleanup_scene_assets_sync(scene_id)
+            cleanup_in_transaction = getattr(
+                self.asset_store,
+                "cleanup_scene_assets_with_connection_sync",
+                None,
+            )
+            if cleanup_in_transaction is not None:
+                cleanup_in_transaction(connection, scene_id)
+            else:
+                # Compatibility path for non-SQLite asset repositories.
+                connection.commit()
+                self.asset_store.cleanup_scene_assets_sync(scene_id)
 
     def _cleanup_expired_sync(self, connection: sqlite3.Connection) -> None:
         cutoff = time.time() - self.ttl_seconds
