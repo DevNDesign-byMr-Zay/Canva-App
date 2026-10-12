@@ -163,8 +163,8 @@ function ScenePlate({
       <meshBasicMaterial
         map={texture}
         transparent={false}
-        depthWrite
-        depthTest
+        depthWrite={false}
+        depthTest={false}
         toneMapped={false}
       />
     </mesh>
@@ -197,16 +197,30 @@ function useCroppedObjectTexture(
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.wrapS = THREE.ClampToEdgeWrapping;
         loaded.wrapT = THREE.ClampToEdgeWrapping;
-        loaded.repeat.set(
-          object.bbox.width / Math.max(1, sceneWidth),
-          object.bbox.height / Math.max(1, sceneHeight),
-        );
-        loaded.offset.set(
-          object.bbox.x / Math.max(1, sceneWidth),
-          1 -
-            (object.bbox.y + object.bbox.height) /
-              Math.max(1, sceneHeight),
-        );
+
+        const image = loaded.image as
+          | { width?: number; height?: number }
+          | undefined;
+        const isFullSceneCutout =
+          Number(image?.width) === sceneWidth &&
+          Number(image?.height) === sceneHeight;
+
+        if (isFullSceneCutout) {
+          loaded.repeat.set(
+            object.bbox.width / Math.max(1, sceneWidth),
+            object.bbox.height / Math.max(1, sceneHeight),
+          );
+          loaded.offset.set(
+            object.bbox.x / Math.max(1, sceneWidth),
+            1 -
+              (object.bbox.y + object.bbox.height) /
+                Math.max(1, sceneHeight),
+          );
+        } else {
+          // Future providers may return an already-cropped cutout.
+          loaded.repeat.set(1, 1);
+          loaded.offset.set(0, 0);
+        }
         loaded.needsUpdate = true;
         setTexture(loaded);
       },
