@@ -218,7 +218,7 @@ export function sceneReducer(
 
     case "SET_ANIMATION_TRACKS": {
       const objects = state.currentScene.objects.map((object) =>
-        object.id === action.objectId
+        object.id === action.objectId && !object.locked
           ? {
               ...object,
               animationTracks: action.tracks,
@@ -274,10 +274,27 @@ export function sceneReducer(
         0,
         Math.min(timeline.durationMs, Math.round(timeline.currentTimeMs)),
       );
+
+      // Backend validation rejects any keyframe beyond durationMs. When a
+      // user shortens the timeline, trim future poses immediately instead of
+      // leaving a scene that can no longer be saved or exported.
+      const objects = state.currentScene.objects.map((object) => ({
+        ...object,
+        animationTracks: object.animationTracks
+          .map((track) => ({
+            ...track,
+            keyframes: track.keyframes.filter(
+              (keyframe) => keyframe.timeMs <= timeline.durationMs,
+            ),
+          }))
+          .filter((track) => track.keyframes.length > 0),
+      }));
+
       return {
         ...state,
         currentScene: {
           ...state.currentScene,
+          objects,
           timeline,
           updatedAt: new Date().toISOString(),
         },
