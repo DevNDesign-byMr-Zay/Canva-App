@@ -328,6 +328,68 @@ def apply_transform(obj, transform: dict):
     obj.scale = (scale["x"], scale["y"], scale["z"])
 
 
+
+def _style_keyframe_segment(obj, data_path: str, frame: int, easing: str):
+    if not obj.animation_data or not obj.animation_data.action:
+        return
+
+    style = blender_keyframe_style(easing)
+    for fcurve in obj.animation_data.action.fcurves:
+        if fcurve.data_path != data_path:
+            continue
+        for point in fcurve.keyframe_points:
+            if abs(float(point.co.x) - float(frame)) > 0.25:
+                continue
+            point.interpolation = style.interpolation
+            if style.easing is not None and hasattr(point, "easing"):
+                point.easing = style.easing
+
+
+def _insert_builtin_motion(obj, item: dict, preset: str):
+    data_path = animated_data_path(preset)
+    if data_path is None:
+        return
+
+    fps = float(scene_data["timeline"]["fps"])
+    base_position = tuple(float(value) for value in obj.location)
+    base_rotation = tuple(float(value) for value in obj.rotation_euler)
+    base_scale = tuple(float(value) for value in obj.scale)
+
+    for frame in sampled_motion_frames(scene.frame_start, scene.frame_end):
+        time_seconds = max(0.0, (frame - 1) / max(1.0, fps))
+        motion = sample_builtin_motion(preset, time_seconds)
+
+        if data_path == "location":
+            obj.location = (
+                base_position[0] + motion.position.x,
+                base_position[1] + motion.position.y,
+                base_position[2] + motion.position.z,
+            )
+        elif data_path == "rotation_euler":
+            obj.rotation_euler = (
+                base_rotation[0] + motion.rotation.x,
+                base_rotation[1] + motion.rotation.y,
+                base_rotation[2] + motion.rotation.z,
+            )
+        elif data_path == "scale":
+            obj.scale = (
+                base_scale[0] * motion.scale.x,
+                base_scale[1] * motion.scale.y,
+                base_scale[2] * motion.scale.z,
+            )
+
+        obj.keyframe_insert(data_path=data_path, frame=frame)
+
+    if obj.animation_data and obj.animation_data.action:
+        for fcurve in obj.animation_data.action.fcurves:
+            if fcurve.data_path != data_path:
+                continue
+            for point in fcurve.keyframe_points:
+                point.interpolation = "LINEAR"
+
+    apply_transform(obj, item["transform"])
+
+
 def add_keyframes(obj, item: dict):
     tracks = item.get("animationTracks") or []
     duration = scene_data["timeline"]["durationMs"]
@@ -400,6 +462,7 @@ def create_object(item: dict):
                     item,
                     alpha_geometry,
                     thickness=thickness,
+                    material_spec=item["material"],
                 )
                 if obj is None:
                     alpha_geometry = None
@@ -413,6 +476,7 @@ def create_object(item: dict):
                     image,
                     alpha_geometry,
                     thickness=thickness,
+                    material_spec=item["material"],
                 )
                 material = None
             else:
@@ -424,18 +488,28 @@ def create_object(item: dict):
                 )
                 obj = bpy.context.object
                 obj["holoforge_geometry"] = "plate-fallback"
+                bpy.context.view_layer.objects.active = obj
+                obj.select_set(True)
+                bpy.ops.object.transform_apply(
+                    location=False,
+                    rotation=False,
+                    scale=True,
+                )
+
                 material = material_for(item["material"])
-                nodes = material.node_tree.nodes
-                links = material.node_tree.links
-                texture = nodes.new("ShaderNodeTexImage")
-                texture.image = image
-                principled = nodes.get("Principled BSDF")
-                if principled:
-                    links.new(texture.outputs["Color"], principled.inputs["Base Color"])
-                    if texture.outputs.get("Alpha"):
-                        links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
                 animate_material(material, item)
                 obj.data.materials.append(material)
+                attach_source_face(
+                    obj,
+                    image,
+                    {
+                        "width": 2.3,
+                        "height": plate_height,
+                        "coverage": 1.0,
+                    },
+                    thickness=thickness,
+                    material_spec=item["material"],
+                )
                 material = None
         elif kind in {"glass", "chrome", "holo_logo", "holo_graphic"}:
             bpy.ops.mesh.primitive_cube_add(scale=(1.15, 0.72, max(0.015, thickness / 2)))
@@ -517,6 +591,19 @@ for name, location, energy, color in [
     light.location = location
     light.rotation_euler = (0.5, 0.0, 0.5)
 
+
+def authored_current_frame():
+    timeline = scene_data["timeline"]
+    frame = 1 + round(
+        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
+        * float(timeline["fps"])
+    )
+    return max(scene.frame_start, min(scene.frame_end, frame))
+
+
+if not bool(request.get("includeAnimation", False)):
+    scene.frame_set(authored_current_frame())
+
 format_name = request["format"]
 stem = "".join(char if char.isalnum() or char in "-_" else "-" for char in scene_data["id"]).strip("-")[:100] or "holoforge"
 
@@ -538,12 +625,7 @@ elif format_name == "usdz":
         raise RuntimeError("Blender produced no USDZ artifact")
 elif format_name == "png-still":
     target = output_dir / (stem + "-still.png")
-    timeline = scene_data["timeline"]
-    current_frame = 1 + round(
-        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
-        * float(timeline["fps"])
-    )
-    current_frame = max(scene.frame_start, min(scene.frame_end, current_frame))
+    current_frame = authored_current_frame()
     scene.frame_set(current_frame)
     scene.render.filepath = str(target)
     scene.render.image_settings.file_format = "PNG"
@@ -677,14 +759,9 @@ elif format_name == "lightfield-quilt":
     scene.render.image_settings.color_mode = "RGBA" if request.get("transparentBackground") else "RGB"
     scene.render.image_settings.color_depth = "8"
 
-    timeline = scene_data["timeline"]
     source_frame_start = scene.frame_start
     source_frame_end = scene.frame_end
-    current_frame = 1 + round(
-        (float(timeline.get("currentTimeMs", 0)) / 1000.0)
-        * float(timeline["fps"])
-    )
-    current_frame = max(source_frame_start, min(source_frame_end, current_frame))
+    current_frame = authored_current_frame()
     scene.frame_set(current_frame)
 
     # Freeze the authored scene at its selected timeline time. Quilt frames are
@@ -790,6 +867,6 @@ else:
     raise RuntimeError("Unsupported worker format: " + format_name)
 
 (output_dir / "result.json").write_text(
-    json.dumps({"path": str(target.resolve()), "format": format_name}),
+    json.dumps({"path": str(target.resolve()), "format": format_name, "frame": int(scene.frame_current)}),
     encoding="utf-8",
 )
