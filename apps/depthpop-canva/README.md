@@ -1,49 +1,128 @@
-# DepthPop — standalone Canva app
+# DepthPop — standalone Canva spatial editor
 
-DepthPop is its own Canva Design Editor app, separate from HoloForge.
+DepthPop is an independent Canva Design Editor app. It converts a selected raster image into an object-aware **DepthScene**, then lets the user edit that scene in real 3D space, animate it over time, render the authored composition back into Canva, or export portable production assets.
 
-The visible interface is reconstructed from the maintained Drive v115 source file roaryv246_v115_depthpop_modeldrawer_FINALFIX.html. The Canva app keeps the original four visible controls and defaults:
+DepthPop and HoloForge remain separate products and packages.
 
-- Depth Strength: 0.32, range 0.05–0.75
-- Depth Blur: 35%, range 0–100
-- Depth Fidelity: 0.95, range 0.05–1.00
-- Steps: 28, range 8–50
+## Production workflow
 
-The older Fast/Balanced/Cinematic substitution is removed because it was not identical to the Drive v115 UI.
+```text
+Canva/local raster
+  -> Florence-2 object detection
+  -> SAM 3 instance masks
+  -> Depth Anything V2 canonical depth
+  -> protected cutouts / masks / thumbnails
+  -> optional reconstructed background plate
+  -> DepthScene v1
+  -> React Three Fiber spatial editor
+  -> X / Y / Z / rotation / scale / camera
+  -> 4D timeline + keyframes + motion presets
+  -> save / render to Canva / production export
+```
 
-Runtime flow:
+The maintained source controls are still respected during scene creation:
 
-    selected Canva raster image
-      -> getTemporaryUrl()
-      -> immediate browser fetch of the full-size raster
-      -> authenticated multipart upload to the DepthPop backend
-      -> Depth Anything v2 depth map
-      -> local depth-aware lens blur
-      -> short-lived public HTTPS render URL
-      -> Canva private derived asset upload with parentRef
-      -> await asset.whenUploaded()
-      -> selected image ref replacement
-      -> draft.save()
+- Depth Strength: 0.05–0.75
+- Depth Blur: 0–100
+- Depth Fidelity: 0.05–1.00
+- Render Quality: Fast / Balanced / Cinematic
 
-The frontend marks the derived asset as app_generated because AI is used to compute the depth map. FAL_KEY remains server-side only.
+## Real WebGL editor
 
-Development:
+The canonical scene editor uses:
 
-    cp .env.template .env
-    npm install --ignore-scripts
-    npm run typecheck
-    npm run test
-    npm run start
+- `three`
+- `@react-three/fiber`
+- `@react-three/drei`
 
-The backend is under backend/. Deploy it to a public HTTPS origin and set CANVA_BACKEND_HOST to that origin before building the Canva app.
+The reconstructed plate is rendered as a rear scene plane. Each segmented object is rendered as an independently selectable transparent textured plane positioned in 3D using its authored bbox and X/Y/Z transform.
 
-The exact Drive source HTML and the historical DepthPop router are retained byte-for-byte under reference/drive-source for provenance. The router is stored as a .txt artifact because it is historical code, not the production server.
+The editor supports:
 
+- direct selection in the scene;
+- translate / rotate / scale transform gizmos;
+- locked-object protection;
+- orbit / pan / zoom;
+- persisted perspective camera position, target, and FOV;
+- authenticated Blob URLs for protected scene textures;
+- WebGL context-loss recovery;
+- precision sliders for exact values.
 
-## Built-in test image upload
+The old CSS pseudo-3D stage is not the production renderer.
 
-DepthPop includes an **UPLOAD TEST IMAGE** control in the production Canva panel. It accepts PNG, JPEG, and WebP files up to 7 MB, uploads the image into the user's private Canva media library, and adds it to the current design. Select that inserted image, then run **EXECUTE DEPTHPOP** to exercise the full selected-image → authenticated backend → derived asset → replacement flow.
+## 4D animation
 
-The packaged `src/assets/depthpop-logo.svg` is retained and the runtime embeds the same layered-square mark so the logo cannot disappear because of a broken external path.
+DepthScene v1 stores typed animation tracks for:
 
-The standalone `preview/index.html` also has a local file picker for UI testing without Canva. It previews the chosen file only; actual DepthPop processing remains in the production Canva app and backend.
+- position X/Y/Z;
+- rotation X/Y/Z;
+- scale X/Y/Z;
+- opacity.
+
+The Animate workspace provides:
+
+- play / pause / stop;
+- timeline scrubbing;
+- duration and FPS controls;
+- add/update keyframe;
+- delete keyframe;
+- easing selection;
+- clickable pose times;
+- live animation sampling in the WebGL viewport.
+
+Motion presets currently author serializable scene tracks for:
+
+- Parallax
+- Camera Push spatial motion
+- Float
+- Orbit
+- Depth Reveal
+- Rack Focus depth-emphasis
+
+DepthScene v1 does not expose an animatable optical focal-distance property. Rack Focus therefore uses supported opacity + Z depth-emphasis tracks rather than pretending a nonexistent focus parameter exists.
+
+## Object operations
+
+When connected to the production backend, the Scene workspace exposes real server-backed:
+
+- rename;
+- duplicate;
+- delete;
+- merge;
+- split / re-segment.
+
+Split uses the configured segmentation provider against the original owned source image. It is not simulated in the browser.
+
+## Export
+
+The Export workspace uses authenticated asynchronous backend jobs for:
+
+- portable DepthScene JSON;
+- PNG layer ZIP;
+- glTF;
+- GLB;
+- WebM;
+- MP4.
+
+WebM/MP4 support authored FPS and output resolution controls.
+
+The existing **RENDER TO CANVA** action remains separate from file export and applies the current authored scene back into the Canva design.
+
+## Protected assets and auth
+
+Generated scene media is owner-scoped to the verified Canva user + brand. The frontend fetches protected assets with the Canva bearer token and converts them to local Blob URLs before handing them to Three.js. Provider credentials such as `FAL_KEY` remain server-side only.
+
+## Development
+
+```bash
+cp .env.template .env
+npm install --ignore-scripts
+npm run typecheck
+npm run test
+npm run build
+npm run start
+```
+
+The backend lives under `backend/`. For a production deployment, configure a public HTTPS backend origin, persistent SQLite/asset/artifact volumes, and the required server-side providers.
+
+Historical Drive source material remains under `reference/drive-source` for provenance only and is excluded from the user-facing package.

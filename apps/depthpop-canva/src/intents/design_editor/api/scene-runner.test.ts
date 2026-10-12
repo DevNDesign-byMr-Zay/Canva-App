@@ -17,6 +17,13 @@ function scene(): DepthScene {
     sourceAssetId: "source",
     width: 10,
     height: 10,
+    settings: {
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      renderQuality: "cinematic",
+      numInferenceSteps: 34,
+    },
     objects: [],
     reconstructedPlate: {
       imageUrl: "data:image/png;base64,AAAA",

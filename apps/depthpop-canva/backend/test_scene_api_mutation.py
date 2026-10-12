@@ -17,7 +17,8 @@ from models.object import (
     Vector3,
 )
 from models.scene import CameraConfig, DepthScene, ReconstructedPlate, TimelineConfig
-from services.persistence import scene_repo
+from services.export_persistence import export_repo, export_storage
+from services.persistence import scene_asset_repo, scene_repo
 
 
 def image_bytes(*, object_color=(255, 0, 0, 255), transparent=False) -> bytes:
@@ -74,6 +75,12 @@ def seeded_client():
     depthpop.app.dependency_overrides[verify_canva_user] = fake_user
     depthpop._image_cache.clear()
     scene_repo._scenes.clear()
+    if hasattr(scene_asset_repo, "_assets"):
+        scene_asset_repo._assets.clear()
+    if hasattr(export_repo, "_jobs"):
+        export_repo._jobs.clear()
+    if hasattr(export_repo, "_artifacts"):
+        export_repo._artifacts.clear()
 
     plate_key = depthpop._cache_put(image_bytes(), "image/png")
     red_key = depthpop._cache_put(image_bytes(transparent=True), "image/png")
@@ -118,6 +125,12 @@ def seeded_client():
         depthpop.app.dependency_overrides.clear()
         depthpop._image_cache.clear()
         scene_repo._scenes.clear()
+        if hasattr(scene_asset_repo, "_assets"):
+            scene_asset_repo._assets.clear()
+        if hasattr(export_repo, "_jobs"):
+            export_repo._jobs.clear()
+        if hasattr(export_repo, "_artifacts"):
+            export_repo._artifacts.clear()
 
 
 def test_patch_allows_only_editable_fields_and_preserves_partial_transform(
@@ -227,3 +240,138 @@ def test_composite_route_returns_raw_png_bytes(seeded_client):
     with Image.open(io.BytesIO(response.content)) as rendered:
         assert rendered.format == "PNG"
         assert rendered.size == (100, 100)
+
+
+def test_object_rename_duplicate_and_delete_routes(seeded_client):
+    renamed = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test/objects/red",
+        json={"label": "Hero"},
+    )
+    assert renamed.status_code == 200
+    assert next(item for item in renamed.json()["objects"] if item["id"] == "red")["label"] == "Hero"
+
+    duplicated = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/objects/red/duplicate"
+    )
+    assert duplicated.status_code == 200
+    copies = [
+        item
+        for item in duplicated.json()["objects"]
+        if item["id"].startswith("red_copy_")
+    ]
+    assert len(copies) == 1
+    assert copies[0]["label"] == "Hero Copy"
+
+    deleted = seeded_client.delete(
+        f"/api/v1/scenes/scene-api-test/objects/{copies[0]['id']}"
+    )
+    assert deleted.status_code == 200
+    assert all(
+        item["id"] != copies[0]["id"]
+        for item in deleted.json()["objects"]
+    )
+
+
+def test_merge_route_creates_owned_merged_object(seeded_client):
+    merged = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/objects/merge",
+        json={"objectIds": ["red", "blue"], "label": "Combined"},
+    )
+    assert merged.status_code == 200
+    payload = merged.json()
+    assert len(payload["objects"]) == 1
+    combined = payload["objects"][0]
+    assert combined["id"].startswith("merged_")
+    assert combined["label"] == "Combined"
+    assert combined["assets"]["cutoutUrl"].startswith(
+        "http://testserver/api/v1/assets/"
+    )
+
+
+def test_export_api_creates_owned_portable_scene_artifact(seeded_client):
+    created = seeded_client.post(
+        "/api/v1/scenes/scene-api-test/exports",
+        json={"format": "scene-json", "includeAnimation": True},
+    )
+    assert created.status_code == 202
+    job_id = created.json()["jobId"]
+
+    status = seeded_client.get(f"/api/v1/exports/{job_id}")
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["status"] == "complete"
+    assert payload["artifactId"]
+    assert payload["downloadUrl"]
+
+    downloaded = seeded_client.get(payload["downloadUrl"])
+    assert downloaded.status_code == 200
+    assert downloaded.headers["content-type"].startswith("application/json")
+    portable = downloaded.json()
+    assert portable["format"] == "depthscene-portable-v1"
+    assert portable["scene"]["id"] == "scene-api-test"
+
+    artifact = export_repo.get_artifact(
+        payload["artifactId"],
+        user_id="user-a",
+        brand_id="brand-a",
+    )
+    assert artifact is not None
+    export_storage.cleanup_workspace(artifact.path)
+
+
+def test_patch_persists_animation_tracks_and_rejects_out_of_timeline_keyframes(
+    seeded_client,
+):
+    valid = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test",
+        json={
+            "objects": [
+                {
+                    "id": "red",
+                    "animationTracks": [
+                        {
+                            "id": "red-x",
+                            "property": "position.x",
+                            "keyframes": [
+                                {"timeMs": 0, "value": 0.2, "easing": "linear"},
+                                {
+                                    "timeMs": 1000,
+                                    "value": 0.8,
+                                    "easing": "ease-in-out",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert valid.status_code == 200
+    red = next(item for item in valid.json()["objects"] if item["id"] == "red")
+    assert red["animationTracks"][0]["id"] == "red-x"
+
+    invalid = seeded_client.patch(
+        "/api/v1/scenes/scene-api-test",
+        json={
+            "objects": [
+                {
+                    "id": "red",
+                    "animationTracks": [
+                        {
+                            "id": "too-long",
+                            "property": "position.x",
+                            "keyframes": [
+                                {"timeMs": 0, "value": 0.2, "easing": "linear"},
+                                {
+                                    "timeMs": 1001,
+                                    "value": 0.8,
+                                    "easing": "linear",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert invalid.status_code == 422

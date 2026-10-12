@@ -11,6 +11,15 @@ The primary product path is the authenticated **DepthScene v1** object-scene API
     GET   /api/v1/scenes/{sceneId}
     PATCH /api/v1/scenes/{sceneId}
     POST  /api/v1/scenes/{sceneId}/composite
+    PATCH /api/v1/scenes/{sceneId}/objects/{objectId}
+    POST  /api/v1/scenes/{sceneId}/objects/{objectId}/duplicate
+    DELETE /api/v1/scenes/{sceneId}/objects/{objectId}
+    POST  /api/v1/scenes/{sceneId}/objects/merge
+    POST  /api/v1/scenes/{sceneId}/objects/{objectId}/split
+    POST  /api/v1/scenes/{sceneId}/exports
+    GET   /api/v1/exports/{jobId}
+    POST  /api/v1/exports/{jobId}/cancel
+    GET   /api/v1/artifacts/{artifactId}/download
     GET   /api/v1/assets/{assetId}
 
 Every v1 route requires a verified Canva user JWT. Scene, job, and generated-asset access is scoped to the exact Canva user and brand.
@@ -50,6 +59,57 @@ Depth quality is real and bounded:
 
 Regardless of provider output resolution, canonical depth is resized back to the exact source dimensions before masks index into it.
 
+## Object operations and 4D scene persistence
+
+Scene PATCH accepts authored labels, transforms, opacity, feather, visibility, lock, layer order, camera, timeline, and typed animation tracks. The server revalidates the complete scene after every edit so keyframes cannot extend beyond the timeline.
+
+Object operations are real server-side mutations:
+
+- rename/edit;
+- duplicate with unique object and animation-track IDs;
+- delete with lock protection;
+- merge into a new owned cutout/mask/thumbnail asset set;
+- split/re-segment through the configured segmentation provider using the original owned source image and canonical depth map.
+
+## Production exports
+
+DepthPop exposes asynchronous, owner-scoped export jobs for:
+
+- portable `scene-json` with embedded scene assets;
+- `png-layers` ZIP with manifest, reconstructed plate, depth map, cutouts and masks;
+- valid glTF 2.0 JSON;
+- valid GLB 2.0 binary;
+- timeline-rendered WebM;
+- timeline-rendered MP4.
+
+glTF/GLB preserve the authored object transforms as textured planes and sample authored transform animation into real glTF animation channels. Opacity tracks remain in DepthPop metadata and are honored by timeline-rendered video exports.
+
+Video rendering evaluates the saved DepthScene timeline frame-by-frame and encodes with FFmpeg. The production Docker image installs FFmpeg explicitly.
+
+Export jobs are bounded by configurable concurrency, pixel, duration, frame-count and final-artifact byte ceilings. Artifact hashes are streamed in chunks. Cleanup validates every path against `DEPTHPOP_ARTIFACT_ROOT` and removes the complete export workspace.
+
+## Restart-safe persistence
+
+DepthPop supports two repository backends:
+
+- `memory` for deterministic tests and explicit local development;
+- `sqlite` for the production single-service profile.
+
+Production should mount persistent storage and configure:
+
+    DEPTHPOP_REPOSITORY_BACKEND=sqlite
+    DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
+    DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
+    DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
+    DEPTHPOP_MAX_EXPORT_CONCURRENCY=2
+    DEPTHPOP_MAX_EXPORT_PIXELS=16777216
+    DEPTHPOP_MAX_EXPORT_FRAMES=3600
+    DEPTHPOP_MAX_EXPORT_DURATION_MS=120000
+
+Scene/job metadata is stored in SQLite while binary scene assets are stored beneath the owned asset root. Export job/artifact metadata uses the same durable backend and export files live beneath the owned artifact root. On restart, completed scenes/jobs/artifacts remain available until TTL expiry and incomplete queued/processing jobs are recovered to a truthful terminal error instead of remaining stuck forever.
+
+This SQLite profile is intentionally scoped to a persistent single-service deployment. It does not claim distributed multi-writer rendering; a future PostgreSQL/object-storage adapter can implement the same repository contracts without changing DepthScene/API contracts.
+
 ## Protected asset lifecycle
 
 Generated scene media does not use the public compatibility cache.
@@ -77,7 +137,8 @@ See .env.example.
 Required production values:
 
     CANVA_APP_ID=<DepthPop Canva app id>
-    CANVA_APP_ORIGIN=<allowed Canva app iframe origin>
+    CANVA_APP_ORIGIN=<optional explicit allowed Canva app iframe origin>
+    DEPTHPOP_DEV_ORIGINS=http://localhost:8080
     FAL_KEY=<server-side fal key>
     PUBLIC_BASE_URL=https://your-public-depthpop-backend.example
     ENVIRONMENT=production
@@ -85,6 +146,11 @@ Required production values:
     DEPTH_PROVIDER=auto
     INPAINT_PROVIDER=auto
     DEPTHPOP_ALLOW_BBOX_FALLBACK=false
+    DEPTHPOP_REPOSITORY_BACKEND=sqlite
+    DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
+    DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
+    DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
+    DEPTHPOP_MAX_EXPORT_CONCURRENCY=2
 
 PUBLIC_BASE_URL should be the same backend origin configured by the Canva app. Protected scene assets reject cross-origin bearer-token delivery in the client.
 
@@ -111,6 +177,7 @@ For Canva testing, expose the backend over public HTTPS and set the frontend bac
 ## Security boundaries
 
 - all v1 requests require a valid Canva user JWT;
+- production CORS is restricted to the derived lowercase Canva app origin plus explicitly configured development origins; arbitrary origins are not authorized;
 - CANVA_APP_ID is enforced as JWT audience;
 - source image bytes are uploaded by the client rather than fetched from an arbitrary user-controlled URL;
 - accepted source inputs are PNG, JPEG, and WebP, capped at 50 MB;

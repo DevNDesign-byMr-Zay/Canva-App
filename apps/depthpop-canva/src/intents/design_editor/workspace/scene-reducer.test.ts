@@ -9,6 +9,13 @@ function makeScene(): DepthScene {
     sourceAssetId: "asset_1",
     width: 200,
     height: 200,
+    settings: {
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      renderQuality: "cinematic",
+      numInferenceSteps: 34,
+    },
     objects: [
       {
         id: "person_01",
@@ -218,4 +225,119 @@ describe("sceneReducer", () => {
     });
     expect(parallax.parallaxStrength).toBe(2);
   });
+
+  it("trims future keyframes when shortening timeline duration", () => {
+    const state = makeState();
+    const animated = sceneReducer(state, {
+      type: "SET_ANIMATION_TRACKS",
+      objectId: "person_01",
+      tracks: [
+        {
+          id: "person-x",
+          property: "position.x",
+          keyframes: [
+            { timeMs: 0, value: 0.5, easing: "linear" },
+            { timeMs: 800, value: 0.7, easing: "linear" },
+            { timeMs: 1000, value: 0.8, easing: "linear" },
+          ],
+        },
+      ],
+    });
+    const shortened = sceneReducer(animated, {
+      type: "PATCH_TIMELINE",
+      timeline: { durationMs: 500 },
+    });
+
+    expect(
+      shortened.currentScene.objects[0]!.animationTracks[0]!.keyframes,
+    ).toEqual([{ timeMs: 0, value: 0.5, easing: "linear" }]);
+  });
+
+  it("does not modify animation tracks on locked objects", () => {
+    const state = makeState();
+    const locked = sceneReducer(state, {
+      type: "SET_LOCK",
+      objectId: "person_01",
+      locked: true,
+    });
+    const next = sceneReducer(locked, {
+      type: "SET_ANIMATION_TRACKS",
+      objectId: "person_01",
+      tracks: [
+        {
+          id: "blocked",
+          property: "opacity",
+          keyframes: [
+            { timeMs: 0, value: 1, easing: "linear" },
+            { timeMs: 1000, value: 0, easing: "linear" },
+          ],
+        },
+      ],
+    });
+
+    expect(next.currentScene.objects[0]!.animationTracks).toEqual([]);
+  });
+
 });
+
+
+  it("replaces only the current scene after local preset edits", () => {
+    const state = makeState();
+    const replacement: DepthScene = {
+      ...state.currentScene,
+      timeline: {
+        ...state.currentScene.timeline,
+        durationMs: 3000,
+      },
+      updatedAt: "2026-10-01T00:03:00Z",
+    };
+
+    const next = sceneReducer(state, {
+      type: "REPLACE_CURRENT_SCENE",
+      scene: replacement,
+    });
+
+    expect(next.currentScene.timeline.durationMs).toBe(3000);
+    expect(next.initialScene.timeline.durationMs).toBe(1000);
+  });
+
+  it("stores typed animation tracks without mutating the baseline", () => {
+    const state = makeState();
+    const tracks = [
+      {
+        id: "person-x",
+        property: "position.x" as const,
+        keyframes: [
+          { timeMs: 0, value: 0.5, easing: "linear" as const },
+          { timeMs: 1000, value: 0.8, easing: "ease-in-out" as const },
+        ],
+      },
+    ];
+
+    const next = sceneReducer(state, {
+      type: "SET_ANIMATION_TRACKS",
+      objectId: "person_01",
+      tracks,
+    });
+
+    expect(next.currentScene.objects[0]!.animationTracks).toEqual(tracks);
+    expect(state.currentScene.objects[0]!.animationTracks).toEqual([]);
+  });
+
+  it("patches duration and clamps time into the new timeline", () => {
+    const state = makeState();
+    const moved = sceneReducer(state, {
+      type: "SET_TIME",
+      currentTimeMs: 900,
+    });
+    const next = sceneReducer(moved, {
+      type: "PATCH_TIMELINE",
+      timeline: { durationMs: 500, fps: 60 },
+    });
+
+    expect(next.currentScene.timeline).toEqual({
+      durationMs: 500,
+      fps: 60,
+      currentTimeMs: 500,
+    });
+  });

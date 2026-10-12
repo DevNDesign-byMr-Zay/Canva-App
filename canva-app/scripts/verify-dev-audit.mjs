@@ -21,6 +21,9 @@ const allowed = [
   'micromatch',
   'node-forge',
   'nodemon',
+  'proxy-addr',
+  'shell-quote',
+  'source-map-js',
   'webpack-dev-server',
 ].sort();
 

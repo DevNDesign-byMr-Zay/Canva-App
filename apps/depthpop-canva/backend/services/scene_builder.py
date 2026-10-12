@@ -6,11 +6,12 @@ import uuid
 from typing import Awaitable, Callable
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from models.object import DepthObject
 from models.scene import (
     CameraConfig,
+    DepthPopSceneSettings,
     DepthScene,
     ReconstructedPlate,
     TimelineConfig,
@@ -48,9 +49,12 @@ class SceneBuilderService:
         segmentation_mode: str = "auto",
         depth_quality: str = "high",
         inpaint: bool = True,
+        settings: DepthPopSceneSettings | None = None,
+        inpaint_steps: int = 34,
         stage_reporter: StageReporter | None = None,
         scene_id: str | None = None,
     ) -> DepthScene:
+        scene_settings = settings or DepthPopSceneSettings()
         if stage_reporter:
             await stage_reporter("decoding", 0.10)
 
@@ -105,6 +109,8 @@ class SceneBuilderService:
                     depth_array=depth_map.depth_array,
                     url_builder=url_builder,
                     index=count,
+                    depth_strength=scene_settings.depthStrength,
+                    depth_fidelity=scene_settings.depthFidelity,
                 )
             )
 
@@ -161,9 +167,23 @@ class SceneBuilderService:
             plate_bytes = await self.inpainting_service.inpaint_plate(
                 image_bytes,
                 union_buffer.getvalue(),
+                num_inference_steps=inpaint_steps,
             )
         else:
             plate_bytes = source_png_bytes
+
+        # depthBlur is the authored background-softness control. Apply it to
+        # the reconstructed plate only; extracted foreground objects remain
+        # sharp and independently editable.
+        if scene_settings.depthBlur > 0:
+            with Image.open(io.BytesIO(plate_bytes)) as plate_image:
+                radius = min(12.0, float(scene_settings.depthBlur) * 0.12)
+                softened = plate_image.convert("RGBA").filter(
+                    ImageFilter.GaussianBlur(radius=radius)
+                )
+                softened_buffer = io.BytesIO()
+                softened.save(softened_buffer, format="PNG", optimize=True)
+                plate_bytes = softened_buffer.getvalue()
 
         plate_url = url_builder(plate_bytes, "image/png")
         depth_map_url = url_builder(
@@ -184,6 +204,7 @@ class SceneBuilderService:
             sourceAssetId=source_asset_id,
             width=width,
             height=height,
+            settings=scene_settings,
             objects=objects,
             reconstructedPlate=ReconstructedPlate(
                 imageUrl=plate_url,

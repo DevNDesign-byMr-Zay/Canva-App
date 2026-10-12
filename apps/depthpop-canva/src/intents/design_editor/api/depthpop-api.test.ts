@@ -12,6 +12,13 @@ function validScene(): DepthScene {
     sourceAssetId: "asset_789",
     width: 100,
     height: 100,
+    settings: {
+      depthStrength: 0.32,
+      depthBlur: 35,
+      depthFidelity: 0.95,
+      renderQuality: "cinematic",
+      numInferenceSteps: 34,
+    },
     objects: [
       {
         id: "person_01",
@@ -135,22 +142,26 @@ describe("DepthPopApiClient", () => {
 
     expect(payload.objects[0]).toEqual({
       id: "person_01",
+      label: "Person",
       transform: scene.objects[0]!.transform,
       opacity: 0.9,
       feather: 2,
       visible: true,
       locked: false,
       order: 0,
+      animationTracks: [],
     });
     expect(JSON.stringify(payload)).not.toContain("sourceAssetId");
     expect(JSON.stringify(payload)).not.toContain("cutoutUrl");
     expect(JSON.stringify(payload)).not.toContain("confidence");
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(scene), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(scene), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
     );
     vi.stubGlobal("fetch", mockFetch);
 
@@ -275,6 +286,168 @@ describe("DepthPopApiClient", () => {
     const client = new DepthPopApiClient("https://api.test");
     await expect(client.getJobStatus("job_bad")).rejects.toThrow(
       "SAM provider unavailable",
+    );
+  });
+  it("sends the four maintained DepthPop settings without provider-specific invented fields", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ jobId: "job_settings", status: "queued" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient("https://api.test");
+    await client.createSceneJob({
+      image: new Blob(["test"], { type: "image/png" }),
+      inpaint: true,
+      settings: {
+        depthStrength: 0.41,
+        depthBlur: 57,
+        depthFidelity: 0.88,
+        renderQuality: "fast",
+      },
+    });
+
+    const request = mockFetch.mock.calls[0]?.[1] as RequestInit;
+    const form = request.body as FormData;
+    expect(form.get("depth_strength")).toBe("0.41");
+    expect(form.get("depth_blur")).toBe("57");
+    expect(form.get("depth_fidelity")).toBe("0.88");
+    expect(form.get("render_quality")).toBe("fast");
+    expect(form.get("num_inference_steps")).toBeNull();
+    expect(form.get("florence_steps")).toBeNull();
+    expect(form.get("sam_steps")).toBeNull();
+  });
+
+});
+
+
+describe("DepthPopApiClient production object and export routes", () => {
+  it("uses authenticated server object operations", async () => {
+    const scene = validScene();
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(scene), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "token",
+    );
+    await client.renameObject(scene.id, "person_01", "Hero");
+    await client.duplicateObject(scene.id, "person_01");
+    await client.deleteObject(scene.id, "person_01");
+    await client.mergeObjects(scene.id, ["person_01", "prop_01"], "Merged");
+    await client.splitObject(scene.id, "person_01", 4, "auto");
+
+    expect(mockFetch).toHaveBeenCalledTimes(5);
+    for (const call of mockFetch.mock.calls) {
+      expect((call[1] as RequestInit).headers).toEqual(
+        expect.objectContaining({ Authorization: "Bearer token" }),
+      );
+    }
+    expect(mockFetch.mock.calls[0]?.[0]).toContain(
+      "/objects/person_01",
+    );
+    expect((mockFetch.mock.calls[0]?.[1] as RequestInit).method).toBe(
+      "PATCH",
+    );
+    expect(
+      JSON.parse(String((mockFetch.mock.calls[3]?.[1] as RequestInit).body)),
+    ).toEqual({
+      objectIds: ["person_01", "prop_01"],
+      label: "Merged",
+    });
+  });
+
+  it("creates, polls, cancels and downloads authenticated exports", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ jobId: "export_1", status: "queued" }),
+          {
+            status: 202,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobId: "export_1",
+            format: "glb",
+            status: "processing",
+            stage: "building_gltf",
+            progress: 0.4,
+            artifactId: null,
+            downloadUrl: null,
+            error: null,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobId: "export_1",
+            format: "glb",
+            status: "cancelled",
+            stage: "cancelled",
+            progress: 1,
+            artifactId: null,
+            downloadUrl: null,
+            error: "Export cancelled.",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(new Blob(["glb"], { type: "model/gltf-binary" }), {
+          status: 200,
+          headers: { "Content-Type": "model/gltf-binary" },
+        }),
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new DepthPopApiClient(
+      "https://api.test",
+      async () => "token",
+    );
+    const created = await client.createExportJob("scene_456", {
+      format: "glb",
+      includeAnimation: true,
+    });
+    expect(created.jobId).toBe("export_1");
+
+    const status = await client.getExportStatus(created.jobId);
+    expect(status.stage).toBe("building_gltf");
+
+    const cancelled = await client.cancelExportJob(created.jobId);
+    expect(cancelled.status).toBe("cancelled");
+
+    const artifact = await client.downloadArtifactBlob(
+      "/api/v1/artifacts/artifact_1/download",
+    );
+    expect(artifact.type).toBe("model/gltf-binary");
+
+    expect(mockFetch.mock.calls[0]?.[0]).toBe(
+      "https://api.test/api/v1/scenes/scene_456/exports",
+    );
+    expect(mockFetch.mock.calls[3]?.[0]).toBe(
+      "https://api.test/api/v1/artifacts/artifact_1/download",
     );
   });
 });

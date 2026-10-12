@@ -68,6 +68,12 @@ class InpaintingService:
         self,
         image: bytes,
         mask: bytes,
+        *,
+        num_inference_steps: int = 30,
     ) -> bytes:
         provider = self._provider or get_inpaint_provider()
-        return await provider.inpaint(image, mask)
+        return await provider.inpaint(
+            image,
+            mask,
+            num_inference_steps=num_inference_steps,
+        )
