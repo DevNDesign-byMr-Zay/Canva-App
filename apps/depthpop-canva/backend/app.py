@@ -18,6 +18,7 @@ from fastapi.responses import Response
 from PIL import Image, ImageFilter
 
 from api.assets import router as assets_router
+from api.exports import router as exports_router
 from api.jobs import router as jobs_router
 from api.objects import router as objects_router
 from api.scenes import router as scenes_router
@@ -72,6 +73,7 @@ if CORS_ORIGINS:
 app.include_router(assets_router)
 app.include_router(scenes_router)
 app.include_router(objects_router)
+app.include_router(exports_router)
 app.include_router(jobs_router)
 
 _image_cache: dict[str, tuple[float, bytes, str]] = {}
