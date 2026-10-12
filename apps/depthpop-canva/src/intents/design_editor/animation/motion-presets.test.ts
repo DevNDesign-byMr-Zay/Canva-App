@@ -102,4 +102,33 @@ describe("DepthPop motion presets", () => {
     );
     expect(properties).toEqual(new Set(["opacity", "position.z"]));
   });
+
+  it("does not rewrite animation tracks for locked objects", () => {
+    const original = scene();
+    const locked: DepthScene = {
+      ...original,
+      objects: [
+        {
+          ...original.objects[0]!,
+          locked: true,
+          animationTracks: [
+            {
+              id: "existing",
+              property: "opacity",
+              keyframes: [
+                { timeMs: 0, value: 1, easing: "linear" },
+                { timeMs: 3000, value: 0.8, easing: "linear" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = applyMotionPreset(locked, "ORBIT");
+    expect(result.objects[0]!.animationTracks).toEqual(
+      locked.objects[0]!.animationTracks,
+    );
+  });
+
 });
