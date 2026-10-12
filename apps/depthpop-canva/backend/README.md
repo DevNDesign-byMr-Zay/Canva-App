@@ -105,7 +105,6 @@ Production should mount persistent storage and configure:
     DEPTHPOP_MAX_EXPORT_PIXELS=16777216
     DEPTHPOP_MAX_EXPORT_FRAMES=3600
     DEPTHPOP_MAX_EXPORT_DURATION_MS=120000
-    DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
 
 Scene/job metadata is stored in SQLite while binary scene assets are stored beneath the owned asset root. Export job/artifact metadata uses the same durable backend and export files live beneath the owned artifact root. On restart, completed scenes/jobs/artifacts remain available until TTL expiry and incomplete queued/processing jobs are recovered to a truthful terminal error instead of remaining stuck forever.
 
@@ -150,6 +149,8 @@ Required production values:
     DEPTHPOP_REPOSITORY_BACKEND=sqlite
     DEPTHPOP_DATABASE_PATH=/data/depthpop/depthpop.sqlite3
     DEPTHPOP_ASSET_ROOT=/data/depthpop/assets
+    DEPTHPOP_ARTIFACT_ROOT=/data/depthpop/artifacts
+    DEPTHPOP_MAX_EXPORT_CONCURRENCY=2
 
 PUBLIC_BASE_URL should be the same backend origin configured by the Canva app. Protected scene assets reject cross-origin bearer-token delivery in the client.
 
