@@ -240,7 +240,10 @@ async def create_scene(
             ),
         )
 
-    resolved_depth_quality = "standard" if render_quality == "fast" else "high"
+    # Preserve the caller's explicit depth-quality contract. Render quality
+    # controls inpainting/inference budget, not the independently requested
+    # depth estimator quality.
+    resolved_depth_quality = depth_quality
     scene_settings = DepthPopSceneSettings(
         depthStrength=depth_strength,
         depthBlur=depth_blur,
