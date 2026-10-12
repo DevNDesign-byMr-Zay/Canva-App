@@ -127,6 +127,10 @@ def seeded_client():
         scene_repo._scenes.clear()
         if hasattr(scene_asset_repo, "_assets"):
             scene_asset_repo._assets.clear()
+        if hasattr(export_repo, "_jobs"):
+            export_repo._jobs.clear()
+        if hasattr(export_repo, "_artifacts"):
+            export_repo._artifacts.clear()
 
 
 def test_patch_allows_only_editable_fields_and_preserves_partial_transform(
