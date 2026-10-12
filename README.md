@@ -13,7 +13,7 @@ The repository intentionally distinguishes between **historical source provenanc
 HoloForge and DepthPop are now maintained as **two independent Canva Design Editor apps**, not as modes inside one shared runtime.
 
 - `apps/holoforge-canva/` — HoloForge holographic material studio. It has its own Canva manifest, runtime entrypoint, tests, production build, and a from-scratch CREATE → SPATIAL → VERIFY interface. Forgeable materials are written as editable HoloForge app elements through Canva's app-element boundary.
-- `apps/depthpop-canva/` — DepthPop image effect. It has its own Canva manifest, runtime entrypoint, tests, production build, backend, and static UI preview. Its visible control contract is recovered from the maintained Drive v115 source rather than invented from the combined sidebar.
+- `apps/depthpop-canva/` — DepthPop standalone spatial image editor. It has its own Canva manifest, runtime entrypoint, tests, production build, authenticated FastAPI backend, React Three Fiber / Three.js object-scene editor, 4D timeline/keyframe authoring, server-backed object operations, Render-to-Canva path, and production scene/layer/3D/video exports. Its original control vocabulary is traceable to the maintained Drive v115 source, while the current production implementation is the typed DepthScene/WebGL application under this app root.
 - `apps/depthpop-canva/backend/` — authenticated FastAPI processing service for the standalone DepthPop app.
 - `apps/depthpop-canva/reference/drive-source/` — exact historical Drive UI/backend provenance used to audit the reconstruction. This directory remains **repository-only** and is deliberately excluded from user-facing Canva ZIPs.
 
@@ -23,7 +23,7 @@ The older `canva-app/` tree remains for compatibility and release-history contin
   <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
 </p>
 
-HoloForge's maintained workflow is **CREATE → SPATIAL → VERIFY**. DepthPop's standalone workflow is selected raster image → exact v115 controls → authenticated processing → derived Canva asset → selected-image replacement.
+HoloForge's maintained workflow is **SOURCE → CREATE → SPATIAL → VERIFY**. DepthPop's maintained workflow is selected/uploaded raster → authenticated object detection/segmentation/depth/reconstruction → editable DepthScene → WebGL spatial editing + 4D animation → Render to Canva or production export.
 
 ## What is executable and inspectable today
 
@@ -125,9 +125,6 @@ make verify-fresh
 ```
 
 This single entrypoint installs Python packages strictly from pinned root `requirements.lock.txt`, installs Node packages from `package-lock.json` and `canva-app/package-lock.json`, and executes all Python and JavaScript linting, typechecking, tests, coverage gates, and production builds.
-```bash
-make verify-fresh
-```
 
 The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters keep their dependency surface narrow. The trusted review-context backend deliberately uses the pinned `@canva/app-middleware` package for server-side Canva token verification, and the committed npm lockfile keeps that boundary reproducible and machine-verifiable.
 
