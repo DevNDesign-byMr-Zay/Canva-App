@@ -155,11 +155,13 @@ describe("DepthPopApiClient", () => {
     expect(JSON.stringify(payload)).not.toContain("cutoutUrl");
     expect(JSON.stringify(payload)).not.toContain("confidence");
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(scene), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(scene), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
     );
     vi.stubGlobal("fetch", mockFetch);
 
