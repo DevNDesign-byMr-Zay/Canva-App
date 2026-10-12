@@ -469,7 +469,23 @@ for (const app of APPS) {
             "backend/test_spectral_material.py",
             "backend/test_models.py",
           ]
+<<<<<<< HEAD
         : []),
+=======
+        : [
+            "backend/auth.py",
+            "backend/api/exports.py",
+            "backend/api/objects.py",
+            "backend/api/scenes.py",
+            "backend/models/export.py",
+            "backend/persistence/export_repository.py",
+            "backend/persistence/export_storage.py",
+            "backend/persistence/sqlite_repository.py",
+            "backend/services/export_formats.py",
+            "backend/services/export_jobs.py",
+            "backend/services/export_persistence.py",
+          ]),
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     ];
     for (const required of backendRequired) {
       if (!files.includes(required)) {

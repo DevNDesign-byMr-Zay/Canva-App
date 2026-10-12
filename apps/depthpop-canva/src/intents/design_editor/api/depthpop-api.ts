@@ -284,3 +284,134 @@ export class DepthPopApiClient {
 }
 
 export { scenePatchPayload };
+
+export interface DepthPopExportRequest {
+  format: "scene-json" | "png-layers" | "gltf" | "glb" | "webm" | "mp4";
+  includeAnimation?: boolean;
+  resolution?: { width: number; height: number };
+  fps?: number;
+}
+
+export interface DepthPopExportJob {
+  id: string;
+  sceneId: string;
+  format: string;
+  status: "queued" | "processing" | "complete" | "failed" | "cancelled";
+  stage?: string;
+  progress?: number;
+  error?: string;
+  artifactId?: string;
+  downloadUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Extension methods for object operations and export jobs
+declare module "./depthpop-api" {
+  interface DepthPopApiClient {
+    renameObject(sceneId: string, objectId: string, label: string): Promise<DepthScene>;
+    duplicateObject(sceneId: string, objectId: string): Promise<DepthScene>;
+    deleteObject(sceneId: string, objectId: string): Promise<DepthScene>;
+    mergeObjects(sceneId: string, objectIds: string[], label?: string): Promise<DepthScene>;
+    splitObject(sceneId: string, objectId: string, maxObjects?: number, segmentationMode?: string): Promise<DepthScene>;
+    createExportJob(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob>;
+    getExportStatus(jobId: string): Promise<DepthPopExportJob>;
+    cancelExportJob(jobId: string): Promise<DepthPopExportJob>;
+    downloadArtifactBlob(downloadUrl: string): Promise<Blob>;
+  }
+}
+
+DepthPopApiClient.prototype.renameObject = async function(sceneId: string, objectId: string, label: string): Promise<DepthScene> {
+  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ label }),
+  });
+  if (!res.ok) throw await apiError(res, "Failed to rename object");
+  return (await res.json()) as DepthScene;
+};
+
+DepthPopApiClient.prototype.duplicateObject = async function(sceneId: string, objectId: string): Promise<DepthScene> {
+  const headers = await (this as any).getHeaders();
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/duplicate`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) throw await apiError(res, "Failed to duplicate object");
+  return (await res.json()) as DepthScene;
+};
+
+DepthPopApiClient.prototype.deleteObject = async function(sceneId: string, objectId: string): Promise<DepthScene> {
+  const headers = await (this as any).getHeaders();
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw await apiError(res, "Failed to delete object");
+  return (await res.json()) as DepthScene;
+};
+
+DepthPopApiClient.prototype.mergeObjects = async function(sceneId: string, objectIds: string[], label?: string): Promise<DepthScene> {
+  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/merge`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ objectIds, label }),
+  });
+  if (!res.ok) throw await apiError(res, "Failed to merge objects");
+  return (await res.json()) as DepthScene;
+};
+
+DepthPopApiClient.prototype.splitObject = async function(sceneId: string, objectId: string, maxObjects = 4, segmentationMode = "auto"): Promise<DepthScene> {
+  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/objects/${encodeURIComponent(objectId)}/split`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ maxObjects, segmentationMode }),
+  });
+  if (!res.ok) throw await apiError(res, "Failed to split object");
+  return (await res.json()) as DepthScene;
+};
+
+DepthPopApiClient.prototype.createExportJob = async function(sceneId: string, request: DepthPopExportRequest): Promise<DepthPopExportJob> {
+  const headers = await (this as any).getHeaders({ "Content-Type": "application/json" });
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/scenes/${encodeURIComponent(sceneId)}/exports`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) throw await apiError(res, "Failed to create export job");
+  return (await res.json()) as DepthPopExportJob;
+};
+
+DepthPopApiClient.prototype.getExportStatus = async function(jobId: string): Promise<DepthPopExportJob> {
+  const headers = await (this as any).getHeaders();
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) throw await apiError(res, "Failed to fetch export status");
+  return (await res.json()) as DepthPopExportJob;
+};
+
+DepthPopApiClient.prototype.cancelExportJob = async function(jobId: string): Promise<DepthPopExportJob> {
+  const headers = await (this as any).getHeaders();
+  const res = await fetch(`${(this as any).baseUrl}/api/v1/exports/${encodeURIComponent(jobId)}/cancel`, {
+    method: "POST",
+    headers,
+  });
+  if (!res.ok) throw await apiError(res, "Failed to cancel export job");
+  return (await res.json()) as DepthPopExportJob;
+};
+
+DepthPopApiClient.prototype.downloadArtifactBlob = async function(downloadUrl: string): Promise<Blob> {
+  const headers = await (this as any).getHeaders();
+  const authenticatedUrl = (this as any).authenticatedAssetUrl(downloadUrl);
+  const res = await fetch(authenticatedUrl, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) throw await apiError(res, "Failed to download artifact");
+  return await res.blob();
+};

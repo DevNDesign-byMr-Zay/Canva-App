@@ -254,16 +254,43 @@ class DiskSceneAssetRepository:
             sha256=str(row["sha256"]),
         )
 
+<<<<<<< HEAD
+=======
+    def cleanup_scene_assets_with_connection_sync(
+        self,
+        connection: sqlite3.Connection,
+        scene_id: str,
+    ) -> None:
+        """Delete scene assets inside an existing transaction.
+
+        The scene and asset tables share the same SQLite database in durable
+        mode. Reusing the caller's connection avoids nested write transactions
+        and the resulting `database is locked` failure during scene eviction.
+        """
+        if not scene_id:
+            return
+        rows = connection.execute(
+            "SELECT asset_id FROM depthpop_assets WHERE scene_id = ?",
+            (scene_id,),
+        ).fetchall()
+        for row in rows:
+            self._delete_asset_sync(connection, str(row["asset_id"]))
+
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     def cleanup_scene_assets_sync(self, scene_id: str) -> None:
         if not scene_id:
             return
         with self._connect() as connection:
+<<<<<<< HEAD
             rows = connection.execute(
                 "SELECT asset_id FROM depthpop_assets WHERE scene_id = ?",
                 (scene_id,),
             ).fetchall()
             for row in rows:
                 self._delete_asset_sync(connection, str(row["asset_id"]))
+=======
+            self.cleanup_scene_assets_with_connection_sync(connection, scene_id)
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
     async def cleanup_scene_assets(self, scene_id: str) -> None:
         self.cleanup_scene_assets_sync(scene_id)

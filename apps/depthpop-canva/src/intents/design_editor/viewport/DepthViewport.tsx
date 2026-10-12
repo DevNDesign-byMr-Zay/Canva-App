@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, TransformControls } from "@react-three/drei";
+import * as THREE from "three";
 import type { DepthScene, DepthObject } from "../scene/depth-scene";
+import { evaluateTrackValue } from "../animation/interpolation";
 import { bindWebGLRecovery } from "./webgl-recovery";
 
 export interface DepthViewportProps {
@@ -13,10 +17,161 @@ export interface DepthViewportProps {
   isFallback?: boolean;
 }
 
+function ScenePlate({ url, sceneWidth, sceneHeight }: { url: string; sceneWidth: number; sceneHeight: number }) {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    if (!url) return;
+    const loader = new THREE.TextureLoader();
+    loader.load(url, (loaded) => {
+      loaded.colorSpace = THREE.SRGBColorSpace;
+      setTexture(loaded);
+    });
+  }, [url]);
+
+  if (!texture) return null;
+
+  const aspect = sceneWidth / sceneHeight;
+  return (
+    <mesh position={[0, 0, -1]}>
+      <planeGeometry args={[aspect * 4, 4]} />
+      <meshBasicMaterial map={texture} depthWrite={false} />
+    </mesh>
+  );
+}
+
+function SceneObjectMesh({
+  object,
+  selected,
+  currentTimeMs,
+  sceneWidth,
+  sceneHeight,
+  onSelect,
+}: {
+  object: DepthObject;
+  selected: boolean;
+  currentTimeMs: number;
+  sceneWidth: number;
+  sceneHeight: number;
+  onSelect: () => void;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  const cutoutUrl = object.assets?.cutoutUrl;
+
+  useEffect(() => {
+    if (!cutoutUrl) return;
+    const loader = new THREE.TextureLoader();
+    loader.load(cutoutUrl, (loaded) => {
+      loaded.colorSpace = THREE.SRGBColorSpace;
+      setTexture(loaded);
+    });
+  }, [cutoutUrl]);
+
+  // Compute animated or static values
+  const posXTrack = object.animationTracks.find((t) => t.property === "position.x");
+  const posYTrack = object.animationTracks.find((t) => t.property === "position.y");
+  const posZTrack = object.animationTracks.find((t) => t.property === "position.z");
+  const opacityTrack = object.animationTracks.find((t) => t.property === "opacity");
+
+  const posX = evaluateTrackValue(posXTrack || { id: "", property: "position.x", keyframes: [] }, currentTimeMs, object.transform.position.x);
+  const posY = evaluateTrackValue(posYTrack || { id: "", property: "position.y", keyframes: [] }, currentTimeMs, object.transform.position.y);
+  const posZ = evaluateTrackValue(posZTrack || { id: "", property: "position.z", keyframes: [] }, currentTimeMs, object.transform.position.z);
+  const opacity = evaluateTrackValue(opacityTrack || { id: "", property: "opacity", keyframes: [] }, currentTimeMs, object.opacity);
+
+  const aspect = sceneWidth / sceneHeight;
+  // Map normalized (0..1) coordinates to Three 3D world coords [-aspect*2 .. aspect*2], [2 .. -2]
+  const worldX = (posX - 0.5) * (aspect * 4);
+  const worldY = (0.5 - posY) * 4;
+  const worldZ = posZ;
+
+  const bboxW = (object.bbox.width / scene.width) * (aspect * 4);
+  const bboxH = (object.bbox.height / scene.height) * 4;
+
+  if (!object.visible) return null;
+
+  return (
+    <group position={[worldX, worldY, worldZ]}>
+      <mesh
+        ref={meshRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        scale={[object.transform.scale.x, object.transform.scale.y, 1]}
+        rotation={[
+          THREE.MathUtils.degToRad(object.transform.rotation.x),
+          THREE.MathUtils.degToRad(object.transform.rotation.y),
+          THREE.MathUtils.degToRad(object.transform.rotation.z),
+        ]}
+      >
+        <planeGeometry args={[bboxW || 1, bboxH || 1]} />
+        <meshBasicMaterial
+          map={texture || undefined}
+          transparent
+          opacity={opacity}
+          depthWrite={false}
+        />
+      </mesh>
+      {selected && (
+        <lineSegments>
+          <edgesGeometry args={[new THREE.PlaneGeometry(bboxW || 1, bboxH || 1)]} />
+          <lineBasicMaterial color={object.locked ? "#ff4444" : "#00c4cc"} linewidth={2} />
+        </lineSegments>
+      )}
+    </group>
+  );
+}
+
+function ThreeSceneContent({
+  scene,
+  selectedObjectId,
+  onSelectObject,
+  onUpdateTransform,
+}: DepthViewportProps) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.position.set(scene.camera.position.x, scene.camera.position.y, scene.camera.position.z);
+    camera.lookAt(scene.camera.target.x, scene.camera.target.y, scene.camera.target.z);
+    if ("fov" in camera) {
+      (camera as THREE.PerspectiveCamera).fov = scene.camera.fov;
+      (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+  }, [scene.camera, camera]);
+
+  const plateUrl = scene.reconstructedPlate?.imageUrl;
+
+  return (
+    <>
+      <OrbitControls makeDefault enableDamping={false} />
+      <ambientLight intensity={1} />
+
+      {plateUrl && (
+        <ScenePlate url={plateUrl} sceneWidth={scene.width} sceneHeight={scene.height} />
+      )}
+
+      {scene.objects.map((obj) => (
+        <SceneObjectMesh
+          key={obj.id}
+          object={obj}
+          selected={obj.id === selectedObjectId}
+          currentTimeMs={scene.timeline.currentTimeMs}
+          sceneWidth={scene.width}
+          sceneHeight={scene.height}
+          onSelect={() => onSelectObject?.(obj.id)}
+        />
+      ))}
+    </>
+  );
+}
+
 export function DepthViewport({
   scene,
   selectedObjectId,
   onSelectObject,
+  onUpdateTransform,
   isFallback = false,
 }: DepthViewportProps) {
   const [hasContextError, setHasContextError] = useState(false);
@@ -80,58 +235,21 @@ export function DepthViewport({
         overflow: "hidden",
       }}
     >
-      <canvas
+      <Canvas
         data-testid="depth-webgl-canvas"
-        style={{ width: "100%", height: "100%", display: "block" }}
-      />
-      {/* 3D Scene Overlay & Objects */}
-      <div
-        className="dp-webgl-scene-objects"
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
+        camera={{
+          position: [scene.camera.position.x, scene.camera.position.y, scene.camera.position.z],
+          fov: scene.camera.fov,
         }}
+        style={{ width: "100%", height: "100%", display: "block" }}
       >
-        {scene.objects
-          .filter((obj) => obj.visible)
-          .map((obj) => {
-            const isSelected = obj.id === selectedObjectId;
-            const cutoutUrl = obj.assets?.cutoutUrl;
-            return (
-              <div
-                key={obj.id}
-                data-testid={`webgl-object-${obj.id}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectObject?.(obj.id);
-                }}
-                style={{
-                  position: "absolute",
-                  left: `${obj.transform.position.x * 100}%`,
-                  top: `${obj.transform.position.y * 100}%`,
-                  transform: `translate(-50%, -50%) rotate(${obj.transform.rotation.z}deg) scale(${obj.transform.scale.x})`,
-                  opacity: obj.opacity,
-                  outline: isSelected ? "2px solid #00c4cc" : "none",
-                  pointerEvents: "auto",
-                  cursor: obj.locked ? "not-allowed" : "pointer",
-                }}
-              >
-                {cutoutUrl && (
-                  <img
-                    src={cutoutUrl}
-                    alt={obj.label}
-                    style={{
-                      maxHeight: "200px",
-                      display: "block",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-      </div>
+        <ThreeSceneContent
+          scene={scene}
+          selectedObjectId={selectedObjectId}
+          onSelectObject={onSelectObject}
+          onUpdateTransform={onUpdateTransform}
+        />
+      </Canvas>
     </div>
   );
 }

@@ -4,14 +4,25 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+<<<<<<< HEAD
 from PIL import Image
+=======
+from PIL import Image, ImageDraw
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 import app as depthpop
 from auth import VerifiedCanvaUser, verify_canva_user
 
 
 def _png(size=(48, 48)) -> bytes:
+<<<<<<< HEAD
     image = Image.new("RGB", size, (100, 140, 180))
+=======
+    image = Image.new("RGB", size, (20, 20, 20))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, size[0] // 2, size[1]), fill=(240, 40, 40))
+    draw.rectangle((size[0] // 2 + 1, 0, size[0], size[1]), fill=(40, 80, 240))
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -103,7 +114,14 @@ def test_strength_changes_authored_z_but_not_measured_depth(client):
     )
 
 
+<<<<<<< HEAD
 def test_quality_controls_depth_lane_and_inpaint_budget(monkeypatch, client):
+=======
+def test_render_quality_controls_inpaint_budget_without_overriding_depth_quality(
+    monkeypatch,
+    client,
+):
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     captured: list[dict] = []
     original = depthpop.scenes_router.routes if False else None
 
@@ -117,6 +135,7 @@ def test_quality_controls_depth_lane_and_inpaint_budget(monkeypatch, client):
 
     monkeypatch.setattr(SceneBuilderService, "build_scene", capture_build)
 
+<<<<<<< HEAD
     _create_and_fetch(client, render_quality="fast")
     _create_and_fetch(client, render_quality="balanced")
     _create_and_fetch(client, render_quality="cinematic")
@@ -127,3 +146,34 @@ def test_quality_controls_depth_lane_and_inpaint_budget(monkeypatch, client):
         "high",
     ]
     assert [item["inpaint_steps"] for item in captured] == [14, 22, 34]
+=======
+    _create_and_fetch(client, render_quality="fast", depth_quality="high")
+    _create_and_fetch(client, render_quality="balanced", depth_quality="standard")
+    _create_and_fetch(client, render_quality="cinematic", depth_quality="high")
+
+    assert [item["depth_quality"] for item in captured] == [
+        "high",
+        "standard",
+        "high",
+    ]
+    assert [item["inpaint_steps"] for item in captured] == [14, 22, 34]
+
+
+def test_depth_blur_changes_reconstructed_plate_bytes(client):
+    sharp = _create_and_fetch(
+        client,
+        render_quality="balanced",
+        depth_blur=0,
+    )
+    soft = _create_and_fetch(
+        client,
+        render_quality="balanced",
+        depth_blur=100,
+    )
+
+    sharp_plate = client.get(sharp["reconstructedPlate"]["imageUrl"])
+    soft_plate = client.get(soft["reconstructedPlate"]["imageUrl"])
+    assert sharp_plate.status_code == 200
+    assert soft_plate.status_code == 200
+    assert sharp_plate.content != soft_plate.content
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening

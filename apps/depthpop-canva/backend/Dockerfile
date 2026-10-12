@@ -6,12 +6,26 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+<<<<<<< HEAD
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py ./
 COPY api/ ./api/
 COPY models/ ./models/
+=======
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py auth.py ./
+COPY api/ ./api/
+COPY models/ ./models/
+COPY persistence/ ./persistence/
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 COPY providers/ ./providers/
 COPY services/ ./services/
 

@@ -104,6 +104,10 @@ const APPS = {
       "src/depthpop/depthpop-model.ts",
       "src/assets/depthpop-logo.svg",
       "backend/app.py",
+<<<<<<< HEAD
+=======
+      "backend/auth.py",
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
       "backend/requirements.txt",
       "backend/Dockerfile",
       "backend/.env.example",
@@ -114,11 +118,27 @@ const APPS = {
       "backend/models/scene.py",
       "backend/models/object.py",
       "backend/models/job.py",
+<<<<<<< HEAD
+=======
+      "backend/models/export.py",
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
       "backend/providers/segmentation_provider.py",
       "backend/providers/depth_provider.py",
       "backend/providers/inpaint_provider.py",
       "backend/services/scene_builder.py",
+<<<<<<< HEAD
       "backend/api/scenes.py",
+=======
+      "backend/services/export_formats.py",
+      "backend/services/export_jobs.py",
+      "backend/services/export_persistence.py",
+      "backend/persistence/export_repository.py",
+      "backend/persistence/export_storage.py",
+      "backend/persistence/sqlite_repository.py",
+      "backend/api/scenes.py",
+      "backend/api/objects.py",
+      "backend/api/exports.py",
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
       "backend/api/jobs.py",
       "backend/test_v1_scenes.py",
       "reference/DRIVE_SOURCE.md",
@@ -729,12 +749,58 @@ for (const marker of ["schemaVersion: 1", "sourceAssetId", "reconstructedPlate",
 }
 
 const depthScenesApi = readText(full(APPS.depthpop.root, "backend/api/scenes.py"));
+<<<<<<< HEAD
 for (const marker of ["@router.post", "run_scene_decomposition_job", "max_objects"]) {
+=======
+for (const marker of ["@router.post", "run_scene_decomposition_job", "max_objects", "animationTracks"]) {
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
   if (!depthScenesApi.includes(marker)) {
     fail(`depthpop backend: v1 scenes API marker missing: ${marker}`);
   }
 }
 
+<<<<<<< HEAD
+=======
+const depthObjectApi = readText(full(APPS.depthpop.root, "backend/api/objects.py"));
+for (const marker of [
+  '"/{scene_id}/objects/{object_id}/duplicate"',
+  '"/{scene_id}/objects/merge"',
+  '"/{scene_id}/objects/{object_id}/split"',
+  "SegmentationService",
+]) {
+  if (!depthObjectApi.includes(marker)) {
+    fail(`depthpop backend: object-operation marker missing: ${marker}`);
+  }
+}
+
+const depthExportApi = readText(full(APPS.depthpop.root, "backend/api/exports.py"));
+for (const marker of [
+  '"/scenes/{scene_id}/exports"',
+  '"/exports/{job_id}"',
+  '"/exports/{job_id}/cancel"',
+  '"/artifacts/{artifact_id}/download"',
+]) {
+  if (!depthExportApi.includes(marker)) {
+    fail(`depthpop backend: export API marker missing: ${marker}`);
+  }
+}
+
+const depthExportFormats = readText(
+  full(APPS.depthpop.root, "backend/services/export_formats.py"),
+);
+for (const marker of [
+  "depthscene-portable-v1",
+  "depthpop-layer-package-v1",
+  "model/gltf-binary",
+  "libx264",
+  "libvpx-vp9",
+]) {
+  if (!depthExportFormats.includes(marker)) {
+    fail(`depthpop backend: real export-format marker missing: ${marker}`);
+  }
+}
+
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 if (failures.length) {
   console.error("\nStandalone Canva app verification failed:\n");
   for (const message of failures) console.error(" - " + message);

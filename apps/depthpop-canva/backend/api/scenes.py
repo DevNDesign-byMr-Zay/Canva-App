@@ -22,8 +22,13 @@ from fastapi import (
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from auth import VerifiedCanvaUser, verify_canva_user
+<<<<<<< HEAD
 from models.object import DepthObject, ObjectTransform, Vector3
 from models.scene import CameraConfig, DepthPopSceneSettings, TimelineConfig
+=======
+from models.object import AnimationTrack, DepthObject, ObjectTransform, Vector3
+from models.scene import CameraConfig, DepthPopSceneSettings, DepthScene, TimelineConfig
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 from services.compositor import composite_scene
 import services.persistence as persistence
 from services.persistence import job_repo, scene_asset_repo, scene_repo
@@ -73,12 +78,20 @@ class ObjectPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(..., min_length=1, max_length=160)
+<<<<<<< HEAD
+=======
+    label: str | None = Field(None, min_length=1, max_length=160)
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     transform: TransformPatch | None = None
     opacity: float | None = Field(None, ge=0.0, le=1.0)
     feather: float | None = Field(None, ge=0.0, le=100.0)
     visible: bool | None = None
     locked: bool | None = None
     order: int | None = Field(None, ge=0, le=127)
+<<<<<<< HEAD
+=======
+    animationTracks: list[AnimationTrack] | None = Field(None, alias="animationTracks")
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
 
 
 class CameraPatch(BaseModel):
@@ -238,7 +251,14 @@ async def create_scene(
             ),
         )
 
+<<<<<<< HEAD
     resolved_depth_quality = "standard" if render_quality == "fast" else "high"
+=======
+    # Preserve the caller's explicit depth-quality contract. Render quality
+    # controls inpainting/inference budget, not the independently requested
+    # depth estimator quality.
+    resolved_depth_quality = depth_quality
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     scene_settings = DepthPopSceneSettings(
         depthStrength=depth_strength,
         depthBlur=depth_blur,
@@ -412,6 +432,18 @@ async def patch_scene(
         updated.timeline = next_timeline
 
     updated.updatedAt = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+<<<<<<< HEAD
+=======
+    try:
+        updated = DepthScene.model_validate(
+            updated.model_dump(mode="python", by_alias=True)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"DepthScene edit is invalid: {exc}",
+        ) from exc
+>>>>>>> origin/repair/pr257-backend-holoforge-hardening
     await scene_repo.save_scene(updated)
     return updated.model_dump(mode="json", by_alias=True)
 
