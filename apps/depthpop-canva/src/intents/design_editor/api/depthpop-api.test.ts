@@ -326,11 +326,13 @@ describe("DepthPopApiClient", () => {
 describe("DepthPopApiClient production object and export routes", () => {
   it("uses authenticated server object operations", async () => {
     const scene = validScene();
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(scene), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const mockFetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(scene), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
     );
     vi.stubGlobal("fetch", mockFetch);
 
