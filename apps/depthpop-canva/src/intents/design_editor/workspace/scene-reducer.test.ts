@@ -225,6 +225,59 @@ describe("sceneReducer", () => {
     });
     expect(parallax.parallaxStrength).toBe(2);
   });
+
+  it("trims future keyframes when shortening timeline duration", () => {
+    const state = makeState();
+    const animated = sceneReducer(state, {
+      type: "SET_ANIMATION_TRACKS",
+      objectId: "person_01",
+      tracks: [
+        {
+          id: "person-x",
+          property: "position.x",
+          keyframes: [
+            { timeMs: 0, value: 0.5, easing: "linear" },
+            { timeMs: 800, value: 0.7, easing: "linear" },
+            { timeMs: 1000, value: 0.8, easing: "linear" },
+          ],
+        },
+      ],
+    });
+    const shortened = sceneReducer(animated, {
+      type: "PATCH_TIMELINE",
+      timeline: { durationMs: 500 },
+    });
+
+    expect(
+      shortened.currentScene.objects[0]!.animationTracks[0]!.keyframes,
+    ).toEqual([{ timeMs: 0, value: 0.5, easing: "linear" }]);
+  });
+
+  it("does not modify animation tracks on locked objects", () => {
+    const state = makeState();
+    const locked = sceneReducer(state, {
+      type: "SET_LOCK",
+      objectId: "person_01",
+      locked: true,
+    });
+    const next = sceneReducer(locked, {
+      type: "SET_ANIMATION_TRACKS",
+      objectId: "person_01",
+      tracks: [
+        {
+          id: "blocked",
+          property: "opacity",
+          keyframes: [
+            { timeMs: 0, value: 1, easing: "linear" },
+            { timeMs: 1000, value: 0, easing: "linear" },
+          ],
+        },
+      ],
+    });
+
+    expect(next.currentScene.objects[0]!.animationTracks).toEqual([]);
+  });
+
 });
 
 
