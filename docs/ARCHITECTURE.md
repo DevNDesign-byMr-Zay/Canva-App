@@ -2,14 +2,18 @@
 
 ## Purpose
 
-`Canva-App` now contains four deliberately separated layers:
+`Canva-App` now contains two primary standalone Canva products plus supporting compatibility, provenance and verification layers:
 
-1. **Historical provenance** — the authenticated, deidentified 84-occurrence HTML lineage and recovery metadata.
-2. **Authenticated application surface** — the exact v115 final-fix application materialized at `app/authenticated-v115/index.html` from the committed archive.
-3. **Maintained verification/materialization application** — typed Python code that reconstructs the archive, validates provenance and safety rules, and proves that the committed v115 application bytes match the authenticated source.
-4. **Maintained holographic presentation boundary** — renderer-neutral scene adaptation and related presentation contracts that consume validated upstream scene/result evidence without becoming authoritative, mutating historical content, or physically actuating displays.
+1. **HoloForge** — `apps/holoforge-canva/`, a standalone React/TypeScript Canva Design Editor app with real React Three Fiber / Three.js spatial authoring and an authenticated Blender/FFmpeg render backend.
+2. **DepthPop** — `apps/depthpop-canva/`, a standalone React/TypeScript Canva Design Editor app with real WebGL object-scene editing and an authenticated FastAPI processing/export backend.
+3. **Trusted compatibility application** — `canva-app/` plus `backend/`, retained for the older reviewed Design Editor integration and release-history continuity.
+4. **Historical provenance** — the authenticated, deidentified 84-occurrence HTML lineage and recovery metadata, including the exact v115 final-fix application materialized at `app/authenticated-v115/index.html`.
+5. **Verification/materialization tooling** — typed Python code that reconstructs the archive, validates provenance and safety rules, and proves that authenticated application bytes match their committed source.
+6. **Maintained runtime/presentation adapters** — renderer-neutral JavaScript contracts under `runtime/` and `src/` that support verified integration and historical continuity.
 
-No missing React/TypeScript tree is fabricated. The physical application surface is produced only from authenticated bytes already present in the repository's archive.
+Docker, Compose and GitHub Actions reproduce and verify these application runtimes. They do not make the repository infrastructure-as-code.
+
+No missing historical source is fabricated. Current standalone product code is maintained directly under the two `apps/*-canva/` roots, while historical material remains provenance.
 
 ## Trust chain
 
@@ -43,42 +47,34 @@ The materializer validates the manifest mapping before archive extraction. Occur
 ## Maintained layer map
 
 ```text
-                         +-----------------------------+
-                         | validated scene/result      |
-                         | evidence from upstream      |
-                         +--------------+--------------+
-                                        |
-                                        v
-                             holographic scene adapter
-                                        |
-                                        v
-                           renderer-neutral presentation
-                              /          |          \
-                             v           v           v
-                         interaction   CSS3D       display
-                           actions     render       planning
-                             |          model          |
-                             +----------+--------------+
-                                        |
-                                        v
-                              maintained viewport
+apps/holoforge-canva/                apps/depthpop-canva/
+        |                                     |
+        v                                     v
+ React/R3F/Three authoring            React/R3F/Three editing
+        |                                     |
+        v                                     v
+ authenticated render backend         authenticated processing backend
+ Blender + FFmpeg                     FAL adapters + FFmpeg + persistence
+        |                                     |
+        +----------------+--------------------+
+                         |
+                         v
+              standalone Canva handoffs
 
-CLI/module entrypoints
-      |              |
-      v              v
- verifier CLI   materializer CLI
-      |              |
-      v              v
- service       materializer
-    |  |  |          |
-    v  v  v          v
- config models     archive
-       scanner       bytes
-          \          /
-           typed errors
-                |
-                v
-         JSON logging
+canva-app/ + backend/          runtime/ + src/
+        |                            |
+        v                            v
+ trusted compatibility path     maintained adapters
+        \                            /
+         +------------+-------------+
+                      |
+                      v
+             verification / evidence
+
+archive_verifier/ + scripts/
+        |
+        v
+ authenticated provenance + deterministic materialization
 ```
 
 ### Verification boundary
