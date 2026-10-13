@@ -1,7 +1,9 @@
 name: DepthPop live UI provider E2E
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - test/depthpop-live-ui-e2e
 
 permissions:
   contents: read
