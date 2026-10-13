@@ -6,7 +6,7 @@ import io
 import numpy as np
 import pytest
 from fastapi import HTTPException
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import providers.segmentation_provider as segmentation
 
@@ -204,3 +204,74 @@ def test_strict_segmentation_rejects_missing_sam_mask(monkeypatch):
 
     assert exc.value.status_code == 502
     assert "bbox fallback is disabled" in str(exc.value.detail)
+
+
+def test_masks_are_matched_to_detection_geometry_not_sam_return_order(monkeypatch):
+    """Live SAM responses may rank masks by score rather than prompt order."""
+
+    def region(bounds):
+        image = Image.new("L", (80, 48), 0)
+        ImageDraw.Draw(image).rectangle(bounds, fill=255)
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+
+    masks = {
+        "https://v3b.fal.media/files/b/test/right.png": region((51, 5, 69, 27)),
+        "https://v3b.fal.media/files/b/test/left.png": region((5, 5, 23, 27)),
+    }
+
+    def fake_run(model: str, arguments: dict):
+        if model == segmentation.FLORENCE_MODEL:
+            return {"results": {"bboxes": [
+                {"x": 4, "y": 4, "w": 20, "h": 25, "label": "bottle"},
+                {"x": 50, "y": 4, "w": 20, "h": 25, "label": "shoe"},
+            ]}}
+        return {
+            "masks": [{"url": url} for url in masks],
+            "scores": [0.97, 0.86],
+            # SAM metadata.index means mask-output index, not Florence ID.
+            "metadata": [{"index": 0}, {"index": 1}],
+        }
+
+    async def fake_media(url):
+        return masks[url]
+
+    monkeypatch.setattr(segmentation.fal_client, "run", fake_run)
+    monkeypatch.setattr(segmentation, "fetch_fal_media", fake_media)
+    objects = asyncio.run(segmentation.FalSegmentationProvider(
+        fal_key="test-key", allow_bbox_fallback=False,
+    ).segment(rgb_png((80, 48))))
+
+    assert [obj.label for obj in objects] == ["bottle", "shoe"]
+    assert [obj.confidence for obj in objects] == [0.86, 0.97]
+    assert objects[0].mask_array[15, 10]
+    assert not objects[0].mask_array[15, 60]
+    assert objects[1].mask_array[15, 60]
+    assert not objects[1].mask_array[15, 10]
+
+
+def test_spatially_unmatched_masks_fail_closed_without_fallback(monkeypatch):
+    mask = Image.new("L", (64, 48), 0)
+    ImageDraw.Draw(mask).rectangle((45, 32, 63, 47), fill=255)
+    buf = io.BytesIO()
+    mask.save(buf, format="PNG")
+
+    def fake_run(model, arguments):
+        if model == segmentation.FLORENCE_MODEL:
+            return {"results": {"bboxes": [
+                {"x": 5, "y": 5, "w": 12, "h": 12, "label": "bottle"},
+            ]}}
+        return {"masks": [{"url": "https://v3b.fal.media/files/b/test/unrelated.png"}]}
+
+    async def fake_media(_url):
+        return buf.getvalue()
+
+    monkeypatch.setattr(segmentation.fal_client, "run", fake_run)
+    monkeypatch.setattr(segmentation, "fetch_fal_media", fake_media)
+    with pytest.raises(HTTPException) as err:
+        asyncio.run(segmentation.FalSegmentationProvider(
+            fal_key="unit-key", allow_bbox_fallback=False,
+        ).segment(rgb_png()))
+    assert err.value.status_code == 502
+    assert "spatially matching mask" in str(err.value.detail)
