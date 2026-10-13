@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,6 +44,96 @@ async def health() -> dict[str, object]:
         "service": "holoforge-render-backend",
         "version": "0.1.0",
         "blenderVersion": os.getenv("HOLOFORGE_BLENDER_VERSION", "").strip() or None,
+        "supportedFormats": renderers.supported_formats(),
+    }
+
+
+def _https_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and bool(parsed.hostname)
+
+
+def _writable_path(path_value: str, *, file_path: bool = False) -> bool:
+    if not path_value:
+        return False
+    path = Path(path_value)
+    if not path.is_absolute():
+        return False
+    target = path.parent if file_path else path
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    return os.access(target, os.W_OK)
+
+
+def _blender_version_ready() -> bool:
+    expected = os.getenv("HOLOFORGE_BLENDER_VERSION", "").strip()
+    configured = os.getenv("BLENDER_BIN", "").strip()
+    executable = configured or shutil.which("blender") or ""
+    if not expected or not executable:
+        return False
+    try:
+        completed = subprocess.run(
+            [executable, "--background", "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if completed.returncode != 0:
+        return False
+    output = (completed.stdout + "\n" + completed.stderr).lower()
+    return f"blender {expected}".lower() in output
+
+
+@app.get("/ready")
+async def readiness() -> dict[str, object]:
+    environment = os.getenv("ENVIRONMENT", "").strip().lower()
+    repo_backend = os.getenv("HOLOFORGE_REPOSITORY_BACKEND", "").strip().lower()
+    checks = {
+        "productionEnvironment": environment == "production",
+        "canvaAppIdentity": bool(os.getenv("CANVA_APP_ID", "").strip()),
+        "canvaOriginHttps": _https_url(os.getenv("CANVA_APP_ORIGIN", "").strip()),
+        "publicBaseUrlHttps": _https_url(os.getenv("PUBLIC_BASE_URL", "").strip()),
+        "sqlitePersistence": repo_backend == "sqlite",
+        "databaseStorageWritable": _writable_path(
+            os.getenv("HOLOFORGE_DATABASE_PATH", ""),
+            file_path=True,
+        ),
+        "artifactStorageWritable": _writable_path(
+            os.getenv("HOLOFORGE_ARTIFACT_ROOT", ""),
+        ),
+        "ffmpegAvailable": shutil.which("ffmpeg") is not None,
+        "blenderPinnedVersionAvailable": _blender_version_ready(),
+    }
+
+    critical = [
+        "canvaAppIdentity",
+        "canvaOriginHttps",
+        "publicBaseUrlHttps",
+        "sqlitePersistence",
+        "databaseStorageWritable",
+        "artifactStorageWritable",
+        "ffmpegAvailable",
+        "blenderPinnedVersionAvailable",
+    ]
+    if checks["productionEnvironment"] and all(checks[key] for key in critical):
+        status = "ready"
+    elif any(not checks[key] for key in critical):
+        status = "unavailable"
+    else:
+        status = "degraded"
+
+    return {
+        "service": "holoforge-render-backend",
+        "status": status,
+        "checks": checks,
         "supportedFormats": renderers.supported_formats(),
     }
 
