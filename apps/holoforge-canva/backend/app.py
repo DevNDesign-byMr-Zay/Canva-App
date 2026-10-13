@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,6 +18,8 @@ from renderers import RendererRegistry
 from repositories import ArtifactRepository, JobRepository, OwnedKey
 
 CANVA_APP_ORIGIN = os.getenv("CANVA_APP_ORIGIN", "").strip().rstrip("/")
+_BLENDER_READINESS_TTL_SECONDS = 300
+_blender_readiness_cache: tuple[float, str, str, bool] | None = None
 
 app = FastAPI(title="HoloForge Render Backend", version="0.1.0")
 if CANVA_APP_ORIGIN:
@@ -71,11 +74,25 @@ def _writable_path(path_value: str, *, file_path: bool = False) -> bool:
 
 
 def _blender_version_ready() -> bool:
+    global _blender_readiness_cache
+
     expected = os.getenv("HOLOFORGE_BLENDER_VERSION", "").strip()
     configured = os.getenv("BLENDER_BIN", "").strip()
     executable = configured or shutil.which("blender") or ""
     if not expected or not executable:
+        _blender_readiness_cache = None
         return False
+
+    now = time.monotonic()
+    cached = _blender_readiness_cache
+    if (
+        cached is not None
+        and cached[1] == executable
+        and cached[2] == expected
+        and now - cached[0] < _BLENDER_READINESS_TTL_SECONDS
+    ):
+        return cached[3]
+
     try:
         completed = subprocess.run(
             [executable, "--background", "--version"],
@@ -85,11 +102,16 @@ def _blender_version_ready() -> bool:
             timeout=10,
         )
     except (OSError, subprocess.SubprocessError):
-        return False
-    if completed.returncode != 0:
-        return False
-    output = (completed.stdout + "\n" + completed.stderr).lower()
-    return f"blender {expected}".lower() in output
+        ready = False
+    else:
+        output = (completed.stdout + "\n" + completed.stderr).lower()
+        ready = (
+            completed.returncode == 0
+            and f"blender {expected}".lower() in output
+        )
+
+    _blender_readiness_cache = (now, executable, expected, ready)
+    return ready
 
 
 @app.get("/ready")
