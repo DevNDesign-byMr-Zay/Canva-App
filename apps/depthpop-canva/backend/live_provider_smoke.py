@@ -14,7 +14,6 @@ from PIL import Image, ImageDraw
 
 from providers.depth_provider import DEPTH_MODEL, FalDepthProvider
 from providers.inpaint_provider import (
-    DEFAULT_BASE_MODEL,
     INPAINT_MODEL,
     FalInpaintProvider,
 )
@@ -174,9 +173,9 @@ async def _inpaint(image: bytes, mask: bytes) -> dict[str, Any]:
     raster = _validate_png(result, (128, 128))
     return {
         "model": INPAINT_MODEL,
-        "baseModel": provider.base_model or DEFAULT_BASE_MODEL,
+        "removalModel": "best_quality",
+        "maskExpansion": 20,
         "ok": True,
-        "inferenceSteps": 8,
         "output": raster,
     }
 
@@ -207,12 +206,12 @@ async def run_suite(suite: str) -> dict[str, Any]:
         results["depth"] = await _depth(image)
         print("[smoke] Depth Anything V2: passed provider contract", flush=True)
     if suite in {"all", "inpaint"}:
-        print("[smoke] Inpaint: start", flush=True)
+        print("[smoke] Mask-guided object removal: start", flush=True)
         results["inpaint"] = await _inpaint(
             image, sam_mask if suite == "all" and sam_mask is not None else fixture_mask,
         )
         results["inpaint"]["sourceMask"] = "sam-3" if suite == "all" else "fixture"
-        print("[smoke] Inpaint: passed provider contract", flush=True)
+        print("[smoke] Mask-guided object removal: passed provider contract", flush=True)
 
     return {
         "ok": True,
