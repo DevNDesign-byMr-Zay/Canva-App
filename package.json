@@ -15,7 +15,7 @@
     "test": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
     "test:js": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 tests/js/*.test.mjs",
     "demo:energy-runtime": "node scripts/energy-runtime-demo.mjs",
-    "check": "npm run verify:release && npm run verify:syntax && npm run verify:standalone-apps && npm test",
+    "check": "npm run verify:release && npm run verify:syntax && npm run verify:standalone-apps && npm run deployment:check:ci && npm test",
     "backend:start": "node backend/review-context-service.mjs",
     "app:verify": "npm --prefix canva-app ci --ignore-scripts && npm --prefix canva-app audit --omit=dev --audit-level=moderate && npm --prefix canva-app run typecheck && npm --prefix canva-app run test:coverage && npm --prefix canva-app run build",
     "verify:release": "node scripts/verify-release-readiness.mjs",
@@ -23,7 +23,9 @@
     "lint": "npm run verify:syntax",
     "format:check": "npm --prefix canva-app run format:check",
     "package:canva-ui": "node scripts/assemble-canva-ui-package.mjs",
-    "verify:standalone-apps": "node scripts/verify-standalone-canva-apps.mjs"
+    "verify:standalone-apps": "node scripts/verify-standalone-canva-apps.mjs",
+    "deployment:check": "node scripts/verify-deployment-readiness.mjs",
+    "deployment:check:ci": "node scripts/verify-deployment-readiness.mjs --ci-fixture"
   },
   "engines": {
     "node": ">=22"

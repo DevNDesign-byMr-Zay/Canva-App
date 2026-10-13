@@ -612,7 +612,18 @@ if format_name == "glb":
     bpy.ops.export_scene.gltf(filepath=str(target), export_format="GLB", export_animations=bool(request["includeAnimation"]))
 elif format_name == "gltf":
     target = output_dir / (stem + ".gltf")
-    bpy.ops.export_scene.gltf(filepath=str(target), export_format="GLTF_EMBEDDED", export_animations=bool(request["includeAnimation"]))
+    gltf_addon = bpy.context.preferences.addons.get("io_scene_gltf2")
+    if gltf_addon is not None:
+        gltf_preferences = gltf_addon.preferences
+        if hasattr(gltf_preferences, "allow_embedded_format"):
+            gltf_preferences.allow_embedded_format = True
+    bpy.ops.export_scene.gltf(
+        filepath=str(target),
+        export_format="GLTF_EMBEDDED",
+        export_animations=bool(request["includeAnimation"]),
+    )
+    if not target.is_file() or target.stat().st_size <= 0:
+        raise RuntimeError("Blender produced no embedded glTF artifact")
 elif format_name == "usdz":
     target = output_dir / (stem + ".usdz")
     bpy.ops.wm.usd_export(

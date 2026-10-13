@@ -5,7 +5,9 @@ import base64
 import hashlib
 import io
 import os
+import shutil
 import time
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -328,6 +330,89 @@ def _public_url(request: Request, path: str) -> str:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"service": "depthpop-canva", "status": "ok"}
+
+
+def _https_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and bool(parsed.hostname)
+
+
+def _writable_path(path_value: str, *, file_path: bool = False) -> bool:
+    if not path_value:
+        return False
+    path = Path(path_value)
+    if not path.is_absolute():
+        return False
+    target = path.parent if file_path else path
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    return os.access(target, os.W_OK)
+
+
+@app.get("/ready")
+async def readiness() -> dict[str, object]:
+    environment = os.getenv("ENVIRONMENT", "").strip().lower()
+    segmentation = os.getenv("SEGMENTATION_PROVIDER", "").strip().lower()
+    depth = os.getenv("DEPTH_PROVIDER", "").strip().lower()
+    inpaint = os.getenv("INPAINT_PROVIDER", "").strip().lower()
+    repo_backend = os.getenv("DEPTHPOP_REPOSITORY_BACKEND", "").strip().lower()
+    bbox_fallback = os.getenv("DEPTHPOP_ALLOW_BBOX_FALLBACK", "").strip().lower()
+
+    checks = {
+        "productionEnvironment": environment == "production",
+        "canvaAppIdentity": bool(os.getenv("CANVA_APP_ID", "").strip()),
+        "canvaOriginHttps": _https_url(os.getenv("CANVA_APP_ORIGIN", "").strip()),
+        "publicBaseUrlHttps": _https_url(os.getenv("PUBLIC_BASE_URL", "").strip()),
+        "providerModesProductionSafe": all(
+            provider in {"auto", "fal"}
+            for provider in (segmentation, depth, inpaint)
+        ),
+        "falConfigured": bool(os.getenv("FAL_KEY", "").strip()),
+        "bboxFallbackDisabled": bbox_fallback in {"false", "0"},
+        "sqlitePersistence": repo_backend == "sqlite",
+        "databaseStorageWritable": _writable_path(
+            os.getenv("DEPTHPOP_DATABASE_PATH", ""),
+            file_path=True,
+        ),
+        "assetStorageWritable": _writable_path(
+            os.getenv("DEPTHPOP_ASSET_ROOT", ""),
+        ),
+        "artifactStorageWritable": _writable_path(
+            os.getenv("DEPTHPOP_ARTIFACT_ROOT", ""),
+        ),
+        "ffmpegAvailable": shutil.which("ffmpeg") is not None,
+    }
+
+    critical = [
+        "canvaAppIdentity",
+        "canvaOriginHttps",
+        "publicBaseUrlHttps",
+        "providerModesProductionSafe",
+        "falConfigured",
+        "bboxFallbackDisabled",
+        "sqlitePersistence",
+        "databaseStorageWritable",
+        "assetStorageWritable",
+        "artifactStorageWritable",
+        "ffmpegAvailable",
+    ]
+    if checks["productionEnvironment"] and all(checks[key] for key in critical):
+        status = "ready"
+    elif any(not checks[key] for key in critical):
+        status = "unavailable"
+    else:
+        status = "degraded"
+
+    return {
+        "service": "depthpop-canva",
+        "status": status,
+        "checks": checks,
+    }
 
 
 @app.get("/api/v1/capabilities")

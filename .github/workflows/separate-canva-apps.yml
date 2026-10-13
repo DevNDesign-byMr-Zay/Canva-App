@@ -6,6 +6,7 @@ on:
       - "apps/**"
       - "scripts/package-independent-canva-apps.mjs"
       - "scripts/verify-standalone-canva-apps.mjs"
+      - "scripts/verify-canva-handoff-integrity.mjs"
       - ".github/workflows/separate-canva-apps.yml"
   push:
     branches:
@@ -162,6 +163,8 @@ jobs:
           npm run build
       - name: Assemble complete independent packages
         run: node scripts/package-independent-canva-apps.mjs .artifacts/independent-canva-apps
+      - name: Verify handoff package integrity
+        run: node scripts/verify-canva-handoff-integrity.mjs .artifacts/independent-canva-apps
       - name: Verify package entrypoints
         shell: bash
         run: |

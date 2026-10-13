@@ -135,13 +135,92 @@ def run_worker(
 
     result_path = output / "result.json"
     if not result_path.is_file():
-        raise SystemExit(f"Blender worker returned no result manifest for {format_name}")
+        details = "\n".join(
+            part
+            for part in [
+                completed.stdout[-5000:],
+                completed.stderr[-5000:],
+            ]
+            if part
+        )
+        raise SystemExit(
+            f"Blender worker returned no result manifest for {format_name}"
+            + (f"\n{details}" if details else "")
+        )
 
     result = json.loads(result_path.read_text(encoding="utf-8"))
     artifact = Path(result["path"])
     if not artifact.is_file() or artifact.stat().st_size <= 0:
         raise SystemExit(f"Blender worker produced no {format_name} artifact")
     return artifact, result
+
+
+def verify_glb(artifact: Path) -> None:
+    payload = artifact.read_bytes()
+    if artifact.suffix.lower() != ".glb" or len(payload) < 12:
+        raise SystemExit("GLB smoke produced an invalid artifact")
+    if payload[:4] != b"glTF":
+        raise SystemExit("GLB smoke is missing the glTF binary magic")
+    version = int.from_bytes(payload[4:8], "little")
+    declared_length = int.from_bytes(payload[8:12], "little")
+    if version != 2 or declared_length != len(payload):
+        raise SystemExit("GLB smoke produced an invalid glTF 2.0 header")
+
+
+def verify_gltf(artifact: Path) -> None:
+    if artifact.suffix.lower() != ".gltf":
+        raise SystemExit("glTF smoke produced the wrong artifact extension")
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    if payload.get("asset", {}).get("version") != "2.0":
+        raise SystemExit("glTF smoke did not produce a glTF 2.0 document")
+    if not payload.get("scenes") or not payload.get("nodes"):
+        raise SystemExit("glTF smoke produced no scene graph")
+
+
+def verify_mp4(artifact: Path) -> None:
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        raise SystemExit("ffprobe is required for MP4 smoke")
+
+    probe = subprocess.run(
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(artifact),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if probe.returncode != 0 or probe.stdout.strip() != "h264":
+        raise SystemExit("MP4 smoke did not produce a decodable H.264 stream")
+
+
+def verify_png_sequence(artifact: Path) -> None:
+    if artifact.suffix.lower() != ".zip" or not zipfile.is_zipfile(artifact):
+        raise SystemExit("PNG sequence smoke did not produce a valid ZIP")
+    with zipfile.ZipFile(artifact) as archive:
+        frames = [
+            name
+            for name in archive.namelist()
+            if name.lower().endswith(".png")
+        ]
+        if len(frames) < 2:
+            raise SystemExit("PNG sequence smoke produced fewer than two frames")
+        for name in frames:
+            with archive.open(name) as frame:
+                with Image.open(frame) as image:
+                    if image.format != "PNG":
+                        raise SystemExit("PNG sequence contains a non-PNG frame")
 
 
 def verify_png_still(artifact: Path, *, width: int, height: int) -> None:
@@ -289,8 +368,17 @@ def main() -> int:
             profile="generic-3d",
             transparent=True,
         )
-        if glb.suffix.lower() != ".glb":
-            raise SystemExit("Blender worker smoke produced the wrong GLB artifact type")
+        verify_glb(glb)
+
+        gltf, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="gltf",
+            profile="generic-3d",
+            transparent=True,
+        )
+        verify_gltf(gltf)
 
         usdz, _ = run_worker(
             blender,
@@ -327,6 +415,28 @@ def main() -> int:
             raise SystemExit("Blender worker smoke produced the wrong WebM artifact type")
         verify_webm_alpha(webm)
 
+        mp4, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="mp4",
+            profile="transparent-video",
+            transparent=False,
+        )
+        if mp4.suffix.lower() != ".mp4":
+            raise SystemExit("Blender worker smoke produced the wrong MP4 artifact type")
+        verify_mp4(mp4)
+
+        sequence, _ = run_worker(
+            blender,
+            worker,
+            root,
+            format_name="png-sequence",
+            profile="image-sequence",
+            transparent=True,
+        )
+        verify_png_sequence(sequence)
+
         quilt_options = {
             "columns": 3,
             "rows": 3,
@@ -354,6 +464,7 @@ def main() -> int:
                 {
                     "ok": True,
                     "glb": {"artifact": glb.name, "sizeBytes": glb.stat().st_size},
+                    "gltf": {"artifact": gltf.name, "sizeBytes": gltf.stat().st_size},
                     "usdz": {"artifact": usdz.name, "sizeBytes": usdz.stat().st_size},
                     "pngStill": {
                         "artifact": png_still.name,
@@ -366,6 +477,15 @@ def main() -> int:
                         "sizeBytes": webm.stat().st_size,
                         "codec": "vp9",
                         "alphaVerified": True,
+                    },
+                    "mp4": {
+                        "artifact": mp4.name,
+                        "sizeBytes": mp4.stat().st_size,
+                        "codec": "h264",
+                    },
+                    "pngSequence": {
+                        "artifact": sequence.name,
+                        "sizeBytes": sequence.stat().st_size,
                     },
                     "lightfieldQuilt": {
                         "artifact": quilt.name,

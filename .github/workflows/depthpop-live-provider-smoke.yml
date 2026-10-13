@@ -1,0 +1,76 @@
+name: DepthPop paid provider smoke (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_paid_usage:
+        description: "Type RUN_ONCE to authorize at most one call per selected provider."
+        required: true
+        default: "NO"
+        type: string
+      suite:
+        description: "Provider path to verify. Use all only for the one-shot pre-rescore validation."
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - detection
+          - segmentation
+          - depth
+          - inpaint
+
+permissions:
+  contents: read
+
+concurrency:
+  group: depthpop-paid-provider-smoke
+  cancel-in-progress: false
+
+jobs:
+  live-provider-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: apps/depthpop-canva/backend
+    steps:
+      - name: Require explicit paid-usage confirmation
+        working-directory: .
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirm_paid_usage }}" != "RUN_ONCE" ]; then
+            echo "Paid provider smoke not authorized. Re-run manually and type RUN_ONCE."
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/depthpop-canva/backend/requirements.txt
+
+      - name: Install DepthPop backend dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bounded one-shot provider smoke
+        env:
+          FAL_KEY: ${{ secrets.FAL_KEY }}
+          DEPTHPOP_LIVE_PROVIDER_SMOKE: "1"
+          DEPTHPOP_ALLOW_BBOX_FALLBACK: "false"
+        run: |
+          python live_provider_smoke.py \
+            --suite "${{ inputs.suite }}" \
+            --report live-provider-smoke-report.json
+
+      - name: Upload non-sensitive smoke report
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-live-provider-smoke-${{ github.run_id }}
+          path: apps/depthpop-canva/backend/live-provider-smoke-report.json
+          if-no-files-found: error
+          retention-days: 14
