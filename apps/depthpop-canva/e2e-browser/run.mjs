@@ -307,5 +307,21 @@ try {
 } finally {
   if (cdp?.socket) cdp.socket.close();
   chrome.kill("SIGTERM");
-  await fs.rm(profileDir, { recursive: true, force: true });
+  await new Promise((resolve) => {
+    if (chrome.exitCode !== null || chrome.signalCode !== null) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(resolve, 3000);
+    chrome.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+  await fs.rm(profileDir, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 200,
+  }).catch(() => undefined);
 }
