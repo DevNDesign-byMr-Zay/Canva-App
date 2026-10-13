@@ -106,3 +106,62 @@ def test_glb_fails_closed_when_blender_is_not_configured(monkeypatch):
             assert "renderer" in response.json()["detail"].lower()
     finally:
         module.app.dependency_overrides.clear()
+
+
+def test_readiness_is_unavailable_without_production_contract(monkeypatch):
+    for key in [
+        "ENVIRONMENT",
+        "CANVA_APP_ID",
+        "CANVA_APP_ORIGIN",
+        "PUBLIC_BASE_URL",
+        "HOLOFORGE_REPOSITORY_BACKEND",
+        "HOLOFORGE_DATABASE_PATH",
+        "HOLOFORGE_ARTIFACT_ROOT",
+        "BLENDER_BIN",
+        "HOLOFORGE_BLENDER_VERSION",
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+    response = TestClient(module.app).get("/ready")
+    body = response.json()
+    assert body["status"] == "unavailable"
+    assert body["checks"]["canvaAppIdentity"] is False
+    assert body["checks"]["blenderPinnedVersionAvailable"] is False
+
+
+def test_readiness_reports_ready_for_complete_production_contract(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("CANVA_APP_ID", "holoforge-app")
+    monkeypatch.setenv(
+        "CANVA_APP_ORIGIN",
+        "https://app-holoforge-app.canva-apps.com",
+    )
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://holoforge.example.test")
+    monkeypatch.setenv("HOLOFORGE_REPOSITORY_BACKEND", "sqlite")
+    monkeypatch.setenv(
+        "HOLOFORGE_DATABASE_PATH",
+        str(tmp_path / "holoforge.sqlite3"),
+    )
+    monkeypatch.setenv(
+        "HOLOFORGE_ARTIFACT_ROOT",
+        str(tmp_path / "artifacts"),
+    )
+    monkeypatch.setenv("BLENDER_BIN", "/opt/blender/blender")
+    monkeypatch.setenv("HOLOFORGE_BLENDER_VERSION", "4.5.14")
+
+    monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+
+    class Completed:
+        returncode = 0
+        stdout = "Blender 4.5.14\n"
+        stderr = ""
+
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: Completed())
+
+    response = TestClient(module.app).get("/ready")
+    body = response.json()
+    assert body["status"] == "ready"
+    assert all(body["checks"].values())
