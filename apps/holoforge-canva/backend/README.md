@@ -40,11 +40,13 @@ Artifact hashing streams files in chunks instead of reading large video/sequence
 
 Keep `/health` for liveness and use `/ready` to inspect secret-safe production dependency state. A production-ready response reports `status: "ready"` only when the Canva identity/origin, HTTPS public URL, SQLite persistence, durable artifact/database storage, FFmpeg, and the pinned Blender runtime are available.
 
-From the repository root, run the real deployment validator inside the deployed runtime:
+Before deployment, run the root validator from the deployment workspace with both apps' production contracts available:
 
 ```bash
 npm run deployment:check
 ```
+
+Inside this deployed Python service, use `/ready` for the actual in-container readiness probe.
 
 HoloForge production storage is:
 
