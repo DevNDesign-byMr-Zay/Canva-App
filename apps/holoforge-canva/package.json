@@ -34,5 +34,16 @@
     "@types/webpack-env": "^1.18.8",
     "typescript": "^5.9.2",
     "vitest": "^5.0.0"
-  }
+  },
+  "description": "HoloForge standalone Canva Design Editor app for real-time 3D holographic authoring with authenticated Blender/FFmpeg rendering.",
+  "keywords": [
+    "canva-app",
+    "design-editor",
+    "holoforge",
+    "react-three-fiber",
+    "threejs",
+    "blender",
+    "ffmpeg",
+    "3d-authoring"
+  ]
 }
