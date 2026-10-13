@@ -1,65 +1,148 @@
-# DepthPop → Canva parity contract
+# DepthPop → Canva production contract
 
-DepthPop's Canva surface is intentionally derived from the maintained Drive build:
+DepthPop's current Canva product keeps the verified control vocabulary and visual identity recovered from the maintained Drive v115 build, but the production implementation is no longer a flat compatibility panel.
+
+Historical source used for provenance:
 
 `roaryv246_v115_depthpop_modeldrawer_FINALFIX.html`
 
-The Canva app does **not** import the full historical ROARY/AETHER application. Instead, it preserves the current DepthPop product identity, visual language, visible controls, parameter ranges, and quality mapping inside Canva's Design Editor sidebar.
+The historical source is evidence for the original control language and visual direction. The maintained production app lives under:
 
-## Sidebar geometry
+`apps/depthpop-canva/`
 
-The Canva app uses one shared sidebar envelope for both HoloForge and DepthPop:
+and uses a typed **DepthScene v1** object-scene architecture.
 
-- desktop outer app width: **350px maximum**;
-- app inset: **16px** on each side;
-- usable product width at the normal desktop panel size: **318px**;
-- no horizontal scrolling;
-- mobile: full available width while retaining the 16px inset.
+## Sidebar and visual continuity
 
-This geometry is enforced in both the compiled React UI and the standalone HTML preview.
-
-## DepthPop visual parity
-
-The Canva DepthPop surface keeps the maintained v115 tool-panel direction:
+The standalone Canva app keeps the narrow-sidebar design language established by the maintained v115 surface:
 
 - near-black glass base;
-- purple radial illumination;
-- purple translucent border;
-- 26px panel radius;
-- centered layered-square DepthPop glyph;
-- `DEPTHPOP` title;
-- `DEPTH POP` chip;
-- copy: “Turn depth into presence — subtle separation, cinematic focus, same scene.”
+- purple illumination and accents;
+- layered-square DepthPop identity;
+- compact Canva-safe controls;
+- no horizontal page overflow.
 
-The original standalone ROARY panel could reach roughly 340px. Inside Canva the same composition is adapted to the 318px usable width rather than reproducing the entire ROARY image-modal chrome.
+The production workspace now separates the editing flow into **SCENE**, **ANIMATE**, and **EXPORT** around a real WebGL viewport rather than recreating the historical ROARY modal shell.
 
-## Control parity
+## Source controls
 
-| Control | Canva value/range | v115 source behavior |
-| --- | --- | --- |
-| Depth Strength (subject pop) | default 0.32; 0.05–0.75; step 0.01 | same |
-| Depth Blur (background softness) | default 35%; 0–100; step 1 | same |
-| Depth Fidelity (depth-map accuracy) | default 0.95; 0.05–1.00; step 0.01 | same |
-| Render Quality — Fast | 14 inference steps | same preset mapping |
-| Render Quality — Balanced | 22 inference steps | same preset mapping |
-| Render Quality — Cinematic | 34 inference steps | same preset mapping |
+The maintained source controls still preserve the verified ranges and quality mapping:
 
-The raw inference-steps slider remains an implementation detail, matching the v115 quality-preset patch that hides the raw slider and exposes named quality modes instead.
+| Control | Production value/range |
+| --- | --- |
+| Depth Strength | default 0.32; 0.05–0.75 |
+| Depth Blur | default 35; 0–100 |
+| Depth Fidelity | default 0.95; 0.05–1.00 |
+| Render Quality — Fast | 14 inference steps |
+| Render Quality — Balanced | 22 inference steps |
+| Render Quality — Cinematic | 34 inference steps |
 
-## Execution boundary
+The raw inference-step count remains an implementation detail behind the named quality modes.
 
-The visible action remains **EXECUTE DEPTHPOP**.
+## Authenticated processing boundary
 
-The Drive build can call the local ROARY image-tool routes. The Canva app does not silently reuse those localhost routes. Until an authenticated Canva-compatible image-effect provider is configured, execution stays disabled. This preserves UI/parameter parity without creating an untrusted hidden write path.
+Production processing is handled by the standalone authenticated FastAPI backend.
 
-## Files that must stay synchronized
+The primary path is:
 
-- `src/intents/design_editor/depthpop/depthpop-model.ts`
-- `src/intents/design_editor/depthpop/depthpop-panel.tsx`
-- `src/intents/design_editor/app.css`
-- `src/assets/depthpop-logo.svg`
-- `preview/index.html`
-- `preview/styles.css`
-- `preview/preview.js`
+1. selected Canva raster or local PNG/JPEG/WebP;
+2. Florence-2 object detection;
+3. SAM 3 instance segmentation;
+4. Depth Anything V2 canonical depth;
+5. optional FAL inpainting for reconstructed background;
+6. protected scene-owned assets;
+7. canonical DepthScene v1;
+8. React Three Fiber / Three.js spatial editing;
+9. persisted 4D animation and object operations;
+10. Render to Canva or production export.
 
-Release readiness checks the key labels, ranges, quality mappings, 350px sidebar envelope, 16px inset, and standalone preview parity so the production bundle and review HTML cannot drift apart unnoticed.
+The browser never receives provider secrets. Every v1 scene, job, asset and artifact route requires a verified Canva user token and preserves exact user + brand ownership.
+
+## Spatial editing contract
+
+The production editor supports:
+
+- reconstructed plate rendered in WebGL;
+- independently selectable transparent object planes;
+- X/Y/Z translation;
+- rotation and scale;
+- Drei transform gizmos;
+- object visibility and locking;
+- layer ordering;
+- orbit, pan and zoom;
+- persisted perspective camera position, target and field of view;
+- WebGL context-loss recovery;
+- precision controls for authored transforms.
+
+The old CSS pseudo-3D stage is not the canonical renderer.
+
+## 4D animation contract
+
+DepthScene stores typed animation tracks for:
+
+- position X/Y/Z;
+- rotation X/Y/Z;
+- scale X/Y/Z;
+- opacity.
+
+The Canva workspace supports play/pause/stop, timeline scrubbing, duration/FPS controls, keyframe add/update/delete and explicit easing.
+
+Current serializable motion presets:
+
+- Parallax
+- Camera Push
+- Float
+- Orbit
+- Depth Reveal
+- Rack Focus depth-emphasis
+
+DepthScene v1 does not expose an animatable optical focal-distance property. Rack Focus therefore uses supported opacity + Z depth-emphasis rather than claiming physical depth-of-field control.
+
+## Object operations
+
+The production backend and UI support:
+
+- rename;
+- duplicate;
+- delete;
+- merge;
+- split / provider-backed re-segmentation.
+
+Server operations return the canonical updated scene. Local dirty camera/transform/keyframe edits are persisted before server mutations so newer authored work cannot be overwritten by an older server snapshot.
+
+## Output paths
+
+DepthPop supports two distinct completion routes:
+
+### Render to Canva
+
+The current authored scene is composited and inserted/replaced in the active Canva design through the maintained authenticated Canva path.
+
+### Production export
+
+Asynchronous owner-scoped export jobs produce:
+
+- portable DepthScene JSON;
+- PNG layer ZIP;
+- glTF 2.0;
+- GLB 2.0;
+- WebM;
+- MP4.
+
+Video exports evaluate the saved timeline frame-by-frame and use FFmpeg. Export jobs are bounded by concurrency, pixels, duration, frame count and artifact size.
+
+## Package boundary
+
+The final `DepthPop-Canva-App.zip` contains the standalone app handoff and matching backend deployment material.
+
+It deliberately excludes:
+
+- historical ROARY/ÆTHER application material;
+- `apps/depthpop-canva/reference/drive-source/`;
+- credentials or populated `.env` files;
+- SQLite databases;
+- generated user assets/artifacts;
+- Git metadata;
+- `node_modules`.
+
+Inside Canva Developer Portal, upload only the root-level `app.js` from the DepthPop handoff package. Deploy the backend separately.
