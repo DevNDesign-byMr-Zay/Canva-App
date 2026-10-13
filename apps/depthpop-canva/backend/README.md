@@ -32,7 +32,7 @@ The primary production flow is:
 4. SAM 3 creates object masks from structured box prompts.
 5. Depth Anything V2 produces relative disparity. The provider adapter converts it to the canonical DepthPop convention: **0.0 = far, 1.0 = near**.
 6. Object cutouts, masks, thumbnails, canonical depth, and the source are stored as random, scene-owned protected assets.
-7. When requested, fal.ai inpainting reconstructs the plate using the union foreground mask; white mask pixels are regenerated and black pixels are preserved.
+7. When requested, fal.ai mask-guided object removal reconstructs the plate using the union foreground mask; white identifies objects to remove, while unmasked source pixels are preserved.
 8. The backend returns a canonical DepthScene v1 with editable X/Y/Z, scale, rotation, opacity, feather, visibility, lock, layer order, camera, and timeline state.
 9. PATCH persists only the editable scene fields.
 10. /composite renders the latest persisted authored scene to raw PNG bytes.
@@ -45,8 +45,8 @@ Current production integrations:
 - object detection: fal-ai/florence-2-large/object-detection
 - segmentation: fal-ai/sam-3/image
 - depth: fal-ai/image-preprocessors/depth-anything/v2
-- background reconstruction: fal-ai/inpaint
-- inpainting base model: diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+- background reconstruction: fal-ai/object-removal/mask (best_quality, 20px mask expansion)
+- the old fal-ai/inpaint SDXL path was retired from production after live timeouts and failed visual-removal tests
 
 Provider selection fails closed in production. Mock providers are available only in tests or explicit non-production local development.
 
