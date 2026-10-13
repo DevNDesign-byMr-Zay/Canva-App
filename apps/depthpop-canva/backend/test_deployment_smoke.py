@@ -29,7 +29,7 @@ from models.scene import CameraConfig, DepthScene, ReconstructedPlate, TimelineC
 from persistence.asset_store import DiskSceneAssetRepository
 from persistence.export_repository import SQLiteExportRepository
 from persistence.export_storage import ExportArtifactStorage
-from persistence.sqlite_repository import SQLiteJobRepository, SQLiteSceneRepository
+from persistence.sqlite_repository import SQLiteSceneRepository
 from services.export_formats import (
     export_gltf_or_glb,
     export_png_layers,
