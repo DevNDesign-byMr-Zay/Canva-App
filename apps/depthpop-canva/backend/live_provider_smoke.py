@@ -193,18 +193,26 @@ async def run_suite(suite: str) -> dict[str, Any]:
 
     # One bounded real call per provider, in actual application order.
     if suite in {"all", "detection"}:
+        print("[smoke] Florence-2: start", flush=True)
         results["detection"], detections = await _detection(image)
+        print("[smoke] Florence-2: passed provider contract", flush=True)
     if suite in {"all", "segmentation"}:
+        print("[smoke] SAM-3: start", flush=True)
         results["segmentation"], sam_mask = await _segmentation(
             image, detections if suite == "all" else None,
         )
+        print("[smoke] SAM-3: passed provider contract", flush=True)
     if suite in {"all", "depth"}:
+        print("[smoke] Depth Anything V2: start", flush=True)
         results["depth"] = await _depth(image)
+        print("[smoke] Depth Anything V2: passed provider contract", flush=True)
     if suite in {"all", "inpaint"}:
+        print("[smoke] Inpaint: start", flush=True)
         results["inpaint"] = await _inpaint(
             image, sam_mask if suite == "all" and sam_mask is not None else fixture_mask,
         )
         results["inpaint"]["sourceMask"] = "sam-3" if suite == "all" else "fixture"
+        print("[smoke] Inpaint: passed provider contract", flush=True)
 
     return {
         "ok": True,
