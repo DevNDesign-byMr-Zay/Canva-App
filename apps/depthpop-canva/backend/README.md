@@ -193,11 +193,13 @@ The historical Drive router remains under ../reference/drive-source as provenanc
 
 Keep `/health` for liveness and use `/ready` to inspect secret-safe production dependency state. A production-ready response reports `status: "ready"` only when the Canva identity/origin, HTTPS public URL, production provider path, FAL configuration, SQLite persistence, durable database/assets/artifacts storage, disabled bbox fallback, and FFmpeg are all available.
 
-From the repository root, run the real deployment validator inside the deployed runtime:
+Before deployment, run the root validator from the deployment workspace with both apps' production contracts available:
 
 ```bash
 npm run deployment:check
 ```
+
+Inside this deployed Python service, use `/ready` for the actual in-container readiness probe.
 
 DepthPop production storage is:
 
