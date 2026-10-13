@@ -1,12 +1,15 @@
-# Canva Design Editor Application & Tooling
+# HoloForge & DepthPop — Standalone Canva Design Editor Applications
 
-> **Canva deliverables:** use only the two independent packages generated from `apps/holoforge-canva/` and `apps/depthpop-canva/`. Historical ROARY/ÆTHER HTML under `app/authenticated-v115/` and `apps/depthpop-canva/reference/` is provenance only and must never be uploaded to or opened as a Canva app. See [CANVA_APPS_START_HERE.md](CANVA_APPS_START_HERE.md).
+> **Canva deliverables:** the maintained products are the two independent packages generated from `apps/holoforge-canva/` and `apps/depthpop-canva/`. Historical ROARY/ÆTHER HTML under `app/authenticated-v115/`, `legacy-html/` and `apps/depthpop-canva/reference/` is provenance only and must never be uploaded to or opened as a Canva app. See [CANVA_APPS_START_HERE.md](CANVA_APPS_START_HERE.md).
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, a **TypeScript Canva Design Editor application** (`canva-app/`), and a **physically materialized authenticated application build** recovered from that archive.
+This repository maintains two production application surfaces:
 
-The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
+- **HoloForge** — a standalone Canva Design Editor app for real-time 3D holographic/spatial authoring with React Three Fiber / Three.js and an authenticated Blender/FFmpeg render backend.
+- **DepthPop** — a standalone Canva Design Editor app for authenticated depth-aware object-scene editing, 4D animation, Render to Canva and production scene/layer/3D/video export.
 
-The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
+The repository also retains supporting application/tooling surfaces: a trusted compatibility Design Editor integration, Node runtime adapters, a typed Python archive verifier/materializer, authenticated historical application bytes and provenance needed for deterministic verification. Those supporting/history surfaces are not substitutes for the current standalone products.
+
+This is an **application/tooling repository**, not infrastructure-as-code. Docker, Compose and GitHub Actions reproduce application runtimes, persistent-storage contracts, tests, security analysis and package verification; they do not provision cloud infrastructure or define the product.
 
 ## Independent HoloForge and DepthPop Canva apps
 
