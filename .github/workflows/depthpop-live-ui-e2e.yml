@@ -1,7 +1,9 @@
 name: DepthPop live UI provider E2E
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - test/depthpop-live-ui-e2e
 
 permissions:
   contents: read
@@ -46,13 +48,12 @@ jobs:
 
       - name: Install DepthPop UI dependencies
         working-directory: apps/depthpop-canva
-        run: |
-          npm ci --ignore-scripts
-          npm install --no-save --package-lock=false vite playwright
+        run: npm ci --ignore-scripts
 
-      - name: Install Chromium for the real-browser UI test
-        working-directory: apps/depthpop-canva
-        run: npx playwright install --with-deps chromium
+      - name: Verify host Chrome
+        run: |
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser
+          (google-chrome --version || google-chrome-stable --version || chromium --version || chromium-browser --version)
 
       - name: Generate deterministic 128x128 UI fixture
         working-directory: apps/depthpop-canva/backend
