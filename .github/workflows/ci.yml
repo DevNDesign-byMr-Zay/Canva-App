@@ -272,6 +272,16 @@ jobs:
         run: npm run deployment:check:ci
       - name: Run deployment readiness negative-path tests
         run: node --test tests/js/deployment-readiness.test.mjs
+      - name: Validate production Compose contract
+        env:
+          DEPTHPOP_CANVA_APP_ID: ci-depthpop
+          DEPTHPOP_CANVA_APP_ORIGIN: https://app-ci-depthpop.canva-apps.com
+          DEPTHPOP_PUBLIC_BASE_URL: https://depthpop.invalid.example
+          HOLOFORGE_CANVA_APP_ID: ci-holoforge
+          HOLOFORGE_CANVA_APP_ORIGIN: https://app-ci-holoforge.canva-apps.com
+          HOLOFORGE_PUBLIC_BASE_URL: https://holoforge.invalid.example
+          FAL_KEY: ci-placeholder-not-a-real-secret
+        run: docker compose -f docker-compose.production.yml config --quiet
 
   container-smoke:
     name: container-smoke
