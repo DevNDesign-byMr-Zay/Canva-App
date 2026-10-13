@@ -263,7 +263,10 @@ export function App() {
         controller.signal,
         {
           pollIntervalMs: 500,
-          maxPollAttempts: 180,
+          // Live providers can spend meaningful time queued before inference.
+          // Keep the UI bounded/cancellable but allow up to five minutes for
+          // the asynchronous scene job to complete.
+          maxPollAttempts: 600,
           onProgress: ({ stage: nextStage, percent }) => {
             setStage(nextStage);
             setProgress(percent);
