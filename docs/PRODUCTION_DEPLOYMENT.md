@@ -15,7 +15,7 @@ From the repository root:
 npm run deployment:check
 ```
 
-This performs the real local/runtime production probe. It fails non-zero on blocking production configuration or runtime problems.
+Run this from a deployment workspace/runner that has the production configuration for both apps and access to the target storage/runtime binaries. It fails non-zero on blocking production configuration or runtime problems. The deployed Python services expose their own `/ready` endpoints for in-container readiness checks.
 
 For deterministic CI only:
 
