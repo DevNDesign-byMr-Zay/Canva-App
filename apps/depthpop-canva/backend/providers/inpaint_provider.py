@@ -13,7 +13,9 @@ from PIL import Image, ImageFilter
 
 from providers.media import fetch_fal_media
 
-INPAINT_MODEL = "fal-ai/inpaint"
+INPAINT_MODEL = "fal-ai/object-removal/mask"
+OBJECT_REMOVAL_MODEL = "best_quality"
+MASK_EXPANSION_PX = 20
 DEFAULT_BASE_MODEL = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1"
 DEFAULT_PROMPT = (
     "clean natural background continuation matching the surrounding image; "
@@ -54,6 +56,11 @@ def _validated_png(raw: bytes, *, target_size: tuple[int, int]) -> bytes:
 
 def _extract_output_url(payload: Any) -> str | None:
     if isinstance(payload, dict):
+        images = payload.get("images")
+        if isinstance(images, list) and images:
+            first = images[0]
+            if isinstance(first, dict) and isinstance(first.get("url"), str):
+                return first["url"]
         image = payload.get("image")
         if isinstance(image, dict) and isinstance(image.get("url"), str):
             return image["url"]
@@ -66,10 +73,10 @@ def _extract_output_url(payload: Any) -> str | None:
 
 
 class FalInpaintProvider:
-    """Production FAL inpainting adapter.
+    """Production fal mask-guided object removal.
 
-    FAL's current inpaint contract uses white mask pixels for areas to
-    regenerate and black pixels for areas to preserve.
+    White mask pixels identify the object to remove; source pixels outside
+    the mask are preserved in the finished reconstruction.
     """
 
     def __init__(
@@ -98,6 +105,9 @@ class FalInpaintProvider:
         *,
         num_inference_steps: int = 30,
     ) -> bytes:
+        # Retained only for the existing InpaintProvider interface.
+        # The dedicated object-removal model has no diffusion-steps parameter.
+        del num_inference_steps
         if not self.fal_key:
             raise HTTPException(
                 status_code=503,
@@ -129,27 +139,47 @@ class FalInpaintProvider:
                 detail="Background reconstruction received an invalid image or mask.",
             ) from exc
 
+        # Use fal's documented binary upload API for both inputs instead of
+        # sending the provider inline data URIs. This avoids model-side
+        # download issues and keeps image and mask tied to stable fal media URLs.
         try:
-            result = await asyncio.to_thread(
-                fal_client.run,
-                INPAINT_MODEL,
-                arguments={
-                    "model_name": self.base_model,
-                    "prompt": self.prompt,
-                    "negative_prompt": (
-                        "new foreground objects, text, logos, duplicate people, "
-                        "watermarks, artifacts, distortion"
-                    ),
-                    "image_url": _png_data_url(source_buffer.getvalue()),
-                    "mask_url": _png_data_url(mask_buffer.getvalue()),
-                    "num_inference_steps": max(8, min(50, int(num_inference_steps))),
-                    "guidance_scale": 7.5,
-                },
+            source_url, mask_url = await asyncio.gather(
+                asyncio.to_thread(
+                    fal_client.upload,
+                    source_buffer.getvalue(),
+                    "image/png",
+                    "depthpop-source.png",
+                ),
+                asyncio.to_thread(
+                    fal_client.upload,
+                    mask_buffer.getvalue(),
+                    "image/png",
+                    "depthpop-mask.png",
+                ),
             )
         except Exception as exc:
             raise HTTPException(
                 status_code=502,
-                detail="Background reconstruction provider failed.",
+                detail="Background reconstruction input upload failed.",
+            ) from exc
+
+        try:
+            result = await asyncio.to_thread(
+                fal_client.subscribe,
+                INPAINT_MODEL,
+                arguments={
+                    "image_url": source_url,
+                    "mask_url": mask_url,
+                    "model": OBJECT_REMOVAL_MODEL,
+                    "mask_expansion": MASK_EXPANSION_PX,
+                },
+                start_timeout=90,
+                client_timeout=180,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Background reconstruction provider failed or timed out.",
             ) from exc
 
         output_url = (_extract_output_url(result) or "").strip()
