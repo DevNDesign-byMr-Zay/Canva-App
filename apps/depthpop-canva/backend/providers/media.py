@@ -10,6 +10,7 @@ FAL_MEDIA_BASES = {
     "fal.media": "https://fal.media",
     "v2.fal.media": "https://v2.fal.media",
     "v3.fal.media": "https://v3.fal.media",
+    "v3b.fal.media": "https://v3b.fal.media",
 }
 
 
