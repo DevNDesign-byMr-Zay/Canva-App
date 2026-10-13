@@ -135,7 +135,18 @@ def run_worker(
 
     result_path = output / "result.json"
     if not result_path.is_file():
-        raise SystemExit(f"Blender worker returned no result manifest for {format_name}")
+        details = "\n".join(
+            part
+            for part in [
+                completed.stdout[-5000:],
+                completed.stderr[-5000:],
+            ]
+            if part
+        )
+        raise SystemExit(
+            f"Blender worker returned no result manifest for {format_name}"
+            + (f"\n{details}" if details else "")
+        )
 
     result = json.loads(result_path.read_text(encoding="utf-8"))
     artifact = Path(result["path"])
