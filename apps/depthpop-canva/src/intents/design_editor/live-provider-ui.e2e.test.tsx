@@ -63,11 +63,10 @@ vi.stubGlobal("BACKEND_HOST", "http://127.0.0.1:8081");
 
 import { App } from "./app";
 
-const fixtureBase64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAB3UlEQVR42u3dMU4CQRSAYRipPAE11nZWJJ6BxsIb2HkYO29gYcMlvAC1vSewM7EwsQCK3bAw7818f0kQdt/HTABJdr5c3c1Ur2IEAAAIAAABACAAAAQAgC7XIulxf749Hd548/ia7kTmub6MOzr31BKlvemPuqcVcN6Bxl8KpeHpp1gKpeHppzDwNhTA+V+8kRdBaX76wQ1sQQAANL//RN6FrAAAAAQAgAD0WZSvo3fr5d4t18+baZ/i+2W7d8vtx1f1E18EHP2Fn7ouQ+l2+kGOoYQ988MdY9r9J4hBify6m8pgyOPUMigdrvpQRxX9bejpi2DarawFgLEvtFMmOPZvL78Icvwy7m+Ooz4ZBH/hp/wkPHymWaY/S/fb0P/JHl0NieaeFSD1rNNvQU0GAAAAAQAgAAAEAIAAABAAAAIAQAAACAAAAQAgAAAEAIAAABAAAAIAQAAACAAAAQAgAAAEAIAAABAAAAIAIAAABAAAAKAA==" ;
-
-function pngFile(): File {
-  const bytes = Uint8Array.from(atob(fixtureBase64), (char) => char.charCodeAt(0));
+async function pngFile(): Promise<File> {
+  const bytes = await fs.readFile(
+    path.resolve(process.cwd(), "e2e-fixture.png"),
+  );
   return new File([bytes], "depthpop-ui-e2e.png", { type: "image/png" });
 }
 
@@ -161,7 +160,7 @@ describe("DepthPop live provider UI E2E", () => {
       expect(fileInput).toBeTruthy();
 
       fireEvent.change(fileInput!, {
-        target: { files: [pngFile()] },
+        target: { files: [await pngFile()] },
       });
 
       await screen.findByText(
