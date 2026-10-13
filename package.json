@@ -3,12 +3,16 @@
   "version": "1.1.3",
   "private": true,
   "type": "module",
-  "description": "Canva Design Editor application/tooling for authenticated archive verification, maintained runtime adapters, and trusted Design Editor integration.",
+  "description": "Standalone HoloForge and DepthPop Canva Design Editor applications with authenticated backends, runtime verification, and supporting developer tooling.",
   "keywords": [
     "canva-app",
     "design-editor",
+    "holoforge",
+    "depthpop",
+    "react-three-fiber",
+    "fastapi",
+    "blender",
     "developer-tooling",
-    "runtime-adapters",
     "application-verification"
   ],
   "scripts": {
