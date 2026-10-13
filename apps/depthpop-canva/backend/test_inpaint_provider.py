@@ -111,3 +111,21 @@ def test_fal_inpaint_uses_requested_inference_step_budget(monkeypatch):
     )
 
     assert captured[0]["arguments"]["num_inference_steps"] == 14
+
+
+def test_inpaint_preserves_all_original_pixels_outside_expanded_mask(monkeypatch):
+    def fake_run(_model, arguments):
+        return {"image": {"url": "https://v3b.fal.media/files/b/test/result.png"}}
+
+    async def fake_media(_url):
+        return png((64, 48), (180, 0, 0))
+
+    monkeypatch.setattr(inpaint.fal_client, "run", fake_run)
+    monkeypatch.setattr(inpaint, "fetch_fal_media", fake_media)
+    output = asyncio.run(inpaint.FalInpaintProvider(
+        fal_key="unit-key",
+    ).inpaint(png((64, 48), (30, 40, 50)), mask_png((64, 48))))
+    with Image.open(io.BytesIO(output)) as image:
+        assert image.getpixel((0, 0))[:3] == (30, 40, 50)
+        assert image.getpixel((63, 47))[:3] == (30, 40, 50)
+        assert image.getpixel((15, 15))[:3] == (180, 0, 0)
