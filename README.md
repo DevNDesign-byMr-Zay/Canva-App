@@ -1,19 +1,22 @@
-# Canva Design Editor Application & Tooling
+# HoloForge & DepthPop — Standalone Canva Design Editor Applications
 
-> **Canva deliverables:** use only the two independent packages generated from `apps/holoforge-canva/` and `apps/depthpop-canva/`. Historical ROARY/ÆTHER HTML under `app/authenticated-v115/` and `apps/depthpop-canva/reference/` is provenance only and must never be uploaded to or opened as a Canva app. See [CANVA_APPS_START_HERE.md](CANVA_APPS_START_HERE.md).
+> **Canva deliverables:** the maintained products are the two independent packages generated from `apps/holoforge-canva/` and `apps/depthpop-canva/`. Historical ROARY/ÆTHER HTML under `app/authenticated-v115/`, `legacy-html/` and `apps/depthpop-canva/reference/` is provenance only and must never be uploaded to or opened as a Canva app. See [CANVA_APPS_START_HERE.md](CANVA_APPS_START_HERE.md).
 
-This repository preserves a deidentified historical Canva-oriented depth-editing application archive, a **runnable typed verification package**, a **maintained JavaScript runtime-adapter surface**, a **TypeScript Canva Design Editor application** (`canva-app/`), and a **physically materialized authenticated application build** recovered from that archive.
+This repository maintains two production application surfaces:
 
-The maintained project is a **Canva Design Editor application/tooling** repository. Its active engineering surfaces are the Python archive verifier/materializer, the Node.js runtime adapters and tests, the authenticated application build, and the trusted Design Editor integration path. Historical source is retained for provenance, while maintained runtime behavior stays in the explicitly documented application surfaces below.
+- **HoloForge** — a standalone Canva Design Editor app for real-time 3D holographic/spatial authoring with React Three Fiber / Three.js and an authenticated Blender/FFmpeg render backend.
+- **DepthPop** — a standalone Canva Design Editor app for authenticated depth-aware object-scene editing, 4D animation, Render to Canva and production scene/layer/3D/video export.
 
-The repository intentionally distinguishes between **historical source provenance**, **maintained verification code**, **maintained runtime adapters**, and **authenticated application source**. No missing React/TypeScript tree or other source is fabricated merely to make the archive look more complete.
+The repository also retains supporting application/tooling surfaces: a trusted compatibility Design Editor integration, Node runtime adapters, a typed Python archive verifier/materializer, authenticated historical application bytes and provenance needed for deterministic verification. Those supporting/history surfaces are not substitutes for the current standalone products.
+
+This is an **application/tooling repository**, not infrastructure-as-code. Docker, Compose and GitHub Actions reproduce application runtimes, persistent-storage contracts, tests, security analysis and package verification; they do not provision cloud infrastructure or define the product.
 
 ## Independent HoloForge and DepthPop Canva apps
 
 HoloForge and DepthPop are now maintained as **two independent Canva Design Editor apps**, not as modes inside one shared runtime.
 
 - `apps/holoforge-canva/` — HoloForge holographic material studio. It has its own Canva manifest, runtime entrypoint, tests, production build, and a from-scratch CREATE → SPATIAL → VERIFY interface. Forgeable materials are written as editable HoloForge app elements through Canva's app-element boundary.
-- `apps/depthpop-canva/` — DepthPop image effect. It has its own Canva manifest, runtime entrypoint, tests, production build, backend, and static UI preview. Its visible control contract is recovered from the maintained Drive v115 source rather than invented from the combined sidebar.
+- `apps/depthpop-canva/` — DepthPop standalone spatial image editor. It has its own Canva manifest, runtime entrypoint, tests, production build, authenticated FastAPI backend, React Three Fiber / Three.js object-scene editor, 4D timeline/keyframe authoring, server-backed object operations, Render-to-Canva path, and production scene/layer/3D/video exports. Its original control vocabulary is traceable to the maintained Drive v115 source, while the current production implementation is the typed DepthScene/WebGL application under this app root.
 - `apps/depthpop-canva/backend/` — authenticated FastAPI processing service for the standalone DepthPop app.
 - `apps/depthpop-canva/reference/drive-source/` — exact historical Drive UI/backend provenance used to audit the reconstruction. This directory remains **repository-only** and is deliberately excluded from user-facing Canva ZIPs.
 
@@ -23,7 +26,7 @@ The older `canva-app/` tree remains for compatibility and release-history contin
   <img src="canva-app/src/assets/holoforge-logo.svg" width="170" alt="HoloForge holographic prism logo" />
 </p>
 
-HoloForge's maintained workflow is **CREATE → SPATIAL → VERIFY**. DepthPop's standalone workflow is selected raster image → exact v115 controls → authenticated processing → derived Canva asset → selected-image replacement.
+HoloForge's maintained workflow is **SOURCE → CREATE → SPATIAL → VERIFY**. DepthPop's maintained workflow is selected/uploaded raster → authenticated object detection/segmentation/depth/reconstruction → editable DepthScene → WebGL spatial editing + 4D animation → Render to Canva or production export.
 
 ## What is executable and inspectable today
 
@@ -125,9 +128,6 @@ make verify-fresh
 ```
 
 This single entrypoint installs Python packages strictly from pinned root `requirements.lock.txt`, installs Node packages from `package-lock.json` and `canva-app/package-lock.json`, and executes all Python and JavaScript linting, typechecking, tests, coverage gates, and production builds.
-```bash
-make verify-fresh
-```
 
 The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters keep their dependency surface narrow. The trusted review-context backend deliberately uses the pinned `@canva/app-middleware` package for server-side Canva token verification, and the committed npm lockfile keeps that boundary reproducible and machine-verifiable.
 

@@ -1,0 +1,6 @@
+# Historical/provenance sources are intentionally retained but are not maintained product code.
+# Exclude them from GitHub Linguist language statistics so repository classification reflects
+# the active TypeScript/JavaScript/Python application surfaces.
+legacy-html/** linguist-vendored
+app/authenticated-v115/** linguist-vendored
+apps/depthpop-canva/reference/** linguist-vendored

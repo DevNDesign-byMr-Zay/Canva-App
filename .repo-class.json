@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "primaryClass": "application-tooling",
-  "projectType": "Canva Design Editor application/tooling",
+  "projectType": "Standalone Canva Design Editor applications and supporting application tooling",
   "secondaryClasses": [
     "frontend-application",
+    "backend-service",
     "developer-tooling",
     "archive-verification"
   ],
@@ -16,15 +17,38 @@
     "ansible"
   ],
   "maintainedSurfaces": [
+    "apps/holoforge-canva",
+    "apps/depthpop-canva",
     "canva-app",
     "archive_verifier",
     "runtime",
     "src",
     "backend"
   ],
+  "primaryProducts": [
+    {
+      "name": "HoloForge",
+      "path": "apps/holoforge-canva",
+      "kind": "Canva Design Editor application with authenticated Blender/FFmpeg render backend"
+    },
+    {
+      "name": "DepthPop",
+      "path": "apps/depthpop-canva",
+      "kind": "Canva Design Editor application with authenticated FastAPI/FAL processing backend"
+    }
+  ],
+  "packagingOnly": [
+    "Dockerfile",
+    "docker-compose.yml",
+    "docker-compose.production.yml",
+    "compose.yaml",
+    ".github/workflows"
+  ],
   "evidence": {
     "projectScope": "docs/PROJECT_SCOPE.md",
-    "designEditorPackage": "canva-app/package.json",
-    "reviewContextBackend": "backend/review-context-service.mjs"
+    "holoforgePackage": "apps/holoforge-canva/package.json",
+    "depthpopPackage": "apps/depthpop-canva/package.json",
+    "deploymentContract": "docs/PRODUCTION_DEPLOYMENT.md",
+    "legacyDesignEditorPackage": "canva-app/package.json"
   }
 }
