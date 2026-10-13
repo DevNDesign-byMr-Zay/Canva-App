@@ -83,22 +83,38 @@ def _validate_png(
         }
 
 
-async def _detection(image: bytes) -> dict[str, Any]:
+async def _detection(image: bytes) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     payload = await asyncio.to_thread(
         fal_client.run,
         FLORENCE_MODEL,
         arguments={"image_url": _png_data_url(image)},
     )
     detections = parse_florence2_response(payload, width=128, height=128)
+    if not detections:
+        raise RuntimeError("Florence-2 returned no detections for the smoke fixture.")
     return {
         "model": FLORENCE_MODEL,
         "ok": True,
         "detectionCount": len(detections),
         "schemaValidated": True,
-    }
+    }, detections
 
 
-async def _segmentation(image: bytes) -> dict[str, Any]:
+async def _segmentation(
+    image: bytes,
+    detections: list[dict[str, Any]] | None = None,
+) -> tuple[dict[str, Any], bytes]:
+    # In the full smoke, use Florence's actual detection rather than
+    # an unrelated hardcoded box. Standalone SAM smoke uses the fixture box.
+    if detections is not None:
+        subject = detections[0]
+        x_min = int(round(subject["x"]))
+        y_min = int(round(subject["y"]))
+        x_max = int(round(subject["x"] + subject["width"]))
+        y_max = int(round(subject["y"] + subject["height"]))
+    else:
+        x_min, y_min, x_max, y_max = 34, 8, 94, 125
+
     payload = await asyncio.to_thread(
         fal_client.run,
         SAM_MODEL,
@@ -107,10 +123,10 @@ async def _segmentation(image: bytes) -> dict[str, Any]:
             "prompt": "",
             "box_prompts": [
                 {
-                    "x_min": 34,
-                    "y_min": 8,
-                    "x_max": 94,
-                    "y_max": 125,
+                    "x_min": x_min,
+                    "y_min": y_min,
+                    "x_max": x_max,
+                    "y_max": y_max,
                     "object_id": 1,
                 }
             ],
@@ -126,13 +142,14 @@ async def _segmentation(image: bytes) -> dict[str, Any]:
     if not masks:
         raise RuntimeError("SAM-3 returned no mask for the bounded box prompt.")
     raw = await fetch_fal_media(masks[0]["url"])
-    raster = _validate_png(raw)
+    raster = _validate_png(raw, (128, 128))
     return {
         "model": SAM_MODEL,
         "ok": True,
         "maskCount": len(masks),
         "mask": raster,
-    }
+        "promptSource": "florence-2" if detections is not None else "fixture",
+    }, raw
 
 
 async def _depth(image: bytes) -> dict[str, Any]:
@@ -169,17 +186,25 @@ async def run_suite(suite: str) -> dict[str, Any]:
         raise SystemExit(f"Unsupported suite: {suite}")
 
     _require_live_authorization()
-    image, mask = _fixture()
+    image, fixture_mask = _fixture()
     results: dict[str, Any] = {}
+    detections: list[dict[str, Any]] | None = None
+    sam_mask: bytes | None = None
 
+    # One bounded real call per provider, in actual application order.
     if suite in {"all", "detection"}:
-        results["detection"] = await _detection(image)
+        results["detection"], detections = await _detection(image)
     if suite in {"all", "segmentation"}:
-        results["segmentation"] = await _segmentation(image)
+        results["segmentation"], sam_mask = await _segmentation(
+            image, detections if suite == "all" else None,
+        )
     if suite in {"all", "depth"}:
         results["depth"] = await _depth(image)
     if suite in {"all", "inpaint"}:
-        results["inpaint"] = await _inpaint(image, mask)
+        results["inpaint"] = await _inpaint(
+            image, sam_mask if suite == "all" and sam_mask is not None else fixture_mask,
+        )
+        results["inpaint"]["sourceMask"] = "sam-3" if suite == "all" else "fixture"
 
     return {
         "ok": True,
