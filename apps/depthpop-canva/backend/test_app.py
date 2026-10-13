@@ -246,3 +246,63 @@ def test_cors_allowlist_does_not_authorize_arbitrary_origin():
     )
 
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_readiness_is_unavailable_without_production_contract(monkeypatch):
+    for key in [
+        "ENVIRONMENT",
+        "CANVA_APP_ID",
+        "CANVA_APP_ORIGIN",
+        "PUBLIC_BASE_URL",
+        "FAL_KEY",
+        "SEGMENTATION_PROVIDER",
+        "DEPTH_PROVIDER",
+        "INPAINT_PROVIDER",
+        "DEPTHPOP_REPOSITORY_BACKEND",
+        "DEPTHPOP_DATABASE_PATH",
+        "DEPTHPOP_ASSET_ROOT",
+        "DEPTHPOP_ARTIFACT_ROOT",
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+    response = TestClient(depthpop.app).get("/ready")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "unavailable"
+    assert body["checks"]["canvaAppIdentity"] is False
+    assert body["checks"]["falConfigured"] is False
+
+
+def test_readiness_reports_ready_for_complete_production_contract(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("CANVA_APP_ID", "depthpop-app")
+    monkeypatch.setenv(
+        "CANVA_APP_ORIGIN",
+        "https://app-depthpop-app.canva-apps.com",
+    )
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://depthpop.example.test")
+    monkeypatch.setenv("FAL_KEY", "secret-value-not-returned")
+    monkeypatch.setenv("SEGMENTATION_PROVIDER", "auto")
+    monkeypatch.setenv("DEPTH_PROVIDER", "auto")
+    monkeypatch.setenv("INPAINT_PROVIDER", "auto")
+    monkeypatch.setenv("DEPTHPOP_ALLOW_BBOX_FALLBACK", "false")
+    monkeypatch.setenv("DEPTHPOP_REPOSITORY_BACKEND", "sqlite")
+    monkeypatch.setenv(
+        "DEPTHPOP_DATABASE_PATH",
+        str(tmp_path / "depthpop.sqlite3"),
+    )
+    monkeypatch.setenv("DEPTHPOP_ASSET_ROOT", str(tmp_path / "assets"))
+    monkeypatch.setenv(
+        "DEPTHPOP_ARTIFACT_ROOT",
+        str(tmp_path / "artifacts"),
+    )
+    monkeypatch.setattr(depthpop.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+
+    response = TestClient(depthpop.app).get("/ready")
+    body = response.json()
+    assert body["status"] == "ready"
+    assert all(body["checks"].values())
+    assert "secret-value-not-returned" not in response.text
