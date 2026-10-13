@@ -1,0 +1,89 @@
+name: DepthPop live UI provider E2E
+
+on:
+  push:
+    branches:
+      - test/depthpop-live-ui-e2e
+
+permissions:
+  contents: read
+
+concurrency:
+  group: depthpop-live-ui-e2e
+  cancel-in-progress: false
+
+jobs:
+  ui-live-provider-e2e:
+    if: github.repository == 'DevNDesign-byMr-Zay/Canva-App'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      DEPTHPOP_LIVE_UI_E2E: "1"
+      DEPTHPOP_LIVE_PROVIDER_SMOKE: "1"
+      FAL_KEY: ${{ secrets.FAL_KEY }}
+      SEGMENTATION_PROVIDER: "fal"
+      DEPTH_PROVIDER: "fal"
+      INPAINT_PROVIDER: "fal"
+      DEPTHPOP_ALLOW_BBOX_FALLBACK: "false"
+      DEPTHPOP_REPOSITORY_BACKEND: "memory"
+      PUBLIC_BASE_URL: "http://127.0.0.1:8081"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/depthpop-canva/backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: apps/depthpop-canva/backend
+        run: pip install -r requirements.txt
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/depthpop-canva/package-lock.json
+
+      - name: Install DepthPop UI dependencies
+        working-directory: apps/depthpop-canva
+        run: npm ci --ignore-scripts
+
+      - name: Start ephemeral authenticated backend
+        working-directory: apps/depthpop-canva/backend
+        run: |
+          python e2e_ui_backend.py > /tmp/depthpop-e2e-backend.log 2>&1 &
+          echo $! > /tmp/depthpop-e2e-backend.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8081/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/depthpop-e2e-backend.log
+          exit 1
+
+      - name: Click real React UI through live model pipeline
+        working-directory: apps/depthpop-canva
+        run: npx vitest run src/intents/design_editor/live-provider-ui.e2e.test.tsx --reporter=verbose
+
+      - name: Upload generated UI results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: depthpop-live-ui-results-${{ github.sha }}
+          path: apps/depthpop-canva/e2e-live-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Print backend log on failure
+        if: failure()
+        run: cat /tmp/depthpop-e2e-backend.log || true
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/depthpop-e2e-backend.pid ]; then
+            kill "$(cat /tmp/depthpop-e2e-backend.pid)" || true
+          fi
