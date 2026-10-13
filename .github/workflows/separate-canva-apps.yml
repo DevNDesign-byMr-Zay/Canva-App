@@ -6,6 +6,7 @@ on:
       - "apps/**"
       - "scripts/package-independent-canva-apps.mjs"
       - "scripts/verify-standalone-canva-apps.mjs"
+      - "scripts/verify-canva-handoff-integrity.mjs"
       - ".github/workflows/separate-canva-apps.yml"
   push:
     branches:
@@ -162,6 +163,8 @@ jobs:
           npm run build
       - name: Assemble complete independent packages
         run: node scripts/package-independent-canva-apps.mjs .artifacts/independent-canva-apps
+      - name: Verify handoff package integrity
+        run: node scripts/verify-canva-handoff-integrity.mjs .artifacts/independent-canva-apps
       - name: Verify package entrypoints
         shell: bash
         run: |
@@ -200,58 +203,11 @@ jobs:
             printf '%s\n' "$listing" | grep -qx 'canva-app.json'
             printf '%s\n' "$listing" | grep -qx 'START-HERE.html'
             printf '%s\n' "$listing" | grep -qx 'preview/index.html'
-
-            if printf '%s\n' "$listing" | grep -Eiq '(^|/)(reference|node_modules|\.git|\.venv|venv|coverage|__pycache__|\.pytest_cache|artifacts?|outputs?|tmp|temp)(/|$)|(^|/)\.env$|\.(sqlite|sqlite3|db|pyc|log)
-          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/app.py'
-          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/blender_worker.py'
-          unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/test_app.py'
-          unzip -Z1 .artifacts/canva-zips/DepthPop-Canva-App.zip | grep -qx 'backend/app.py'
-          unzip -Z1 .artifacts/canva-zips/DepthPop-Canva-App.zip | grep -qx 'backend/test_app.py'
-
-          for zipfile in HoloForge-Canva-App.zip DepthPop-Canva-App.zip; do
-            for marker in 'Media Library' 'Conversations' 'New Chat' 'R.O.A.R.Y Studio' 'AETHER' 'ÆTHER'; do
-              if unzip -p ".artifacts/canva-zips/$zipfile" app.js | grep -Fq "$marker"; then
-                echo "Historical shell marker '$marker' leaked into $zipfile/app.js"
-                exit 1
-              fi
-              if unzip -p ".artifacts/canva-zips/$zipfile" preview/index.html | grep -Fq "$marker"; then
-                echo "Historical shell marker '$marker' leaked into $zipfile/preview/index.html"
-                exit 1
-              fi
-            done
-          done
-      - name: Retain HoloForge Canva ZIP
-        uses: actions/upload-artifact@v7
-        with:
-          name: HoloForge-Canva-App-${{ github.sha }}
-          if-no-files-found: error
-          retention-days: 30
-          path: .artifacts/canva-zips/HoloForge-Canva-App.zip
-      - name: Retain DepthPop Canva ZIP
-        uses: actions/upload-artifact@v7
-        with:
-          name: DepthPop-Canva-App-${{ github.sha }}
-          if-no-files-found: error
-          retention-days: 30
-          path: .artifacts/canva-zips/DepthPop-Canva-App.zip
-; then
-              echo "Forbidden secret/persistence/cache/artifact surface leaked into $zipfile"
-              exit 1
-            fi
-            if printf '%s\n' "$listing" | grep -Eq '^(app/authenticated-v115/|canva-app/)'; then
+            if printf '%s\n' "$listing" | grep -Eq '^(reference/|app/authenticated-v115/|canva-app/)'; then
               echo "Forbidden historical/compatibility surface leaked into $zipfile"
               exit 1
             fi
           done
-
-          if unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -Eiq '(^|/)depthpop-canva(/|$)'; then
-            echo "DepthPop source leaked into the HoloForge handoff"
-            exit 1
-          fi
-          if unzip -Z1 .artifacts/canva-zips/DepthPop-Canva-App.zip | grep -Eiq '(^|/)holoforge-canva(/|$)'; then
-            echo "HoloForge source leaked into the DepthPop handoff"
-            exit 1
-          fi
 
           unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/app.py'
           unzip -Z1 .artifacts/canva-zips/HoloForge-Canva-App.zip | grep -qx 'backend/blender_worker.py'
