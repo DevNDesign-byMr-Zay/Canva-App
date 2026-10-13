@@ -129,9 +129,33 @@ class FalInpaintProvider:
                 detail="Background reconstruction received an invalid image or mask.",
             ) from exc
 
+        # Use fal's documented binary upload API for both inputs instead of
+        # sending the provider inline data URIs. This avoids model-side
+        # download issues and keeps image and mask tied to stable fal media URLs.
+        try:
+            source_url, mask_url = await asyncio.gather(
+                asyncio.to_thread(
+                    fal_client.upload,
+                    source_buffer.getvalue(),
+                    "image/png",
+                    "depthpop-source.png",
+                ),
+                asyncio.to_thread(
+                    fal_client.upload,
+                    mask_buffer.getvalue(),
+                    "image/png",
+                    "depthpop-mask.png",
+                ),
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Background reconstruction input upload failed.",
+            ) from exc
+
         try:
             result = await asyncio.to_thread(
-                fal_client.run,
+                fal_client.subscribe,
                 INPAINT_MODEL,
                 arguments={
                     "model_name": self.base_model,
@@ -140,16 +164,18 @@ class FalInpaintProvider:
                         "new foreground objects, text, logos, duplicate people, "
                         "watermarks, artifacts, distortion"
                     ),
-                    "image_url": _png_data_url(source_buffer.getvalue()),
-                    "mask_url": _png_data_url(mask_buffer.getvalue()),
+                    "image_url": source_url,
+                    "mask_url": mask_url,
                     "num_inference_steps": max(8, min(50, int(num_inference_steps))),
                     "guidance_scale": 7.5,
                 },
+                start_timeout=90,
+                client_timeout=180,
             )
         except Exception as exc:
             raise HTTPException(
                 status_code=502,
-                detail="Background reconstruction provider failed.",
+                detail="Background reconstruction provider failed or timed out.",
             ) from exc
 
         output_url = (_extract_output_url(result) or "").strip()
