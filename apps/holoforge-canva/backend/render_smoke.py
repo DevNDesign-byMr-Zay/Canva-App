@@ -409,7 +409,7 @@ def main() -> int:
             worker,
             root,
             format_name="mp4",
-            profile="video",
+            profile="transparent-video",
             transparent=False,
         )
         if mp4.suffix.lower() != ".mp4":
@@ -421,7 +421,7 @@ def main() -> int:
             worker,
             root,
             format_name="png-sequence",
-            profile="png-sequence",
+            profile="image-sequence",
             transparent=True,
         )
         verify_png_sequence(sequence)
