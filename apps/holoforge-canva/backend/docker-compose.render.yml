@@ -10,16 +10,23 @@ services:
     ports:
       - "${HOLOFORGE_PORT:-8082}:8082"
     environment:
+      ENVIRONMENT: production
       CANVA_APP_ID: "${CANVA_APP_ID:?CANVA_APP_ID is required}"
-      CANVA_APP_ORIGIN: "${CANVA_APP_ORIGIN:-}"
+      CANVA_APP_ORIGIN: "${CANVA_APP_ORIGIN:?CANVA_APP_ORIGIN is required}"
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:?PUBLIC_BASE_URL is required}"
       HOLOFORGE_RENDER_TIMEOUT_SECONDS: "${HOLOFORGE_RENDER_TIMEOUT_SECONDS:-600}"
       HOLOFORGE_JOB_TTL_SECONDS: "${HOLOFORGE_JOB_TTL_SECONDS:-3600}"
       HOLOFORGE_ARTIFACT_TTL_SECONDS: "${HOLOFORGE_ARTIFACT_TTL_SECONDS:-86400}"
       HOLOFORGE_MAX_JOBS: "${HOLOFORGE_MAX_JOBS:-256}"
       HOLOFORGE_MAX_ARTIFACTS: "${HOLOFORGE_MAX_ARTIFACTS:-128}"
-      HOLOFORGE_ARTIFACT_ROOT: /var/lib/holoforge/artifacts
+      HOLOFORGE_REPOSITORY_BACKEND: sqlite
+      HOLOFORGE_DATABASE_PATH: /data/holoforge/holoforge.sqlite3
+      HOLOFORGE_ARTIFACT_ROOT: /data/holoforge/artifacts
+      BLENDER_BIN: /opt/blender/blender
+      HOLOFORGE_BLENDER_VERSION: "${BLENDER_VERSION:-4.5.14}"
+      HOLOFORGE_MAX_CONCURRENCY: "${HOLOFORGE_MAX_CONCURRENCY:-2}"
     volumes:
-      - holoforge-artifacts:/var/lib/holoforge/artifacts
+      - holoforge-data:/data/holoforge
     healthcheck:
       test:
         - CMD
@@ -34,4 +41,4 @@ services:
       start_period: 20s
 
 volumes:
-  holoforge-artifacts:
+  holoforge-data:
