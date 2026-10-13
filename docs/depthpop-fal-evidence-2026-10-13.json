@@ -41,12 +41,19 @@
       "runUrl": "https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/38345287020",
       "outcome": "missing credential in runner",
       "detail": "FAL_KEY environment was empty; no inference executed by this Actions run"
+    },
+    {
+      "provider": "GitHub Actions paid all-provider smoke",
+      "runUrl": "https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/38347288227",
+      "outcome": "12-minute job timeout during inpainting",
+      "detail": "GitHub's existing FAL secret was delivered successfully. Florence-2, SAM-3 and Depth Anything V2 returned HTTP 200 in order, after which inpaint did not complete before runner cancellation. No inpaint output was verified from this job."
     }
   ],
   "notes": [
     "fal dashboard entries marked 'Not available' are not in themselves failed inference; account UI may lack retained payload or playable preview",
     "SAM metadata.index describes returned mask order; do not assume it refers to Florence detection number",
     "CI regression tests use in-memory synthetic fixtures and no billable fal calls",
-    "Image quality acceptance remains separate from a completed provider request"
+    "Image quality acceptance remains separate from a completed provider request",
+    "Follow-up changes use fal binary upload for inpaint image and mask, bounded queue timeout and safe stage progress logs; separate live verification still required"
   ]
 }
