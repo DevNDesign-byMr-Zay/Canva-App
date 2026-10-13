@@ -33,19 +33,24 @@ def _png_data_url(raw: bytes) -> str:
 
 
 def _fixture() -> tuple[bytes, bytes]:
+    # Product-only synthetic test asset. Never submit a person's face,
+    # portrait, human silhouette, or user-owned photograph to paid smoke runs.
+    # This draws a capped cosmetics bottle with an opaque colored label.
     image = Image.new("RGB", (128, 128), (24, 34, 52))
     draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((38, 30, 90, 106), radius=10, fill=(235, 92, 76))
-    draw.ellipse((50, 12, 78, 40), fill=(245, 202, 155))
-    draw.rectangle((44, 105, 56, 124), fill=(58, 95, 160))
-    draw.rectangle((72, 105, 84, 124), fill=(58, 95, 160))
+    draw.rounded_rectangle((36, 38, 92, 114), radius=6, fill=(230, 216, 193))
+    draw.rectangle((46, 13, 82, 42), fill=(55, 62, 76))
+    draw.rectangle((47, 11, 81, 16), fill=(118, 128, 145))
+    draw.rounded_rectangle((41, 63, 87, 99), radius=3, fill=(209, 78, 90))
+    draw.rectangle((40, 42, 44, 108), fill=(255, 246, 226))
 
     image_buffer = io.BytesIO()
     image.save(image_buffer, format="PNG", optimize=True)
 
     mask = Image.new("L", (128, 128), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((36, 10, 92, 124), radius=10, fill=255)
+    mask_draw.rounded_rectangle((36, 38, 92, 114), radius=6, fill=255)
+    mask_draw.rectangle((46, 11, 82, 42), fill=255)
     mask_buffer = io.BytesIO()
     mask.save(mask_buffer, format="PNG", optimize=True)
     return image_buffer.getvalue(), mask_buffer.getvalue()
@@ -112,7 +117,7 @@ async def _segmentation(
         x_max = int(round(subject["x"] + subject["width"]))
         y_max = int(round(subject["y"] + subject["height"]))
     else:
-        x_min, y_min, x_max, y_max = 34, 8, 94, 125
+        x_min, y_min, x_max, y_max = 34, 10, 94, 116
 
     payload = await asyncio.to_thread(
         fal_client.run,

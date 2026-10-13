@@ -16,6 +16,24 @@ def _mask():
     return buffer.getvalue()
 
 
+def test_product_only_smoke_fixture_uses_a_bottle_not_a_person():
+    source_bytes, mask_bytes = smoke._fixture()
+    with Image.open(io.BytesIO(source_bytes)) as source:
+        assert source.mode == "RGB"
+        assert source.size == (128, 128)
+        # Flat-top dark cap, pale bottle body, and red product label.
+        assert source.getpixel((64, 13)) == (118, 128, 145)
+        assert source.getpixel((64, 48)) == (230, 216, 193)
+        assert source.getpixel((64, 80)) == (209, 78, 90)
+        # No old circular head or legs in the synthetic test.
+        assert source.getpixel((64, 25)) == (55, 62, 76)
+        assert source.getpixel((64, 121)) == (24, 34, 52)
+    with Image.open(io.BytesIO(mask_bytes)) as mask:
+        assert mask.getpixel((64, 25)) == 255
+        assert mask.getpixel((64, 75)) == 255
+        assert mask.getpixel((64, 121)) == 0
+
+
 def test_all_smoke_stages_are_linked_in_order_without_paid_inference(monkeypatch):
     calls = []
     live_mask = _mask()
