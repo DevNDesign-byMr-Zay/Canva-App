@@ -31,9 +31,9 @@ Required production environment:
 
 ```text
 ENVIRONMENT=production
-CANVA_APP_ID=<DepthPop Canva app id>
-CANVA_APP_ORIGIN=https://...
-PUBLIC_BASE_URL=https://...
+DEPTHPOP_CANVA_APP_ID=<DepthPop Canva app id>
+DEPTHPOP_CANVA_APP_ORIGIN=https://...
+DEPTHPOP_PUBLIC_BASE_URL=https://...
 
 FAL_KEY=<secret>
 
@@ -54,6 +54,8 @@ DEPTHPOP_MAX_EXPORT_DURATION_MS=120000
 DEPTHPOP_MAX_EXPORT_ARTIFACT_BYTES=536870912
 ```
 
+The root deployment validator and production Compose file use the prefixed variables above so both app contracts can coexist in one deployment workspace. The Compose service maps them to the backend's generic `CANVA_APP_ID`, `CANVA_APP_ORIGIN`, and `PUBLIC_BASE_URL` variables.
+
 The whole `/data/depthpop` directory must be mounted to persistent storage.
 
 Do not put `FAL_KEY` in the Canva bundle.
@@ -66,9 +68,9 @@ Required production environment:
 
 ```text
 ENVIRONMENT=production
-CANVA_APP_ID=<HoloForge Canva app id>
-CANVA_APP_ORIGIN=https://...
-PUBLIC_BASE_URL=https://...
+HOLOFORGE_CANVA_APP_ID=<HoloForge Canva app id>
+HOLOFORGE_CANVA_APP_ORIGIN=https://...
+HOLOFORGE_PUBLIC_BASE_URL=https://...
 
 BLENDER_BIN=/opt/blender/blender
 HOLOFORGE_BLENDER_VERSION=4.5.14
