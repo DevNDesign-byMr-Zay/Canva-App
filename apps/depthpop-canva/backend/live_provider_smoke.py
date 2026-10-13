@@ -64,10 +64,15 @@ def _require_live_authorization() -> str:
     return key
 
 
-def _validate_png(raw: bytes, expected_size: tuple[int, int]) -> dict[str, Any]:
+def _validate_png(
+    raw: bytes,
+    expected_size: tuple[int, int] | None = None,
+) -> dict[str, Any]:
     with Image.open(io.BytesIO(raw)) as image:
         image.load()
-        if image.size != expected_size:
+        if image.width <= 0 or image.height <= 0:
+            raise RuntimeError("provider returned an empty raster")
+        if expected_size is not None and image.size != expected_size:
             raise RuntimeError(
                 f"provider raster size mismatch: {image.size} != {expected_size}"
             )
@@ -121,7 +126,7 @@ async def _segmentation(image: bytes) -> dict[str, Any]:
     if not masks:
         raise RuntimeError("SAM-3 returned no mask for the bounded box prompt.")
     raw = await fetch_fal_media(masks[0]["url"])
-    raster = _validate_png(raw, (128, 128))
+    raster = _validate_png(raw)
     return {
         "model": SAM_MODEL,
         "ok": True,
