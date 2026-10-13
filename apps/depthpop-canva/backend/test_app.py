@@ -72,6 +72,14 @@ def test_fal_media_url_is_rebuilt_against_fixed_origin():
     assert target == "/files/example/depth.png?token=abc"
 
 
+def test_fal_media_url_accepts_documented_v3b_cdn_host():
+    base, target = depthpop._fal_media_request_target(
+        "https://v3b.fal.media/files/b/example/mask.png"
+    )
+    assert base == "https://v3b.fal.media"
+    assert target == "/files/b/example/mask.png"
+
+
 def test_fal_media_url_rejects_untrusted_hosts():
     try:
         depthpop._fal_media_request_target("https://example.com/anything.png")
