@@ -35,3 +35,25 @@ The backend bounds heavyweight rendering in three places:
 - immediate insertion-time capacity eviction for `HOLOFORGE_MAX_JOBS` and `HOLOFORGE_MAX_ARTIFACTS`.
 
 Artifact hashing streams files in chunks instead of reading large video/sequence artifacts fully into memory. When an artifact expires, is evicted, or disappears unexpectedly, HoloForge removes the complete per-export workspace—including temporary frames, job payloads, view renders and manifests—while refusing to delete paths outside `HOLOFORGE_ARTIFACT_ROOT`.
+
+## Production readiness
+
+Keep `/health` for liveness and use `/ready` to inspect secret-safe production dependency state. A production-ready response reports `status: "ready"` only when the Canva identity/origin, HTTPS public URL, SQLite persistence, durable artifact/database storage, FFmpeg, and the pinned Blender runtime are available.
+
+From the repository root, run the real deployment validator inside the deployed runtime:
+
+```bash
+npm run deployment:check
+```
+
+HoloForge production storage is:
+
+```text
+/data/holoforge/holoforge.sqlite3
+/data/holoforge/artifacts
+```
+
+The maintained production render image pins Blender 4.5.14 and installs FFmpeg.
+
+See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/LIVE_CANVA_ACCEPTANCE_CHECKLIST.md` for the external deployment and live Canva acceptance contract.
+
