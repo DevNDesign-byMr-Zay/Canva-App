@@ -254,6 +254,25 @@ jobs:
       - name: Authenticated archive verification
         run: python -m archive_verifier
 
+  deployment-readiness:
+    name: deployment-readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Reproducible root install
+        run: npm ci --ignore-scripts
+      - name: Run deterministic deployment readiness fixture
+        run: npm run deployment:check:ci
+      - name: Run deployment readiness negative-path tests
+        run: node --test tests/js/deployment-readiness.test.mjs
+
   container-smoke:
     name: container-smoke
     runs-on: ubuntu-latest
