@@ -42,10 +42,7 @@ def test_fal_inpaint_uses_documented_image_and_white_mask_contract(monkeypatch):
     def fake_run(model: str, arguments: dict, **_kwargs):
         captured.append({"model": model, "arguments": arguments})
         return {
-            "image": {
-                "url": "https://v2.fal.media/files/test/inpaint.png",
-                "content_type": "image/png",
-            },
+            "images": [{"url": "https://v2.fal.media/files/test/inpaint.png", "content_type": "image/png"}],
             "seed": 123,
         }
 
@@ -66,7 +63,10 @@ def test_fal_inpaint_uses_documented_image_and_white_mask_contract(monkeypatch):
 
     assert captured[0]["model"] == inpaint.INPAINT_MODEL
     args = captured[0]["arguments"]
-    assert args["model_name"] == inpaint.DEFAULT_BASE_MODEL
+    assert args["model"] == inpaint.OBJECT_REMOVAL_MODEL
+    assert args["mask_expansion"] == inpaint.MASK_EXPANSION_PX
+    assert "model_name" not in args and "prompt" not in args
+    assert "num_inference_steps" not in args
     assert args["image_url"].endswith("/depthpop-source.png")
     assert args["mask_url"].endswith("/depthpop-mask.png")
     assert uploaded.keys() == {"depthpop-source.png", "depthpop-mask.png"}
@@ -95,16 +95,13 @@ def test_mock_inpaint_is_test_only(monkeypatch):
         assert output.size == (32, 24)
 
 
-def test_fal_inpaint_uses_requested_inference_step_budget(monkeypatch):
+def test_object_removal_keeps_legacy_interface_without_unsupported_steps(monkeypatch):
     captured: list[dict] = []
 
     def fake_run(model: str, arguments: dict, **_kwargs):
         captured.append({"model": model, "arguments": arguments})
         return {
-            "image": {
-                "url": "https://v2.fal.media/files/test/inpaint.png",
-                "content_type": "image/png",
-            }
+            "images": [{"url": "https://v2.fal.media/files/test/inpaint.png", "content_type": "image/png"}]
         }
 
     async def fake_media(_url: str) -> bytes:
@@ -123,12 +120,13 @@ def test_fal_inpaint_uses_requested_inference_step_budget(monkeypatch):
         )
     )
 
-    assert captured[0]["arguments"]["num_inference_steps"] == 14
+    assert captured[0]["arguments"]["model"] == "best_quality"
+    assert "num_inference_steps" not in captured[0]["arguments"]
 
 
 def test_inpaint_preserves_all_original_pixels_outside_expanded_mask(monkeypatch):
     def fake_run(_model, arguments, **_kwargs):
-        return {"image": {"url": "https://v3b.fal.media/files/b/test/result.png"}}
+        return {"images": [{"url": "https://v3b.fal.media/files/b/test/result.png"}]}
 
     async def fake_media(_url):
         return png((64, 48), (180, 0, 0))
