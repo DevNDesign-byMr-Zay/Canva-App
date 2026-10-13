@@ -59,7 +59,7 @@ jobs:
 
       - name: Run bounded one-shot provider smoke
         env:
-          FAL_KEY: ${{ secrets.FAL_KEY }}
+          FAL_KEY: ${{ secrets.FAL_KEY || secrets.FAL }}
           DEPTHPOP_LIVE_PROVIDER_SMOKE: "1"
           DEPTHPOP_ALLOW_BBOX_FALLBACK: "false"
         run: |
