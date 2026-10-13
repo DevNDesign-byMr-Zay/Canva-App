@@ -50,6 +50,22 @@ jobs:
         working-directory: apps/depthpop-canva
         run: npm ci --ignore-scripts
 
+      - name: Generate deterministic 128x128 UI fixture
+        working-directory: apps/depthpop-canva/backend
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+
+          image = Image.new("RGB", (128, 128), (24, 34, 52))
+          draw = ImageDraw.Draw(image)
+          draw.rounded_rectangle((38, 30, 90, 106), radius=10, fill=(235, 92, 76))
+          draw.ellipse((50, 12, 78, 40), fill=(245, 202, 155))
+          draw.rectangle((44, 105, 56, 124), fill=(58, 95, 160))
+          draw.rectangle((72, 105, 84, 124), fill=(58, 95, 160))
+          image.save(Path("../e2e-fixture.png"), format="PNG", optimize=True)
+          PY
+
       - name: Start ephemeral authenticated backend
         working-directory: apps/depthpop-canva/backend
         run: |
