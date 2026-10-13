@@ -1,7 +1,9 @@
 name: DepthPop live UI provider E2E
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - test/depthpop-live-ui-e2e
 
 permissions:
   contents: read
@@ -46,7 +48,13 @@ jobs:
 
       - name: Install DepthPop UI dependencies
         working-directory: apps/depthpop-canva
-        run: npm ci --ignore-scripts
+        run: |
+          npm ci --ignore-scripts
+          npm install --no-save --package-lock=false vite playwright
+
+      - name: Install Chromium for the real-browser UI test
+        working-directory: apps/depthpop-canva
+        run: npx playwright install --with-deps chromium
 
       - name: Generate deterministic 128x128 UI fixture
         working-directory: apps/depthpop-canva/backend
@@ -78,9 +86,23 @@ jobs:
           cat /tmp/depthpop-e2e-backend.log
           exit 1
 
+      - name: Start real DepthPop browser harness
+        working-directory: apps/depthpop-canva
+        run: |
+          npx vite --config e2e-browser/vite.config.mjs > /tmp/depthpop-vite.log 2>&1 &
+          echo $! > /tmp/depthpop-vite.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/e2e-browser/index.html >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/depthpop-vite.log
+          exit 1
+
       - name: Click real React UI through live model pipeline
         working-directory: apps/depthpop-canva
-        run: npx vitest run src/intents/design_editor/live-provider-ui.e2e.test.tsx --reporter=verbose
+        run: node e2e-browser/run.mjs
 
       - name: Upload generated UI results
         if: always()
@@ -91,13 +113,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Print backend log on failure
+      - name: Print harness logs on failure
         if: failure()
-        run: cat /tmp/depthpop-e2e-backend.log || true
+        run: |
+          cat /tmp/depthpop-e2e-backend.log || true
+          cat /tmp/depthpop-vite.log || true
 
-      - name: Stop backend
+      - name: Stop ephemeral services
         if: always()
         run: |
+          if [ -f /tmp/depthpop-vite.pid ]; then
+            kill "$(cat /tmp/depthpop-vite.pid)" || true
+          fi
           if [ -f /tmp/depthpop-e2e-backend.pid ]; then
             kill "$(cat /tmp/depthpop-e2e-backend.pid)" || true
           fi
