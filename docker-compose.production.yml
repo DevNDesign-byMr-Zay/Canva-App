@@ -35,7 +35,7 @@ services:
         - -c
         - >-
           import urllib.request;
-          urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3).read()
+          urllib.request.urlopen('http://127.0.0.1:8081/ready', timeout=3).read()
       interval: 15s
       timeout: 5s
       retries: 5
@@ -76,7 +76,7 @@ services:
         - -c
         - >-
           import urllib.request;
-          urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3).read()
+          urllib.request.urlopen('http://127.0.0.1:8082/ready', timeout=3).read()
       interval: 15s
       timeout: 5s
       retries: 5
