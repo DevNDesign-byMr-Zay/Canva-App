@@ -188,3 +188,24 @@ For Canva testing, expose the backend over public HTTPS and set the frontend bac
 - FAL_KEY is never returned to the frontend.
 
 The historical Drive router remains under ../reference/drive-source as provenance only and is excluded from the handoff ZIP.
+
+## Production readiness
+
+Keep `/health` for liveness and use `/ready` to inspect secret-safe production dependency state. A production-ready response reports `status: "ready"` only when the Canva identity/origin, HTTPS public URL, production provider path, FAL configuration, SQLite persistence, durable database/assets/artifacts storage, disabled bbox fallback, and FFmpeg are all available.
+
+From the repository root, run the real deployment validator inside the deployed runtime:
+
+```bash
+npm run deployment:check
+```
+
+DepthPop production storage is:
+
+```text
+/data/depthpop/depthpop.sqlite3
+/data/depthpop/assets
+/data/depthpop/artifacts
+```
+
+See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/LIVE_CANVA_ACCEPTANCE_CHECKLIST.md` for the external deployment and live Canva acceptance contract.
+
