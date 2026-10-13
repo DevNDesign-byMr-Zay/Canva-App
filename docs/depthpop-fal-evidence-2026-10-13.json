@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-13",
+  "redacted": true,
+  "scope": "DepthPop provider integration; no credentials, prompts, image payloads, personal images or signed URLs included",
+  "successful": [
+    {
+      "provider": "Florence-2 Large",
+      "requestId": "01a1337c-8895-7bd2-8905-be9da31105b6",
+      "outcome": "API success",
+      "detail": "3 detections; bottle and sink relevant, one spurious toothbrush label"
+    },
+    {
+      "provider": "Depth Anything V2",
+      "requestId": "01a1337c-a19e-7b50-a922-46ad500805f0",
+      "outcome": "API success",
+      "detail": "447x447 disparity image"
+    },
+    {
+      "provider": "SAM-3",
+      "requestId": "01a1337e-0ead-70f3-89b3-0077d89bbef3",
+      "outcome": "API success",
+      "detail": "one 447x447 product mask, score 0.98046875"
+    },
+    {
+      "provider": "SDXL inpaint",
+      "requestId": "01a1337e-ac93-7923-bbf9-d879e3aff089",
+      "outcome": "API success / product removal quality failure",
+      "detail": "1024x1024 result retained recognizable product, not acceptable as verified object removal"
+    }
+  ],
+  "failed": [
+    {
+      "provider": "SAM-3",
+      "requestId": "01a1337c-fbd7-7960-8097-1df39029e8bb",
+      "outcome": "HTTP 422 file_download_error",
+      "detail": "fal-rehosted temporary Canva thumbnail URL could not be downloaded; a fresh direct Canva signed URL subsequently worked"
+    },
+    {
+      "provider": "GitHub Actions live-provider-smoke",
+      "runUrl": "https://github.com/DevNDesign-byMr-Zay/Canva-App/actions/runs/38345287020",
+      "outcome": "missing credential in runner",
+      "detail": "FAL_KEY environment was empty; no inference executed by this Actions run"
+    }
+  ],
+  "notes": [
+    "fal dashboard entries marked 'Not available' are not in themselves failed inference; account UI may lack retained payload or playable preview",
+    "SAM metadata.index describes returned mask order; do not assume it refers to Florence detection number",
+    "CI regression tests use in-memory synthetic fixtures and no billable fal calls",
+    "Image quality acceptance remains separate from a completed provider request"
+  ]
+}
