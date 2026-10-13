@@ -116,6 +116,11 @@ class FalInpaintProvider:
                     target_size,
                     Image.Resampling.NEAREST,
                 )
+                # Include edge pixels so the original object outline is not
+                # left behind. Unmasked original pixels are restored below.
+                mask_l = mask_l.filter(ImageFilter.MaxFilter(5))
+                if not mask_l.getbbox():
+                    raise ValueError("object-removal mask is empty")
                 mask_buffer = io.BytesIO()
                 mask_l.save(mask_buffer, format="PNG", optimize=True)
         except Exception as exc:
@@ -155,7 +160,18 @@ class FalInpaintProvider:
             )
 
         output = await fetch_fal_media(output_url)
-        return _validated_png(output, target_size=target_size)
+        verified = _validated_png(output, target_size=target_size)
+        # Never allow a generative edit to alter areas outside the
+        # reconstruction mask, even when the provider changes the full image.
+        with Image.open(io.BytesIO(verified)) as generated:
+            merged = Image.composite(
+                generated.convert("RGBA"),
+                source_rgb.convert("RGBA"),
+                mask_l,
+            )
+            buffer = io.BytesIO()
+            merged.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
 
 
 class MockInpaintProvider:

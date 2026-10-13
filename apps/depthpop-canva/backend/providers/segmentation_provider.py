@@ -234,6 +234,52 @@ def _bbox_mask(
     return mask
 
 
+
+def _mask_bbox_affinity(
+    mask: np.ndarray, detection: dict[str, Any],
+) -> float:
+    """Intersection-over-union associates unordered SAM masks to Florence boxes."""
+
+    height, width = mask.shape
+    box = _bbox_mask(width=width, height=height, detection=detection)
+    x0 = max(0, min(width - 1, int(round(detection["x"]))))
+    y0 = max(0, min(height - 1, int(round(detection["y"]))))
+    x1 = max(x0 + 1, min(width, int(round(detection["x"] + detection["width"]))))
+    y1 = max(y0 + 1, min(height, int(round(detection["y"] + detection["height"]))))
+    overlap = int(np.count_nonzero(mask[y0:y1, x0:x1]))
+    if overlap == 0:
+        return 0.0
+    union = int(np.count_nonzero(mask)) + int(np.count_nonzero(box)) - overlap
+    return overlap / max(1, union)
+
+
+def _associate_masks(
+    detections: list[dict[str, Any]],
+    candidates: list[tuple[np.ndarray, float]],
+) -> dict[int, int]:
+    """Associate masks spatially; SAM metadata.index is an output index, not a prompt ID."""
+
+    ranked: list[tuple[float, int, int]] = []
+    for detection_index, detection in enumerate(detections):
+        for mask_index, (mask_array, _confidence) in enumerate(candidates):
+            affinity = _mask_bbox_affinity(mask_array, detection)
+            if affinity > 0.01:
+                ranked.append((affinity, detection_index, mask_index))
+
+    claimed_detections: set[int] = set()
+    claimed_masks: set[int] = set()
+    assignments: dict[int, int] = {}
+    for _score, detection_index, mask_index in sorted(
+        ranked, key=lambda item: (-item[0], item[1], item[2]),
+    ):
+        if detection_index in claimed_detections or mask_index in claimed_masks:
+            continue
+        assignments[detection_index] = mask_index
+        claimed_detections.add(detection_index)
+        claimed_masks.add(mask_index)
+    return assignments
+
+
 def _encode_mask(mask_array: np.ndarray) -> bytes:
     image = Image.fromarray((mask_array * 255).astype(np.uint8), mode="L")
     buffer = io.BytesIO()
@@ -330,54 +376,47 @@ class FalSegmentationProvider:
                 ) from exc
             masks = []
 
+        # SAM-3 can rank/reorder masks by confidence. Match each mask to the
+        # originating Florence detection by spatial overlap rather than index.
+        decoded: list[tuple[np.ndarray, float]] = []
+        for mask_info in masks:
+            try:
+                mask_bytes = await fetch_fal_media(mask_info["url"])
+                with Image.open(io.BytesIO(mask_bytes)) as mask_image:
+                    mask_l = mask_image.convert("L").resize(
+                        (width, height), Image.Resampling.NEAREST,
+                    )
+                    mask_array = np.asarray(mask_l) > 127
+                if not np.any(mask_array):
+                    raise ValueError("SAM-3 returned an empty mask")
+                decoded.append((mask_array, float(mask_info["score"])))
+            except Exception as exc:
+                if not self.allow_bbox_fallback:
+                    raise HTTPException(
+                        status_code=502,
+                        detail="SAM-3 returned an unusable mask and bbox fallback is disabled.",
+                    ) from exc
+
+        assignments = _associate_masks(detections, decoded)
         objects: list[SegmentedObject] = []
         for index, detection in enumerate(detections):
+            matched_index = assignments.get(index)
             quality: ExtractionQuality = "mask"
-            score = 0.90
-            mask_array: np.ndarray
-
-            mask_info = masks[index] if index < len(masks) else None
-            if mask_info is not None:
-                try:
-                    mask_bytes = await fetch_fal_media(mask_info["url"])
-                    with Image.open(io.BytesIO(mask_bytes)) as mask_image:
-                        mask_l = mask_image.convert("L").resize(
-                            (width, height),
-                            Image.Resampling.NEAREST,
-                        )
-                        mask_array = np.asarray(mask_l) > 127
-                    if not np.any(mask_array):
-                        raise ValueError("SAM-3 returned an empty mask")
-                    score = float(mask_info["score"])
-                except Exception as exc:
-                    if not self.allow_bbox_fallback:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=(
-                                "SAM-3 returned an unusable mask and "
-                                "bbox fallback is disabled."
-                            ),
-                        ) from exc
-                    mask_array = _bbox_mask(
-                        width=width,
-                        height=height,
-                        detection=detection,
-                    )
-                    quality = "bbox_fallback"
+            if matched_index is not None:
+                mask_array, score = decoded[matched_index]
             else:
                 if not self.allow_bbox_fallback:
                     raise HTTPException(
                         status_code=502,
                         detail=(
-                            "SAM-3 returned fewer masks than requested and "
+                            "SAM-3 returned no spatially matching mask and "
                             "bbox fallback is disabled."
                         ),
                     )
                 mask_array = _bbox_mask(
-                    width=width,
-                    height=height,
-                    detection=detection,
+                    width=width, height=height, detection=detection,
                 )
+                score = 0.0
                 quality = "bbox_fallback"
 
             label = detection["label"]
