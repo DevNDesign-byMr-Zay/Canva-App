@@ -175,6 +175,8 @@ jobs:
           for app in holoforge-canva depthpop-canva; do
             root=".artifacts/independent-canva-apps/$app"
             test -s "$root/app.js"
+          test -s "$root/package-lock.json"
+          test -s "$root/backend/requirements.lock.txt"
             node --check "$root/app.js"
             test -s "$root/canva-app.json"
             test -s "$root/START-HERE.html"
