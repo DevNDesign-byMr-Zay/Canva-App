@@ -34,6 +34,22 @@ jobs:
       - name: Verify independent apps, logos, test uploads and backend files
         run: node scripts/verify-standalone-canva-apps.mjs
 
+  preview-browser-smoke:
+    name: Browser preview UI smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+      - name: Verify both branded local HTML previews in real Chrome
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: node scripts/smoke-canva-preview-browser.mjs
+
   canva-frontends:
     name: ${{ matrix.app }}
     runs-on: ubuntu-latest
@@ -145,6 +161,7 @@ jobs:
     name: Complete independent app packages
     needs:
       - standalone-regression-guard
+      - preview-browser-smoke
       - canva-frontends
       - holoforge-backend
       - depthpop-backend
