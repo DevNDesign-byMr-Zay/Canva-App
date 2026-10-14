@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: 24
       - name: Install app dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
       - name: Type-check
         run: npm run typecheck
       - name: Unit tests
@@ -154,12 +154,12 @@ jobs:
       - name: Build HoloForge
         working-directory: apps/holoforge-canva
         run: |
-          npm install --ignore-scripts
+          npm ci --ignore-scripts
           npm run build
       - name: Build DepthPop
         working-directory: apps/depthpop-canva
         run: |
-          npm install --ignore-scripts
+          npm ci --ignore-scripts
           npm run build
       - name: Assemble complete independent packages
         run: node scripts/package-independent-canva-apps.mjs .artifacts/independent-canva-apps
