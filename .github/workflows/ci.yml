@@ -204,6 +204,32 @@ jobs:
       - name: Audit Python dependencies
         run: python -m pip check
 
+  app-backend-dependency-audit:
+    name: audit-${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [holoforge-canva, depthpop-canva]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Audit locked production Canva app dependencies
+        run: npm audit --prefix apps/${{ matrix.app }} --omit=dev --audit-level=high
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Python security auditor
+        run: python -m pip install --disable-pip-version-check pip-audit==2.10.1
+      - name: Audit full locked backend Python dependency graph
+        run: python -m pip_audit --no-deps --disable-pip -r apps/${{ matrix.app }}/backend/requirements.lock.txt
+
   fresh-clone-smoke:
     name: fresh-clone-smoke
     runs-on: ubuntu-latest
