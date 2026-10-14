@@ -93,6 +93,8 @@ for (const app of apps) {
 
   for (const required of [
     "app.js",
+    "package-lock.json",
+    "backend/requirements.lock.txt",
     "canva-app.json",
     "START-HERE.html",
     "preview/index.html",

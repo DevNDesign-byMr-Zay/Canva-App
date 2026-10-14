@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: 24
       - name: Install app dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
       - name: Type-check
         run: npm run typecheck
       - name: Unit tests
@@ -89,9 +89,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: apps/holoforge-canva/backend/requirements.txt
+          cache-dependency-path: apps/holoforge-canva/backend/requirements.lock.txt
       - name: Install backend
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.lock.txt
+      - name: Verify installed dependencies
+        run: python -m pip check
       - name: Compile backend
         run: python -m compileall -q .
       - name: Backend unit tests
@@ -126,9 +128,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: apps/depthpop-canva/backend/requirements.txt
+          cache-dependency-path: apps/depthpop-canva/backend/requirements.lock.txt
       - name: Install backend
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.lock.txt
+      - name: Verify installed dependencies
+        run: python -m pip check
       - name: Compile backend
         run: python -m py_compile app.py test_app.py
       - name: Backend unit tests
@@ -154,12 +158,12 @@ jobs:
       - name: Build HoloForge
         working-directory: apps/holoforge-canva
         run: |
-          npm install --ignore-scripts
+          npm ci --ignore-scripts
           npm run build
       - name: Build DepthPop
         working-directory: apps/depthpop-canva
         run: |
-          npm install --ignore-scripts
+          npm ci --ignore-scripts
           npm run build
       - name: Assemble complete independent packages
         run: node scripts/package-independent-canva-apps.mjs .artifacts/independent-canva-apps
@@ -171,6 +175,8 @@ jobs:
           for app in holoforge-canva depthpop-canva; do
             root=".artifacts/independent-canva-apps/$app"
             test -s "$root/app.js"
+          test -s "$root/package-lock.json"
+          test -s "$root/backend/requirements.lock.txt"
             node --check "$root/app.js"
             test -s "$root/canva-app.json"
             test -s "$root/START-HERE.html"

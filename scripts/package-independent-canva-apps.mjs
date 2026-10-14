@@ -115,7 +115,7 @@ ROOT
 - START-HERE.html          -> local browser entrypoint
 - UPLOAD-TO-CANVA.txt      -> exact upload instructions
 - README.md                -> app architecture and development notes
-- package.json             -> app dependencies/scripts
+- package.json             -> app dependencies/scripts\n- package-lock.json        -> pinned reproducible app dependencies
 - tsconfig.json            -> TypeScript configuration
 
 UI
@@ -162,6 +162,7 @@ for (const app of APPS) {
   await cp(manifestPath, join(destination, "canva-app.json"));
   await cp(join(source, "README.md"), join(destination, "README.md"));
   await cp(join(source, "package.json"), join(destination, "package.json"));
+  await cp(join(source, "package-lock.json"), join(destination, "package-lock.json"));
   await cp(join(source, "tsconfig.json"), join(destination, "tsconfig.json"));
   await cp(join(source, "src"), join(destination, "src"), { recursive: true });
   await cp(join(source, "preview"), join(destination, "preview"), { recursive: true });
@@ -367,6 +368,7 @@ for (const app of APPS) {
     : "src/assets/depthpop-logo.svg";
   for (const required of [
     "app.js",
+    "package-lock.json",
     "START-HERE.html",
     "preview/index.html",
     expectedLogo,
@@ -450,6 +452,7 @@ for (const app of APPS) {
       "backend/app.py",
       "backend/Dockerfile",
       "backend/requirements.txt",
+      "backend/requirements.lock.txt",
       "backend/test_app.py",
       "backend/.env.example",
       ...(app.id === "holoforge-canva"
