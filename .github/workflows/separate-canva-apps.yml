@@ -89,9 +89,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: apps/holoforge-canva/backend/requirements.txt
+          cache-dependency-path: apps/holoforge-canva/backend/requirements.lock.txt
       - name: Install backend
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.lock.txt
+      - name: Verify installed dependencies
+        run: python -m pip check
       - name: Compile backend
         run: python -m compileall -q .
       - name: Backend unit tests
@@ -126,9 +128,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: apps/depthpop-canva/backend/requirements.txt
+          cache-dependency-path: apps/depthpop-canva/backend/requirements.lock.txt
       - name: Install backend
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.lock.txt
+      - name: Verify installed dependencies
+        run: python -m pip check
       - name: Compile backend
         run: python -m py_compile app.py test_app.py
       - name: Backend unit tests
