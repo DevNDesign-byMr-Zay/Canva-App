@@ -20,6 +20,8 @@ for (const app of ["depthpop-canva", "holoforge-canva"]) {
     assert.deepEqual(lock.packages[""].dependencies, manifest.dependencies);
     assert.deepEqual(lock.packages[""].devDependencies, manifest.devDependencies);
     assert.deepEqual(lock.packages[""].engines, manifest.engines);
+    assert.equal(manifest.scripts["test:coverage"], "vitest run --coverage");
+    assert.equal(manifest.devDependencies["@vitest/coverage-v8"], lock.packages["node_modules/@vitest/coverage-v8"].version);
 
     // The locked version and resolution are mandatory for every first-party
     // runtime or build dependency. npm ci verifies nested transitive edges.
