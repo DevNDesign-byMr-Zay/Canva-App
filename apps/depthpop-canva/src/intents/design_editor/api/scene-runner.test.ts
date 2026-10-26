@@ -1,14 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { DepthScene } from "../scene/depth-scene";
-import type {
-  DepthPopApiClient,
-  JobStatusResponse,
-} from "./depthpop-api";
-import {
-  abortableDelay,
-  createDepthSceneFromImage,
-} from "./scene-runner";
+import type { DepthPopApiClient, JobStatusResponse } from "./depthpop-api";
+import { abortableDelay, createDepthSceneFromImage } from "./scene-runner";
 
 function scene(): DepthScene {
   return {
@@ -40,19 +34,23 @@ function scene(): DepthScene {
   };
 }
 
-function fakeClient(overrides: Partial<DepthPopApiClient> = {}): DepthPopApiClient {
+function fakeClient(
+  overrides: Partial<DepthPopApiClient> = {},
+): DepthPopApiClient {
   return {
     createSceneJob: vi.fn(async () => ({
       jobId: "job_1",
       status: "queued",
     })),
-    getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
-      jobId: "job_1",
-      status: "complete",
-      stage: "complete",
-      progress: 1,
-      sceneId: "scene_ready",
-    })),
+    getJobStatus: vi.fn(
+      async (): Promise<JobStatusResponse> => ({
+        jobId: "job_1",
+        status: "complete",
+        stage: "complete",
+        progress: 1,
+        sceneId: "scene_ready",
+      }),
+    ),
     getScene: vi.fn(async () => scene()),
     ...overrides,
   } as unknown as DepthPopApiClient;
@@ -91,13 +89,15 @@ describe("createDepthSceneFromImage", () => {
 
   it("surfaces provider job errors without a legacy fallback", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
-        jobId: "job_1",
-        status: "error",
-        stage: "segmenting_objects",
-        progress: 0.25,
-        error: "SAM segmentation failed",
-      })),
+      getJobStatus: vi.fn(
+        async (): Promise<JobStatusResponse> => ({
+          jobId: "job_1",
+          status: "error",
+          stage: "segmenting_objects",
+          progress: 0.25,
+          error: "SAM segmentation failed",
+        }),
+      ),
     });
     const controller = new AbortController();
 
@@ -115,12 +115,14 @@ describe("createDepthSceneFromImage", () => {
 
   it("fails if a completed job omits its scene id", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
-        jobId: "job_1",
-        status: "complete",
-        stage: "complete",
-        progress: 1,
-      })),
+      getJobStatus: vi.fn(
+        async (): Promise<JobStatusResponse> => ({
+          jobId: "job_1",
+          status: "complete",
+          stage: "complete",
+          progress: 1,
+        }),
+      ),
     });
 
     await expect(
@@ -135,12 +137,14 @@ describe("createDepthSceneFromImage", () => {
 
   it("times out deterministically after the configured attempts", async () => {
     const client = fakeClient({
-      getJobStatus: vi.fn(async (): Promise<JobStatusResponse> => ({
-        jobId: "job_1",
-        status: "processing",
-        stage: "estimating_depth",
-        progress: 0.5,
-      })),
+      getJobStatus: vi.fn(
+        async (): Promise<JobStatusResponse> => ({
+          jobId: "job_1",
+          status: "processing",
+          stage: "estimating_depth",
+          progress: 0.5,
+        }),
+      ),
     });
 
     await expect(
