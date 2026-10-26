@@ -135,13 +135,15 @@ for (const marker of [
   "content.ref = asset.ref",
   "await draft.save()",
   "<DepthPopLogo />",
-  '<LocalImageUpload productName="DepthPop"',
 ]) {
   if (!depthApp.includes(marker)) {
     fail(`depthpop: execution/UI marker missing: ${marker}`);
   }
 }
 
+if (!/<LocalImageUpload\s+productName\s*=\s*["']DepthPop["']/.test(depthApp)) {
+  fail("depthpop: local image upload product name must remain DepthPop");
+}
 const backend = readText(full(APPS.depthpop.root, "backend/app.py"));
 for (const marker of [
   'title="DepthPop Canva Backend"',
