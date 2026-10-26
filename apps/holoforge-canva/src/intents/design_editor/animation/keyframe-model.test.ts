@@ -9,9 +9,9 @@ import {
 } from "./keyframe-model";
 
 const transform = (x: number): SceneTransform => ({
-  position: {x,y:0,z:0},
-  rotation: {x:0,y:x/10,z:0},
-  scale: {x:1+x/10,y:1+x/10,z:1+x/10},
+  position: { x, y: 0, z: 0 },
+  rotation: { x: 0, y: x / 10, z: 0 },
+  scale: { x: 1 + x / 10, y: 1 + x / 10, z: 1 + x / 10 },
 });
 
 describe("HoloForge keyframe model", () => {
