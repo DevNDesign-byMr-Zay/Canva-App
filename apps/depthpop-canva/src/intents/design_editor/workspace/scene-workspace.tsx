@@ -15,18 +15,63 @@ export type { SceneWorkspaceProps } from "./use-scene-workspace-controller";
 
 export function SceneWorkspace(props: SceneWorkspaceProps) {
   const {
-    state, dispatch, scene, dirty, onExit,
-    setIsPlaying, activePanel, setActivePanel, backgroundReconstructionEnabled, degradedObjects,
-    assetError, transformMode, setTransformMode, viewportScene, handleViewportTransform,
-    apiClient, mergeSelection, setMergeSelection, isObjectBusy, handleMerge,
-    sortedObjects, resolveUrl, selectedObject, objectNameDraft, setObjectNameDraft,
-    handleRename, handleDuplicate, handleSplit, handleDelete, selectedPoseTimes,
-    isPlaying, easing, setEasing, addPose, applyPreset,
-    exportFormat, setExportFormat, includeAnimation, setIncludeAnimation, exportFps,
-    setExportFps, exportWidth, setExportWidth, exportHeight, setExportHeight,
-    exportBusy, exportStatus, startExport, cancelExport, downloadExport,
-    onSave, isSaving, isRenderingToCanva, handleSave, onExport,
-    handleRenderToCanva, statusMessage,
+    state,
+    dispatch,
+    scene,
+    dirty,
+    onExit,
+    setIsPlaying,
+    activePanel,
+    setActivePanel,
+    backgroundReconstructionEnabled,
+    degradedObjects,
+    assetError,
+    transformMode,
+    setTransformMode,
+    viewportScene,
+    handleViewportTransform,
+    apiClient,
+    mergeSelection,
+    setMergeSelection,
+    isObjectBusy,
+    handleMerge,
+    sortedObjects,
+    resolveUrl,
+    selectedObject,
+    objectNameDraft,
+    setObjectNameDraft,
+    handleRename,
+    handleDuplicate,
+    handleSplit,
+    handleDelete,
+    selectedPoseTimes,
+    isPlaying,
+    easing,
+    setEasing,
+    addPose,
+    applyPreset,
+    exportFormat,
+    setExportFormat,
+    includeAnimation,
+    setIncludeAnimation,
+    exportFps,
+    setExportFps,
+    exportWidth,
+    setExportWidth,
+    exportHeight,
+    setExportHeight,
+    exportBusy,
+    exportStatus,
+    startExport,
+    cancelExport,
+    downloadExport,
+    onSave,
+    isSaving,
+    isRenderingToCanva,
+    handleSave,
+    onExport,
+    handleRenderToCanva,
+    statusMessage,
   } = useSceneWorkspaceController(props);
 
   return (
@@ -50,31 +95,29 @@ export function SceneWorkspace(props: SceneWorkspaceProps) {
       </header>
 
       <nav className="dp-workspace-tabs" aria-label="DepthPop workspace">
-        {(["SCENE", "ANIMATE", "EXPORT"] as WorkspacePanel[]).map(
-          (panel) => (
-            <button
-              key={panel}
-              type="button"
-              className={activePanel === panel ? "is-active" : ""}
-              onClick={() => setActivePanel(panel)}
-            >
-              {panel}
-            </button>
-          ),
-        )}
+        {(["SCENE", "ANIMATE", "EXPORT"] as WorkspacePanel[]).map((panel) => (
+          <button
+            key={panel}
+            type="button"
+            className={activePanel === panel ? "is-active" : ""}
+            onClick={() => setActivePanel(panel)}
+          >
+            {panel}
+          </button>
+        ))}
       </nav>
 
       {!backgroundReconstructionEnabled && (
         <div className="dp-scene-warning" role="status">
-          Background reconstruction is unavailable. Moving an extracted
-          object can reveal source pixels behind it.
+          Background reconstruction is unavailable. Moving an extracted object
+          can reveal source pixels behind it.
         </div>
       )}
       {degradedObjects.length > 0 && (
         <div className="dp-scene-warning" role="status">
           {degradedObjects.length} object
-          {degradedObjects.length === 1 ? "" : "s"} use bounding-box
-          fallback extraction.
+          {degradedObjects.length === 1 ? "" : "s"} use bounding-box fallback
+          extraction.
         </div>
       )}
       {assetError && (
@@ -84,21 +127,19 @@ export function SceneWorkspace(props: SceneWorkspaceProps) {
       )}
 
       <div className="dp-transform-toolbar" aria-label="3D transform tools">
-        {(["translate", "rotate", "scale"] as TransformMode[]).map(
-          (mode) => (
-            <button
-              key={mode}
-              type="button"
-              className={transformMode === mode ? "is-active" : ""}
-              onClick={() => {
-                setTransformMode(mode);
-                setIsPlaying(false);
-              }}
-            >
-              {mode.toUpperCase()}
-            </button>
-          ),
-        )}
+        {(["translate", "rotate", "scale"] as TransformMode[]).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className={transformMode === mode ? "is-active" : ""}
+            onClick={() => {
+              setTransformMode(mode);
+              setIsPlaying(false);
+            }}
+          >
+            {mode.toUpperCase()}
+          </button>
+        ))}
         <span className="dp-webgl-badge">WEBGL LIVE</span>
       </div>
 
@@ -196,12 +237,7 @@ export function SceneWorkspace(props: SceneWorkspaceProps) {
           <button
             type="button"
             className="dp-btn-reset"
-            disabled={
-              !dirty ||
-              isSaving ||
-              isRenderingToCanva ||
-              exportBusy
-            }
+            disabled={!dirty || isSaving || isRenderingToCanva || exportBusy}
             onClick={() => void handleSave()}
           >
             {isSaving ? "SAVING…" : dirty ? "SAVE SCENE" : "SAVED"}
@@ -211,18 +247,10 @@ export function SceneWorkspace(props: SceneWorkspaceProps) {
           <button
             type="button"
             className="dp-exec"
-            disabled={
-              isRenderingToCanva ||
-              isSaving ||
-              exportBusy
-            }
+            disabled={isRenderingToCanva || isSaving || exportBusy}
             onClick={() => void handleRenderToCanva()}
           >
-            <span>
-              {isRenderingToCanva
-                ? "RENDERING…"
-                : "RENDER TO CANVA"}
-            </span>
+            <span>{isRenderingToCanva ? "RENDERING…" : "RENDER TO CANVA"}</span>
           </button>
         )}
       </footer>

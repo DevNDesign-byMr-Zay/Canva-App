@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DepthPopApiClient, DepthPopExportRequest, DepthPopExportStatus } from "../api/depthpop-api";
+import type {
+  DepthPopApiClient,
+  DepthPopExportRequest,
+  DepthPopExportStatus,
+} from "../api/depthpop-api";
 import type { DepthScene } from "../scene/depth-scene";
 import type { SceneAction } from "./scene-reducer";
 
@@ -25,10 +29,21 @@ function exportExtension(format: DepthPopExportRequest["format"]): string {
 }
 
 export function useSceneExports({
-  apiClient, scene, onSave, dirty, dispatch, exportFormat, includeAnimation,
-  exportFps, exportWidth, exportHeight, setStatusMessage,
+  apiClient,
+  scene,
+  onSave,
+  dirty,
+  dispatch,
+  exportFormat,
+  includeAnimation,
+  exportFps,
+  exportWidth,
+  exportHeight,
+  setStatusMessage,
 }: SceneExportOptions) {
-  const [exportStatus, setExportStatus] = useState<DepthPopExportStatus | null>(null);
+  const [exportStatus, setExportStatus] = useState<DepthPopExportStatus | null>(
+    null,
+  );
   const [exportBusy, setExportBusy] = useState(false);
 
   const startExport = async () => {
@@ -61,10 +76,7 @@ export function useSceneExports({
 
       let current = await apiClient.getExportStatus(created.jobId);
       setExportStatus(current);
-      while (
-        current.status === "queued" ||
-        current.status === "processing"
-      ) {
+      while (current.status === "queued" || current.status === "processing") {
         await new Promise((resolve) => window.setTimeout(resolve, 700));
         current = await apiClient.getExportStatus(created.jobId);
         setExportStatus(current);
@@ -89,16 +101,12 @@ export function useSceneExports({
   const cancelExport = async () => {
     if (!apiClient || !exportStatus) return;
     try {
-      const cancelled = await apiClient.cancelExportJob(
-        exportStatus.jobId,
-      );
+      const cancelled = await apiClient.cancelExportJob(exportStatus.jobId);
       setExportStatus(cancelled);
       setStatusMessage("Export cancellation requested.");
     } catch (cause) {
       setStatusMessage(
-        cause instanceof Error
-          ? cause.message
-          : "Could not cancel export.",
+        cause instanceof Error ? cause.message : "Could not cancel export.",
       );
     }
   };
@@ -119,13 +127,16 @@ export function useSceneExports({
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (cause) {
       setStatusMessage(
-        cause instanceof Error
-          ? cause.message
-          : "Could not download export.",
+        cause instanceof Error ? cause.message : "Could not download export.",
       );
     }
   };
 
-
-  return { exportStatus, exportBusy, startExport, cancelExport, downloadExport };
+  return {
+    exportStatus,
+    exportBusy,
+    startExport,
+    cancelExport,
+    downloadExport,
+  };
 }

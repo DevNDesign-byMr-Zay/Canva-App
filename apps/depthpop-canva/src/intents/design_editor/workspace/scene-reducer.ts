@@ -149,11 +149,12 @@ export function sceneReducer(
       const objects = [...state.currentScene.objects].sort(
         (a, b) => a.order - b.order,
       );
-      const index = objects.findIndex((object) => object.id === action.objectId);
+      const index = objects.findIndex(
+        (object) => object.id === action.objectId,
+      );
       if (index < 0 || objects[index]?.locked) return state;
 
-      const targetIndex =
-        action.direction === "up" ? index + 1 : index - 1;
+      const targetIndex = action.direction === "up" ? index + 1 : index - 1;
       if (targetIndex < 0 || targetIndex >= objects.length) return state;
 
       const current = objects[index]!;
@@ -187,8 +188,7 @@ export function sceneReducer(
       return {
         ...state,
         currentScene: state.initialScene,
-        selectedObjectId:
-          state.initialScene.objects[0]?.id ?? null,
+        selectedObjectId: state.initialScene.objects[0]?.id ?? null,
       };
 
     case "COMMIT_SCENE":
@@ -196,24 +196,22 @@ export function sceneReducer(
         ...state,
         initialScene: action.scene,
         currentScene: action.scene,
-        selectedObjectId:
-          action.scene.objects.some(
-            (object) => object.id === state.selectedObjectId,
-          )
-            ? state.selectedObjectId
-            : action.scene.objects[0]?.id ?? null,
+        selectedObjectId: action.scene.objects.some(
+          (object) => object.id === state.selectedObjectId,
+        )
+          ? state.selectedObjectId
+          : (action.scene.objects[0]?.id ?? null),
       };
 
     case "REPLACE_CURRENT_SCENE":
       return {
         ...state,
         currentScene: action.scene,
-        selectedObjectId:
-          action.scene.objects.some(
-            (object) => object.id === state.selectedObjectId,
-          )
-            ? state.selectedObjectId
-            : action.scene.objects[0]?.id ?? null,
+        selectedObjectId: action.scene.objects.some(
+          (object) => object.id === state.selectedObjectId,
+        )
+          ? state.selectedObjectId
+          : (action.scene.objects[0]?.id ?? null),
       };
 
     case "SET_ANIMATION_TRACKS": {
