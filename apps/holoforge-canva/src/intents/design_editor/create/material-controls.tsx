@@ -31,7 +31,10 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
     <div className="hf-material-controls">
       <div className="hf-control-row">
         <label htmlFor="ctrl-colorShift" className="hf-control-label">
-          <FormattedMessage defaultMessage="Color Shift" description="Color shift control label" />
+          <FormattedMessage
+            defaultMessage="Color Shift"
+            description="Color shift control label"
+          />
           <span className="hf-control-value">{parameters.colorShift}%</span>
         </label>
         <input
@@ -41,13 +44,18 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
           max={100}
           value={parameters.colorShift}
           className="hf-slider"
-          onChange={(e) => onChangeParameter("colorShift", Number(e.target.value))}
+          onChange={(e) =>
+            onChangeParameter("colorShift", Number(e.target.value))
+          }
         />
       </div>
 
       <div className="hf-control-row">
         <label htmlFor="ctrl-reflection" className="hf-control-label">
-          <FormattedMessage defaultMessage="Reflection" description="Reflection control label" />
+          <FormattedMessage
+            defaultMessage="Reflection"
+            description="Reflection control label"
+          />
           <span className="hf-control-value">{parameters.reflection}%</span>
         </label>
         <input
@@ -57,13 +65,18 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
           max={100}
           value={parameters.reflection}
           className="hf-slider"
-          onChange={(e) => onChangeParameter("reflection", Number(e.target.value))}
+          onChange={(e) =>
+            onChangeParameter("reflection", Number(e.target.value))
+          }
         />
       </div>
 
       <div className="hf-control-row">
         <label htmlFor="ctrl-glow" className="hf-control-label">
-          <FormattedMessage defaultMessage="Glow" description="Glow control label" />
+          <FormattedMessage
+            defaultMessage="Glow"
+            description="Glow control label"
+          />
           <span className="hf-control-value">{parameters.glow}%</span>
         </label>
         <input
@@ -79,9 +92,16 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
 
       <div className="hf-control-row">
         <span className="hf-control-label">
-          <FormattedMessage defaultMessage="Motion Mode" description="Motion mode label" />
+          <FormattedMessage
+            defaultMessage="Motion Mode"
+            description="Motion mode label"
+          />
         </span>
-        <div className="hf-motion-btn-group" role="radiogroup" aria-label="Motion Mode">
+        <div
+          className="hf-motion-btn-group"
+          role="radiogroup"
+          aria-label="Motion Mode"
+        >
           {(["static", "shimmer", "sweep", "pulse"] as const).map((mode) => (
             <button
               key={mode}
@@ -117,7 +137,10 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
           <div className="hf-accordion-content">
             <div className="hf-control-row">
               <label htmlFor="ctrl-depth" className="hf-control-label">
-                <FormattedMessage defaultMessage="Depth" description="Depth control label" />
+                <FormattedMessage
+                  defaultMessage="Depth"
+                  description="Depth control label"
+                />
                 <span className="hf-control-value">{parameters.depth}%</span>
               </label>
               <input
@@ -127,13 +150,18 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
                 max={100}
                 value={parameters.depth}
                 className="hf-slider"
-                onChange={(e) => onChangeParameter("depth", Number(e.target.value))}
+                onChange={(e) =>
+                  onChangeParameter("depth", Number(e.target.value))
+                }
               />
             </div>
 
             <div className="hf-control-row">
               <label htmlFor="ctrl-grain" className="hf-control-label">
-                <FormattedMessage defaultMessage="Grain" description="Grain control label" />
+                <FormattedMessage
+                  defaultMessage="Grain"
+                  description="Grain control label"
+                />
                 <span className="hf-control-value">{parameters.grain}%</span>
               </label>
               <input
@@ -143,13 +171,18 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
                 max={100}
                 value={parameters.grain}
                 className="hf-slider"
-                onChange={(e) => onChangeParameter("grain", Number(e.target.value))}
+                onChange={(e) =>
+                  onChangeParameter("grain", Number(e.target.value))
+                }
               />
             </div>
 
             <div className="hf-control-row">
               <label htmlFor="ctrl-angle" className="hf-control-label">
-                <FormattedMessage defaultMessage="Angle" description="Angle control label" />
+                <FormattedMessage
+                  defaultMessage="Angle"
+                  description="Angle control label"
+                />
                 <span className="hf-control-value">{parameters.angle}°</span>
               </label>
               <input
@@ -159,7 +192,9 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
                 max={360}
                 value={parameters.angle}
                 className="hf-slider"
-                onChange={(e) => onChangeParameter("angle", Number(e.target.value))}
+                onChange={(e) =>
+                  onChangeParameter("angle", Number(e.target.value))
+                }
               />
             </div>
 
@@ -169,7 +204,9 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
                   defaultMessage="Transparency"
                   description="Transparency control label"
                 />
-                <span className="hf-control-value">{parameters.transparency}%</span>
+                <span className="hf-control-value">
+                  {parameters.transparency}%
+                </span>
               </label>
               <input
                 id="ctrl-transparency"
@@ -178,7 +215,9 @@ export const MaterialControls: React.FC<MaterialControlsProps> = ({
                 max={100}
                 value={parameters.transparency}
                 className="hf-slider"
-                onChange={(e) => onChangeParameter("transparency", Number(e.target.value))}
+                onChange={(e) =>
+                  onChangeParameter("transparency", Number(e.target.value))
+                }
               />
             </div>
           </div>

@@ -7,8 +7,14 @@ import {
   type CreationType,
   type HolographicMaterialPreset,
 } from "../holographic/material-contract";
-import { createEffectPlan, type HolographicEffectPlan } from "../holographic/effect-plan";
-import { canExecuteHolographicPlan, resolveExecutionRoute } from "../holographic/effect-executor";
+import {
+  createEffectPlan,
+  type HolographicEffectPlan,
+} from "../holographic/effect-plan";
+import {
+  canExecuteHolographicPlan,
+  resolveExecutionRoute,
+} from "../holographic/effect-executor";
 import { getCreationForgeSupport } from "../holographic/forge-support";
 import { CreationTypes } from "./creation-types";
 import { MaterialPresets } from "./material-presets";
@@ -32,13 +38,19 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   sourceDescription,
 }) => {
   const intl = useIntl();
-  const [creationType, setCreationType] = useState<CreationType>("holo_graphic");
-  const [selectedPreset, setSelectedPreset] = useState<HolographicMaterialPreset>(
-    MATERIAL_PRESETS[0],
+  const [creationType, setCreationType] =
+    useState<CreationType>("holo_graphic");
+  const [selectedPreset, setSelectedPreset] =
+    useState<HolographicMaterialPreset>(MATERIAL_PRESETS[0]);
+  const [parameters, setParameters] = useState<MaterialParameters>(
+    MATERIAL_PRESETS[0].parameters,
   );
-  const [parameters, setParameters] = useState<MaterialParameters>(MATERIAL_PRESETS[0].parameters);
-  const [activeTabSection, setActiveTabSection] = useState<"presets" | "custom">("presets");
-  const [previewPlan, setPreviewPlan] = useState<HolographicEffectPlan | null>(null);
+  const [activeTabSection, setActiveTabSection] = useState<
+    "presets" | "custom"
+  >("presets");
+  const [previewPlan, setPreviewPlan] = useState<HolographicEffectPlan | null>(
+    null,
+  );
   const [textSource, setTextSource] = useState("HOLOFORGE");
 
   const handleSelectPreset = (preset: HolographicMaterialPreset) => {
@@ -63,7 +75,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         sourceKind,
         sourceText: creationType === "holo_text" ? textSource : undefined,
       }),
-    [creationType, parameters, selectedPreset.id, sourceImageRef, sourceKind, textSource],
+    [
+      creationType,
+      parameters,
+      selectedPreset.id,
+      sourceImageRef,
+      sourceKind,
+      textSource,
+    ],
   );
 
   const support = getCreationForgeSupport(creationType);
@@ -83,7 +102,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   });
 
   return (
-    <div className="hf-create-panel" id="panel-create" role="tabpanel" aria-labelledby="tab-create">
+    <div
+      className="hf-create-panel"
+      id="panel-create"
+      role="tabpanel"
+      aria-labelledby="tab-create"
+    >
       <div className="hf-section">
         <span className="hf-section-kicker">
           <FormattedMessage
@@ -91,7 +115,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             description="Creation type section kicker"
           />
         </span>
-        <CreationTypes selectedType={creationType} onSelectType={setCreationType} />
+        <CreationTypes
+          selectedType={creationType}
+          onSelectType={setCreationType}
+        />
 
         {creationType === "holo_text" && (
           <div className="hf-source-editor">
@@ -104,23 +131,37 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               onChange={(event) => setTextSource(event.target.value)}
               placeholder="Enter holographic text"
             />
-            <span>{textSource.trim().length}/96 · rendered as a re-editable HoloForge app element</span>
+            <span>
+              {textSource.trim().length}/96 · rendered as a re-editable
+              HoloForge app element
+            </span>
           </div>
         )}
 
         {(creationType === "holo_logo" || creationType === "holo_graphic") && (
-          <div className={"hf-source-status " + (sourceImageRef ? "is-ready" : "")}>
+          <div
+            className={"hf-source-status " + (sourceImageRef ? "is-ready" : "")}
+          >
             <div>
               <span>IMAGE SOURCE</span>
               <strong>
                 {sourceImageRef
-                  ? sourceDescription || (sourceKind === "selected" ? "Selected Canva image" : "Uploaded source")
+                  ? sourceDescription ||
+                    (sourceKind === "selected"
+                      ? "Selected Canva image"
+                      : "Uploaded source")
                   : creationType === "holo_logo"
                     ? "Required for Holo Logo"
                     : "Optional for Holo Graphic"}
               </strong>
             </div>
-            <b>{sourceImageRef ? (route === "DERIVED_IMAGE" ? "PIXEL FORGE" : "BOUND") : "NO SOURCE"}</b>
+            <b>
+              {sourceImageRef
+                ? route === "DERIVED_IMAGE"
+                  ? "PIXEL FORGE"
+                  : "BOUND"
+                : "NO SOURCE"}
+            </b>
           </div>
         )}
       </div>
@@ -139,14 +180,20 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               className={`hf-sub-tab ${activeTabSection === "presets" ? "is-active" : ""}`}
               onClick={() => setActiveTabSection("presets")}
             >
-              <FormattedMessage defaultMessage="Presets" description="Presets tab button" />
+              <FormattedMessage
+                defaultMessage="Presets"
+                description="Presets tab button"
+              />
             </button>
             <button
               type="button"
               className={`hf-sub-tab ${activeTabSection === "custom" ? "is-active" : ""}`}
               onClick={() => setActiveTabSection("custom")}
             >
-              <FormattedMessage defaultMessage="Tweak" description="Tweak tab button" />
+              <FormattedMessage
+                defaultMessage="Tweak"
+                description="Tweak tab button"
+              />
             </button>
           </div>
         </div>
@@ -157,7 +204,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             onSelectPreset={handleSelectPreset}
           />
         ) : (
-          <MaterialControls parameters={parameters} onChangeParameter={handleChangeParameter} />
+          <MaterialControls
+            parameters={parameters}
+            onChangeParameter={handleChangeParameter}
+          />
         )}
       </div>
 
@@ -171,16 +221,16 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         </Alert>
       )}
 
-      {sourceMissing && (
-        <Alert tone="warn">
-          {support.reason}
-        </Alert>
-      )}
+      {sourceMissing && <Alert tone="warn">{support.reason}</Alert>}
 
       {!sourceMissing && (
         <div className="hf-route-note">
           <span>OUTPUT ROUTE</span>
-          <strong>{route === "DERIVED_IMAGE" ? "Derived holographic image" : "Editable HoloForge app element"}</strong>
+          <strong>
+            {route === "DERIVED_IMAGE"
+              ? "Derived holographic image"
+              : "Editable HoloForge app element"}
+          </strong>
         </div>
       )}
 
