@@ -15,8 +15,9 @@ from pathlib import Path
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from source_geometry import normalize_contours, useful_contours
-from spectral_material import build_spectral_profile
+from blender_materials import material_for, animate_material
+from blender_geometry import decode_data_image, source_alpha_geometry, create_extruded_contour_object, attach_source_face
+from blender_animation import apply_transform, add_keyframes
 
 args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 if len(args) != 1:
@@ -48,391 +49,6 @@ scene.frame_end = max(
 scene.render.film_transparent = bool(request.get("transparentBackground", False))
 
 
-def rgba(hex_or_hsl: str):
-    value = (hex_or_hsl or "#ffffff").strip()
-    if value.startswith("#") and len(value) in {4, 7}:
-        if len(value) == 4:
-            value = "#" + "".join(char * 2 for char in value[1:])
-        return tuple(int(value[index:index+2], 16) / 255 for index in (1, 3, 5)) + (1.0,)
-
-    match = re.fullmatch(
-        r"hsl\(\s*([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)%\s+([-+]?\d+(?:\.\d+)?)%\s*\)",
-        value,
-        flags=re.IGNORECASE,
-    )
-    if match:
-        hue = (float(match.group(1)) % 360.0) / 360.0
-        saturation = max(0.0, min(1.0, float(match.group(2)) / 100.0))
-        lightness = max(0.0, min(1.0, float(match.group(3)) / 100.0))
-        red, green, blue = colorsys.hls_to_rgb(hue, lightness, saturation)
-        return (red, green, blue, 1.0)
-
-    return (0.35, 0.8, 1.0, 1.0)
-
-
-def material_for(spec: dict):
-    profile = build_spectral_profile(spec)
-    material = bpy.data.materials.new("HoloForgeMaterial")
-    material.use_nodes = True
-    material["holoforge_family"] = profile.family
-    material["holoforge_spectral"] = bool(profile.spectral)
-    material["holoforge_diffraction"] = float(spec.get("diffraction", 0.0))
-    material["holoforge_spectral_shift"] = float(spec.get("spectralShift", 0.0))
-
-    nodes = material.node_tree.nodes
-    links = material.node_tree.links
-    principled = nodes.get("Principled BSDF")
-    if principled:
-        principled.inputs["Base Color"].default_value = rgba(spec.get("baseColor", "#5cecff"))
-        principled.inputs["Metallic"].default_value = profile.metallic
-        principled.inputs["Roughness"].default_value = profile.roughness
-        principled.inputs["Alpha"].default_value = profile.opacity
-        if "Transmission Weight" in principled.inputs:
-            principled.inputs["Transmission Weight"].default_value = profile.transmission
-        if "IOR" in principled.inputs:
-            principled.inputs["IOR"].default_value = profile.ior
-        if "Coat Weight" in principled.inputs:
-            principled.inputs["Coat Weight"].default_value = profile.coat_weight
-        if "Coat Roughness" in principled.inputs:
-            principled.inputs["Coat Roughness"].default_value = max(0.02, profile.roughness * 0.55)
-        if "Emission Color" in principled.inputs:
-            principled.inputs["Emission Color"].default_value = rgba(spec.get("emissionColor", "#6cefff"))
-        if "Emission Strength" in principled.inputs:
-            principled.inputs["Emission Strength"].default_value = profile.emission_strength
-
-        if profile.spectral:
-            layer_weight = nodes.new("ShaderNodeLayerWeight")
-            layer_weight.name = "HoloForge View Angle"
-            layer_weight.inputs["Blend"].default_value = 0.38
-
-            spectrum = nodes.new("ShaderNodeValToRGB")
-            spectrum.name = "HoloForge Spectrum"
-            spectrum.color_ramp.interpolation = "EASE"
-
-            first = spectrum.color_ramp.elements[0]
-            last = spectrum.color_ramp.elements[1]
-            first.position = profile.ramp[0][0]
-            first.color = profile.ramp[0][1]
-            last.position = profile.ramp[-1][0]
-            last.color = profile.ramp[-1][1]
-
-            for position, color in profile.ramp[1:-1]:
-                stop = spectrum.color_ramp.elements.new(position)
-                stop.color = color
-
-            links.new(layer_weight.outputs["Facing"], spectrum.inputs["Fac"])
-            links.new(spectrum.outputs["Color"], principled.inputs["Base Color"])
-            if "Emission Color" in principled.inputs:
-                links.new(spectrum.outputs["Color"], principled.inputs["Emission Color"])
-
-    material.surface_render_method = "DITHERED"
-    return material
-
-
-def animate_material(material, item: dict):
-    preset = item.get("animationPreset", "static")
-    if preset != "shimmer" or not material.use_nodes:
-        return
-
-    principled = material.node_tree.nodes.get("Principled BSDF")
-    if not principled or "Emission Strength" not in principled.inputs:
-        return
-
-    emission = principled.inputs["Emission Strength"]
-    baseline = max(0.0, float(item["material"].get("emissionStrength", 0.0)))
-    emission.default_value = baseline * 0.65
-    emission.keyframe_insert(data_path="default_value", frame=1)
-    emission.default_value = max(baseline * 1.7, baseline + 0.4)
-    emission.keyframe_insert(data_path="default_value", frame=max(2, scene.frame_end // 2))
-    emission.default_value = baseline * 0.65
-    emission.keyframe_insert(data_path="default_value", frame=scene.frame_end)
-
-
-def decode_data_image(url: str, stem: str) -> Path | None:
-    if not url.startswith("data:image/") or ";base64," not in url:
-        return None
-    header, encoded = url.split(",", 1)
-    mime = header.split(";", 1)[0]
-    extension = {
-        "data:image/png": ".png",
-        "data:image/jpeg": ".jpg",
-        "data:image/webp": ".webp",
-    }.get(mime)
-    if not extension:
-        return None
-    raw = base64.b64decode(encoded, validate=True)
-    if not raw or len(raw) > 20 * 1024 * 1024:
-        return None
-    path = output_dir / (stem + extension)
-    path.write_bytes(raw)
-    return path
-
-
-def source_alpha_geometry(
-    image,
-    *,
-    max_side: int = 192,
-    alpha_threshold: float = 0.08,
-):
-    source_width, source_height = int(image.size[0]), int(image.size[1])
-    if source_width <= 0 or source_height <= 0:
-        return None
-
-    scale = min(1.0, max_side / max(source_width, source_height))
-    width = max(2, round(source_width * scale))
-    height = max(2, round(source_height * scale))
-
-    analysis = image.copy()
-    try:
-        analysis.scale(width, height)
-        pixels = list(analysis.pixels[:])
-        if len(pixels) < width * height * 4:
-            return None
-
-        mask = bytearray(width * height)
-        opaque = 0
-        for index in range(width * height):
-            alpha = float(pixels[index * 4 + 3])
-            if alpha >= alpha_threshold:
-                mask[index] = 1
-                opaque += 1
-
-        coverage = opaque / max(1, width * height)
-        if coverage <= 0.002 or coverage >= 0.985:
-            return None
-
-        contours = useful_contours(
-            mask,
-            width,
-            height,
-            epsilon=1.15,
-            max_contours=32,
-            minimum_relative_area=0.002,
-        )
-        if not contours:
-            return None
-
-        normalized = normalize_contours(
-            contours,
-            width,
-            height,
-            target_width=2.3,
-        )
-        return {
-            "contours": normalized,
-            "width": 2.3,
-            "height": 2.3 * (source_height / source_width),
-            "coverage": coverage,
-        }
-    finally:
-        bpy.data.images.remove(analysis)
-
-
-def create_extruded_contour_object(
-    item: dict,
-    alpha_geometry: dict,
-    *,
-    thickness: float,
-):
-    curve = bpy.data.curves.new(item["id"] + "-silhouette", type="CURVE")
-    curve.dimensions = "2D"
-    curve.resolution_u = 2
-    curve.render_resolution_u = 2
-    curve.fill_mode = "BOTH"
-    curve.extrude = max(0.01, thickness * 0.5)
-    curve.bevel_depth = min(
-        max(0.0, float(item["geometry"].get("bevelSize", 0.0))),
-        max(0.0, thickness * 0.20),
-    )
-    curve.bevel_resolution = max(
-        0,
-        min(4, int(item["geometry"].get("bevelSegments", 2))),
-    )
-
-    for contour in alpha_geometry["contours"]:
-        if len(contour) < 3:
-            continue
-        spline = curve.splines.new("POLY")
-        spline.points.add(len(contour) - 1)
-        for point, source in zip(spline.points, contour):
-            point.co = (source.x, source.y, 0.0, 1.0)
-        spline.use_cyclic_u = True
-
-    if not curve.splines:
-        bpy.data.curves.remove(curve)
-        return None
-
-    obj = bpy.data.objects.new(item["id"] + "-silhouette", curve)
-    scene.collection.objects.link(obj)
-    obj["holoforge_geometry"] = "alpha-extruded"
-    obj["holoforge_alpha_coverage"] = float(alpha_geometry["coverage"])
-
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
-    obj = bpy.context.view_layer.objects.active
-    if obj is not None:
-        obj.name = item["id"]
-        obj["holoforge_geometry"] = "alpha-extruded"
-        obj["holoforge_alpha_coverage"] = float(alpha_geometry["coverage"])
-    return obj
-
-
-def attach_source_face(
-    parent,
-    image,
-    alpha_geometry: dict,
-    *,
-    thickness: float,
-):
-    material = bpy.data.materials.new(parent.name + "-source-face")
-    material.use_nodes = True
-    nodes = material.node_tree.nodes
-    links = material.node_tree.links
-    principled = nodes.get("Principled BSDF")
-    texture = nodes.new("ShaderNodeTexImage")
-    texture.image = image
-    if principled:
-        links.new(texture.outputs["Color"], principled.inputs["Base Color"])
-        if texture.outputs.get("Alpha"):
-            links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
-        principled.inputs["Roughness"].default_value = 0.28
-        if "Emission Color" in principled.inputs:
-            links.new(texture.outputs["Color"], principled.inputs["Emission Color"])
-        if "Emission Strength" in principled.inputs:
-            principled.inputs["Emission Strength"].default_value = 0.12
-    material.surface_render_method = "DITHERED"
-
-    bpy.ops.mesh.primitive_plane_add(
-        size=2.0,
-        location=(0.0, 0.0, max(0.012, thickness + 0.014)),
-    )
-    face = bpy.context.object
-    face.name = parent.name + "-source-face"
-    face.scale = (
-        float(alpha_geometry["width"]) / 2.0,
-        float(alpha_geometry["height"]) / 2.0,
-        1.0,
-    )
-    face.data.materials.append(material)
-    face.parent = parent
-    return face
-
-
-def apply_transform(obj, transform: dict):
-    position = transform["position"]
-    rotation = transform["rotation"]
-    scale = transform["scale"]
-    obj.location = (position["x"], position["y"], position["z"])
-    obj.rotation_euler = (rotation["x"], rotation["y"], rotation["z"])
-    obj.scale = (scale["x"], scale["y"], scale["z"])
-
-
-
-def _style_keyframe_segment(obj, data_path: str, frame: int, easing: str):
-    if not obj.animation_data or not obj.animation_data.action:
-        return
-
-    style = blender_keyframe_style(easing)
-    for fcurve in obj.animation_data.action.fcurves:
-        if fcurve.data_path != data_path:
-            continue
-        for point in fcurve.keyframe_points:
-            if abs(float(point.co.x) - float(frame)) > 0.25:
-                continue
-            point.interpolation = style.interpolation
-            if style.easing is not None and hasattr(point, "easing"):
-                point.easing = style.easing
-
-
-def _insert_builtin_motion(obj, item: dict, preset: str):
-    data_path = animated_data_path(preset)
-    if data_path is None:
-        return
-
-    fps = float(scene_data["timeline"]["fps"])
-    base_position = tuple(float(value) for value in obj.location)
-    base_rotation = tuple(float(value) for value in obj.rotation_euler)
-    base_scale = tuple(float(value) for value in obj.scale)
-
-    for frame in sampled_motion_frames(scene.frame_start, scene.frame_end):
-        time_seconds = max(0.0, (frame - 1) / max(1.0, fps))
-        motion = sample_builtin_motion(preset, time_seconds)
-
-        if data_path == "location":
-            obj.location = (
-                base_position[0] + motion.position.x,
-                base_position[1] + motion.position.y,
-                base_position[2] + motion.position.z,
-            )
-        elif data_path == "rotation_euler":
-            obj.rotation_euler = (
-                base_rotation[0] + motion.rotation.x,
-                base_rotation[1] + motion.rotation.y,
-                base_rotation[2] + motion.rotation.z,
-            )
-        elif data_path == "scale":
-            obj.scale = (
-                base_scale[0] * motion.scale.x,
-                base_scale[1] * motion.scale.y,
-                base_scale[2] * motion.scale.z,
-            )
-
-        obj.keyframe_insert(data_path=data_path, frame=frame)
-
-    if obj.animation_data and obj.animation_data.action:
-        for fcurve in obj.animation_data.action.fcurves:
-            if fcurve.data_path != data_path:
-                continue
-            for point in fcurve.keyframe_points:
-                point.interpolation = "LINEAR"
-
-    apply_transform(obj, item["transform"])
-
-
-def add_keyframes(obj, item: dict):
-    tracks = item.get("animationTracks") or []
-    duration = scene_data["timeline"]["durationMs"]
-    fps = scene_data["timeline"]["fps"]
-    for track in tracks:
-        property_name = track["property"]
-        path = {
-            "position": "location",
-            "rotation": "rotation_euler",
-            "scale": "scale",
-        }[property_name]
-        for keyframe in track.get("keyframes", []):
-            frame = 1 + round((keyframe["timeMs"] / 1000) * fps)
-            value = keyframe["value"]
-            setattr(obj, path, (value["x"], value["y"], value["z"]))
-            obj.keyframe_insert(data_path=path, frame=frame)
-    if tracks:
-        apply_transform(obj, item["transform"])
-        return
-
-    preset = item.get("animationPreset", "static")
-    if preset in {"turntable", "sweep"}:
-        start = tuple(obj.rotation_euler)
-        obj.keyframe_insert(data_path="rotation_euler", frame=1)
-        obj.rotation_euler[1] = start[1] + math.tau
-        obj.keyframe_insert(data_path="rotation_euler", frame=scene.frame_end)
-    elif preset == "pulse":
-        start = tuple(obj.scale)
-        obj.keyframe_insert(data_path="scale", frame=1)
-        obj.scale = tuple(value * 1.08 for value in start)
-        obj.keyframe_insert(data_path="scale", frame=max(2, scene.frame_end // 2))
-        obj.scale = start
-        obj.keyframe_insert(data_path="scale", frame=scene.frame_end)
-    elif preset == "orbit":
-        start = tuple(obj.location)
-        obj.keyframe_insert(data_path="location", frame=1)
-        obj.location[0] = start[0] + 0.5
-        obj.location[2] = start[2] + 0.25
-        obj.keyframe_insert(data_path="location", frame=max(2, scene.frame_end // 2))
-        obj.location = start
-        obj.keyframe_insert(data_path="location", frame=scene.frame_end)
-
-
 def create_object(item: dict):
     kind = item["creationType"]
     geometry = item["geometry"]
@@ -452,7 +68,7 @@ def create_object(item: dict):
         obj = bpy.context.object
     else:
         source_url = geometry.get("sourceUrl") or scene_data.get("source", {}).get("previewUrl")
-        image_path = decode_data_image(source_url, item["id"]) if source_url else None
+        image_path = decode_data_image(source_url, item["id"], output_dir) if source_url else None
         if image_path:
             image = bpy.data.images.load(str(image_path))
             alpha_geometry = source_alpha_geometry(image)
@@ -461,22 +77,20 @@ def create_object(item: dict):
                 obj = create_extruded_contour_object(
                     item,
                     alpha_geometry,
-                    thickness=thickness,
-                    material_spec=item["material"],
+                    thickness=thickness, scene=scene,
                 )
                 if obj is None:
                     alpha_geometry = None
 
             if alpha_geometry:
                 material = material_for(item["material"])
-                animate_material(material, item)
+                animate_material(material, item, scene)
                 obj.data.materials.append(material)
                 attach_source_face(
                     obj,
                     image,
                     alpha_geometry,
                     thickness=thickness,
-                    material_spec=item["material"],
                 )
                 material = None
             else:
@@ -497,7 +111,7 @@ def create_object(item: dict):
                 )
 
                 material = material_for(item["material"])
-                animate_material(material, item)
+                animate_material(material, item, scene)
                 obj.data.materials.append(material)
                 attach_source_face(
                     obj,
@@ -508,7 +122,6 @@ def create_object(item: dict):
                         "coverage": 1.0,
                     },
                     thickness=thickness,
-                    material_spec=item["material"],
                 )
                 material = None
         elif kind in {"glass", "chrome", "holo_logo", "holo_graphic"}:
@@ -521,10 +134,10 @@ def create_object(item: dict):
     obj.name = item["id"]
     if not obj.data.materials:
         generated_material = material_for(item["material"])
-        animate_material(generated_material, item)
+        animate_material(generated_material, item, scene)
         obj.data.materials.append(generated_material)
     apply_transform(obj, item["transform"])
-    add_keyframes(obj, item)
+    add_keyframes(obj, item, scene, scene_data)
     obj.hide_render = not bool(item.get("visible", True))
     return obj
 
