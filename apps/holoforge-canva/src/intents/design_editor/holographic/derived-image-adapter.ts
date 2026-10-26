@@ -9,7 +9,9 @@ export type HolographicRasterResult = Readonly<{
 }>;
 
 export type DerivedImageAdapter = Readonly<{
-  addDerivedEffect(plan: HolographicEffectPlan): Promise<HolographicRasterResult>;
+  addDerivedEffect(
+    plan: HolographicEffectPlan,
+  ): Promise<HolographicRasterResult>;
 }>;
 
 function clamp01(value: number): number {
@@ -48,7 +50,9 @@ export function applyHolographicPixels(
   }
 
   const p = plan.parameters;
-  const colorMix = clamp01(p.colorShift / 100) * (plan.creationType === "holo_logo" ? 0.78 : 0.62);
+  const colorMix =
+    clamp01(p.colorShift / 100) *
+    (plan.creationType === "holo_logo" ? 0.78 : 0.62);
   const reflect = clamp01(p.reflection / 100);
   const glow = clamp01(p.glow / 100);
   const grain = clamp01(p.grain / 100);
@@ -57,7 +61,11 @@ export function applyHolographicPixels(
   const angle = (p.angle * Math.PI) / 180;
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
-  const denom = Math.max(1, Math.abs(dx) * Math.max(1, width - 1) + Math.abs(dy) * Math.max(1, height - 1));
+  const denom = Math.max(
+    1,
+    Math.abs(dx) * Math.max(1, width - 1) +
+      Math.abs(dy) * Math.max(1, height - 1),
+  );
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -70,22 +78,41 @@ export function applyHolographicPixels(
       const b = pixels[index + 2] / 255;
       const luminance = clamp01(0.2126 * r + 0.7152 * g + 0.0722 * b);
       const projection = ((x * dx + y * dy) / denom + 1) * 0.5;
-      const spectralPhase = projection * (360 + p.colorShift * 2.1) + luminance * 110 + p.angle;
+      const spectralPhase =
+        projection * (360 + p.colorShift * 2.1) + luminance * 110 + p.angle;
       const [sr, sg, sb] = hueToRgb(spectralPhase);
 
-      const band = Math.pow(Math.max(0, Math.sin((projection * 5.5 + 0.12) * Math.PI)), 10);
+      const band = Math.pow(
+        Math.max(0, Math.sin((projection * 5.5 + 0.12) * Math.PI)),
+        10,
+      );
       const specular = reflect * band * (0.28 + luminance * 0.48);
       const depthBoost = 0.78 + depth * 0.42;
-      const glowLift = glow * (0.04 + luminance * 0.10);
+      const glowLift = glow * (0.04 + luminance * 0.1);
       const noise = deterministicNoise(x, y) * grain * 0.075;
 
       const tintR = sr * (0.45 + luminance * 0.55);
       const tintG = sg * (0.45 + luminance * 0.55);
       const tintB = sb * (0.45 + luminance * 0.55);
 
-      const outR = clamp01((r * (1 - colorMix) + tintR * colorMix) * depthBoost + specular + glowLift + noise);
-      const outG = clamp01((g * (1 - colorMix) + tintG * colorMix) * depthBoost + specular + glowLift + noise);
-      const outB = clamp01((b * (1 - colorMix) + tintB * colorMix) * depthBoost + specular + glowLift + noise);
+      const outR = clamp01(
+        (r * (1 - colorMix) + tintR * colorMix) * depthBoost +
+          specular +
+          glowLift +
+          noise,
+      );
+      const outG = clamp01(
+        (g * (1 - colorMix) + tintG * colorMix) * depthBoost +
+          specular +
+          glowLift +
+          noise,
+      );
+      const outB = clamp01(
+        (b * (1 - colorMix) + tintB * colorMix) * depthBoost +
+          specular +
+          glowLift +
+          noise,
+      );
 
       pixels[index] = Math.round(outR * 255);
       pixels[index + 1] = Math.round(outG * 255);
@@ -95,10 +122,14 @@ export function applyHolographicPixels(
   }
 }
 
-async function loadImage(url: string): Promise<Readonly<{ image: HTMLImageElement; objectUrl: string }>> {
+async function loadImage(
+  url: string,
+): Promise<Readonly<{ image: HTMLImageElement; objectUrl: string }>> {
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) {
-    throw new Error(`Could not download the Canva source image (HTTP ${response.status}).`);
+    throw new Error(
+      `Could not download the Canva source image (HTTP ${response.status}).`,
+    );
   }
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
@@ -108,7 +139,8 @@ async function loadImage(url: string): Promise<Readonly<{ image: HTMLImageElemen
   try {
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
-      image.onerror = () => reject(new Error("The Canva source image could not be decoded."));
+      image.onerror = () =>
+        reject(new Error("The Canva source image could not be decoded."));
       image.src = objectUrl;
     });
   } catch (cause) {
@@ -118,9 +150,17 @@ async function loadImage(url: string): Promise<Readonly<{ image: HTMLImageElemen
   return Object.freeze({ image, objectUrl });
 }
 
-function fitWithin(width: number, height: number, maxPixels = 4_000_000, maxSide = 2400) {
+function fitWithin(
+  width: number,
+  height: number,
+  maxPixels = 4_000_000,
+  maxSide = 2400,
+) {
   const sideScale = Math.min(1, maxSide / Math.max(width, height));
-  const pixelScale = Math.min(1, Math.sqrt(maxPixels / Math.max(1, width * height)));
+  const pixelScale = Math.min(
+    1,
+    Math.sqrt(maxPixels / Math.max(1, width * height)),
+  );
   const scale = Math.min(sideScale, pixelScale);
   return {
     width: Math.max(1, Math.round(width * scale)),
@@ -136,13 +176,19 @@ export async function renderHolographicRaster(
   const loaded = await loadImage(url);
   try {
     const { image } = loaded;
-    const fitted = fitWithin(image.naturalWidth || image.width, image.naturalHeight || image.height);
+    const fitted = fitWithin(
+      image.naturalWidth || image.width,
+      image.naturalHeight || image.height,
+    );
 
     const canvas = document.createElement("canvas");
     canvas.width = fitted.width;
     canvas.height = fitted.height;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) throw new Error("HoloForge could not initialize its raster material engine.");
+    if (!ctx)
+      throw new Error(
+        "HoloForge could not initialize its raster material engine.",
+      );
 
     ctx.clearRect(0, 0, fitted.width, fitted.height);
     ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
@@ -160,7 +206,9 @@ export const canvaDerivedImageAdapter: DerivedImageAdapter = Object.freeze({
   async addDerivedEffect(plan) {
     const sourceRef = plan.sourceImageRef;
     if (!sourceRef) {
-      throw new Error("Choose or upload an image source before forging this hologram.");
+      throw new Error(
+        "Choose or upload an image source before forging this hologram.",
+      );
     }
 
     const dataUrl = await renderHolographicRaster(sourceRef, plan);

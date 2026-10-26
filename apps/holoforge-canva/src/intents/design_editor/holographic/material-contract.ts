@@ -64,7 +64,11 @@ export const CREATION_TYPES: ReadonlyArray<{
     label: "Chrome",
     description: "Specular liquid metal with intense edge highlights.",
   },
-  { id: "light_fx", label: "Light FX", description: "Photonic flares, halos, and sweep beams." },
+  {
+    id: "light_fx",
+    label: "Light FX",
+    description: "Photonic flares, halos, and sweep beams.",
+  },
 ];
 
 export const MATERIAL_PRESETS: ReadonlyArray<HolographicMaterialPreset> = [
@@ -214,27 +218,54 @@ export const MATERIAL_PRESETS: ReadonlyArray<HolographicMaterialPreset> = [
   },
 ];
 
-export function getPresetById(id: string): HolographicMaterialPreset | undefined {
+export function getPresetById(
+  id: string,
+): HolographicMaterialPreset | undefined {
   return MATERIAL_PRESETS.find((preset) => preset.id === id);
 }
 
 export function validateMaterialParameters(
   params: HolographicMaterialPreset["parameters"],
 ): boolean {
-  if (typeof params.colorShift !== "number" || params.colorShift < 0 || params.colorShift > 100)
+  if (
+    typeof params.colorShift !== "number" ||
+    params.colorShift < 0 ||
+    params.colorShift > 100
+  )
     return false;
-  if (typeof params.depth !== "number" || params.depth < 0 || params.depth > 100) return false;
-  if (typeof params.reflection !== "number" || params.reflection < 0 || params.reflection > 100)
+  if (
+    typeof params.depth !== "number" ||
+    params.depth < 0 ||
+    params.depth > 100
+  )
     return false;
-  if (typeof params.glow !== "number" || params.glow < 0 || params.glow > 100) return false;
-  if (typeof params.grain !== "number" || params.grain < 0 || params.grain > 100) return false;
-  if (typeof params.angle !== "number" || params.angle < 0 || params.angle > 360) return false;
+  if (
+    typeof params.reflection !== "number" ||
+    params.reflection < 0 ||
+    params.reflection > 100
+  )
+    return false;
+  if (typeof params.glow !== "number" || params.glow < 0 || params.glow > 100)
+    return false;
+  if (
+    typeof params.grain !== "number" ||
+    params.grain < 0 ||
+    params.grain > 100
+  )
+    return false;
+  if (
+    typeof params.angle !== "number" ||
+    params.angle < 0 ||
+    params.angle > 360
+  )
+    return false;
   if (
     typeof params.transparency !== "number" ||
     params.transparency < 0 ||
     params.transparency > 100
   )
     return false;
-  if (!["static", "shimmer", "sweep", "pulse"].includes(params.motionMode)) return false;
+  if (!["static", "shimmer", "sweep", "pulse"].includes(params.motionMode))
+    return false;
   return true;
 }

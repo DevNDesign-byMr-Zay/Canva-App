@@ -14,7 +14,15 @@ describe("capability-matrix", () => {
   });
 
   it("classifies app-owned holographic properties", () => {
-    for (const property of ["colorShift", "depth", "reflection", "glow", "grain", "angle", "transparency"]) {
+    for (const property of [
+      "colorShift",
+      "depth",
+      "reflection",
+      "glow",
+      "grain",
+      "angle",
+      "transparency",
+    ]) {
       expect(getPropertyCapability(property).tier).toBe("APP_OWNED_EFFECT");
       expect(getPropertyCapability(property).canvaSupported).toBe(true);
     }
@@ -34,6 +42,8 @@ describe("capability-matrix", () => {
   });
 
   it("contains an explicit capability definition set", () => {
-    expect(Object.keys(CANVA_CAPABILITY_MATRIX).length).toBeGreaterThanOrEqual(10);
+    expect(Object.keys(CANVA_CAPABILITY_MATRIX).length).toBeGreaterThanOrEqual(
+      10,
+    );
   });
 });
