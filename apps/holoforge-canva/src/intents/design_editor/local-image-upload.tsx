@@ -19,10 +19,18 @@ export type UploadedImageResult = Readonly<{
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("The selected image could not be read."));
+    reader.onerror = () =>
+      reject(new Error("The selected image could not be read."));
     reader.onload = () => {
-      if (typeof reader.result !== "string" || !reader.result.startsWith("data:")) {
-        reject(new Error("The selected image could not be converted for Canva upload."));
+      if (
+        typeof reader.result !== "string" ||
+        !reader.result.startsWith("data:")
+      ) {
+        reject(
+          new Error(
+            "The selected image could not be converted for Canva upload.",
+          ),
+        );
         return;
       }
       resolve(reader.result);
@@ -42,10 +50,14 @@ export async function uploadDataUrlToCanva(
   onStage?: (stage: UploadStage) => void,
 ): Promise<UploadedImageResult> {
   if (!input.dataUrl.startsWith(`data:${input.mimeType};base64,`)) {
-    throw new Error("The local image data does not match the selected file type.");
+    throw new Error(
+      "The local image data does not match the selected file type.",
+    );
   }
   if (input.dataUrl.length > MAX_DATA_URL_CHARACTERS) {
-    throw new Error("The encoded image exceeds Canva's 10 MB data-URL upload limit.");
+    throw new Error(
+      "The encoded image exceeds Canva's 10 MB data-URL upload limit.",
+    );
   }
 
   onStage?.("uploading");
@@ -99,8 +111,11 @@ export function LocalImageUpload({
   const [status, setStatus] = useState<
     "idle" | "reading" | "uploading" | "adding" | "done" | "error"
   >("idle");
-  const [message, setMessage] = useState("Choose or drop a PNG, JPEG, or WebP image.");
-  const busy = status === "reading" || status === "uploading" || status === "adding";
+  const [message, setMessage] = useState(
+    "Choose or drop a PNG, JPEG, or WebP image.",
+  );
+  const busy =
+    status === "reading" || status === "uploading" || status === "adding";
 
   const processFile = async (file: File) => {
     if (busy) return;
@@ -148,7 +163,11 @@ export function LocalImageUpload({
       onUploaded?.(result);
     } catch (cause) {
       setStatus("error");
-      setMessage(cause instanceof Error ? cause.message : "The Canva image upload failed.");
+      setMessage(
+        cause instanceof Error
+          ? cause.message
+          : "The Canva image upload failed.",
+      );
     }
   };
 
@@ -193,7 +212,11 @@ export function LocalImageUpload({
           if (busy) event.preventDefault();
         }}
       >
-        {busy ? "UPLOADING…" : status === "done" ? "UPLOAD ANOTHER" : "CHOOSE IMAGE"}
+        {busy
+          ? "UPLOADING…"
+          : status === "done"
+            ? "UPLOAD ANOTHER"
+            : "CHOOSE IMAGE"}
       </label>
     </section>
   );

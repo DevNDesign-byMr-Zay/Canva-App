@@ -50,7 +50,8 @@ export function useCanvaImageSelection(): CanvaImageSelection {
                 count: event.count,
                 ref: null,
                 previewUrl: null,
-                error: "The selected item does not expose a raster image reference.",
+                error:
+                  "The selected item does not expose a raster image reference.",
               }),
             );
             return;
