@@ -22,6 +22,9 @@ for (const app of ["depthpop-canva", "holoforge-canva"]) {
     assert.deepEqual(lock.packages[""].engines, manifest.engines);
     assert.equal(manifest.scripts["test:coverage"], "vitest run --coverage");
     assert.equal(manifest.devDependencies["@vitest/coverage-v8"], lock.packages["node_modules/@vitest/coverage-v8"].version);
+    const config = await readFile(new URL(`../../apps/${app}/vitest.config.ts`, import.meta.url), "utf8");
+    assert.match(config, /src\/\*\*\/\*\.\{ts,tsx\}/, `${app} must measure the complete maintained frontend`);
+    assert.match(config, /all:\s*true/, `${app} must include unexecuted source files in coverage`);
 
     // The locked version and resolution are mandatory for every first-party
     // runtime or build dependency. npm ci verifies nested transitive edges.
