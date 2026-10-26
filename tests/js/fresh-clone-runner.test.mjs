@@ -1,19 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import path from 'node:path';
 import { createPlan, executePlan } from '../../scripts/verify-fresh-clone.mjs';
 
 for (const platform of ['linux', 'win32']) {
   test(`complete bootstrap isolates backend environments on ${platform}`, () => {
     const plan = createPlan({ root: '/repo', python: 'python', platform });
     for (const app of ['holoforge-canva', 'depthpop-canva']) {
-      const backend = plan.filter(step => step.cwd.endsWith(`apps/${app}/backend`));
+      const backend = plan.filter(step => step.cwd.endsWith(path.join('apps', app, 'backend')));
       assert.ok(backend.some(step => step.args.includes('requirements.lock.txt')));
       assert.ok(backend.some(step => step.args.includes('pytest')));
       assert.ok(backend.some(step => step.args.includes('check')));
       const install = backend.find(step => step.args.includes('requirements.lock.txt'));
       assert.match(install.command, new RegExp(app));
-      assert.ok(install.command.endsWith(platform === 'win32' ? 'Scripts/python.exe' : 'bin/python'));
-      const frontend = plan.filter(step => step.cwd.endsWith(`apps/${app}`));
+      assert.ok(install.command.endsWith(path.join(platform === 'win32' ? 'Scripts' : 'bin', platform === 'win32' ? 'python.exe' : 'python')));
+      const frontend = plan.filter(step => step.cwd.endsWith(path.join('apps', app)));
       for (const command of ['ci', 'typecheck', 'test', 'build']) {
         assert.ok(frontend.some(step => step.args.includes(command)), `${app}: ${command}`);
       }

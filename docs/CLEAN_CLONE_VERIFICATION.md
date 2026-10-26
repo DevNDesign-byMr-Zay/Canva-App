@@ -117,3 +117,7 @@ It must stay dev-only, have no available fix, and remain high rather than critic
 All three frontend graphs use the patched UUID override; other reported vulnerable
 development packages were updated within supported dependency ranges. Do not run
 an exposed development server. Remove the exception when the vendor supplies a fix.
+
+The `npm run verify:fresh` runner covers locked installation, testing, builds,
+previews and packaging. Dependency vulnerability audits run as separate blocking
+CI jobs; local audits can be run explicitly using the documented Make targets.
