@@ -15,7 +15,9 @@ function fixture() {
 describe("HoloScene reducer", () => {
   it("selects the first object by default", () => {
     const scene = fixture();
-    expect(createHoloSceneState(scene).selectedObjectId).toBe(scene.objects[0]?.id);
+    expect(createHoloSceneState(scene).selectedObjectId).toBe(
+      scene.objects[0]?.id,
+    );
   });
 
   it("patches an object transform without mutating the source scene", () => {
@@ -189,7 +191,9 @@ describe("HoloScene reducer", () => {
       type: "set_time",
       currentTimeMs: 999999,
     });
-    expect(next.scene.timeline.currentTimeMs).toBe(next.scene.timeline.durationMs);
+    expect(next.scene.timeline.currentTimeMs).toBe(
+      next.scene.timeline.durationMs,
+    );
   });
 
   it("authors and removes a transform pose at the current time", () => {

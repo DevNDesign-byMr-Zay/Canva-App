@@ -15,7 +15,12 @@ export type SceneTransform = Readonly<{
   scale: Vec3;
 }>;
 
-export type HoloSourceType = "raster" | "vector" | "text" | "canva" | "generated";
+export type HoloSourceType =
+  | "raster"
+  | "vector"
+  | "text"
+  | "canva"
+  | "generated";
 export type HoloGeometryType = "extruded-shape" | "plane" | "text" | "mesh";
 
 export type HoloMaterialSpec = Readonly<{
@@ -53,7 +58,11 @@ export type HoloAnimationPreset =
   | "orbit"
   | "custom";
 
-export type HoloAnimationEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+export type HoloAnimationEasing =
+  | "linear"
+  | "ease-in"
+  | "ease-out"
+  | "ease-in-out";
 export type HoloAnimationProperty = "position" | "rotation" | "scale";
 
 export type HoloKeyframe = Readonly<{
@@ -118,7 +127,11 @@ export type HoloScene = Readonly<{
   environment: HoloEnvironment;
   camera: HoloCamera;
   timeline: HoloTimeline;
-  exportProfile?: "generic-3d" | "transparent-video" | "lightfield-quilt" | "custom";
+  exportProfile?:
+    | "generic-3d"
+    | "transparent-video"
+    | "lightfield-quilt"
+    | "custom";
 }>;
 
 function clamp01(value: number): number {
@@ -169,7 +182,8 @@ function geometryForPlan(
   }
 
   if (
-    (plan.creationType === "holo_logo" || plan.creationType === "holo_graphic") &&
+    (plan.creationType === "holo_logo" ||
+      plan.creationType === "holo_graphic") &&
     sourcePreviewUrl
   ) {
     return Object.freeze({
@@ -214,16 +228,26 @@ export function materialFromPlan(
     family,
     baseColor: spectralColor(p.colorShift),
     opacity: Number((1 - transparency).toFixed(3)),
-    metalness: Number((metalLike ? 0.58 + reflection * 0.4 : reflection * 0.26).toFixed(3)),
-    roughness: Number((Math.max(0.05, 0.72 - reflection * 0.58 + grain * 0.14)).toFixed(3)),
-    transmission: Number((glassLike ? Math.max(0.28, transparency * 0.9 + 0.25) : 0).toFixed(3)),
+    metalness: Number(
+      (metalLike ? 0.58 + reflection * 0.4 : reflection * 0.26).toFixed(3),
+    ),
+    roughness: Number(
+      Math.max(0.05, 0.72 - reflection * 0.58 + grain * 0.14).toFixed(3),
+    ),
+    transmission: Number(
+      (glassLike ? Math.max(0.28, transparency * 0.9 + 0.25) : 0).toFixed(3),
+    ),
     ior: Number((glassLike ? 1.28 + reflection * 0.32 : 1.1).toFixed(3)),
     emissionColor: spectralColor((p.colorShift + 18) % 100),
     emissionStrength: Number((0.04 + glow * 1.45).toFixed(3)),
     spectralShift: p.colorShift,
     diffraction: Number((0.12 + grain * 0.72).toFixed(3)),
-    scanlineStrength: Number((plan.parameters.motionMode === "sweep" ? 0.82 : 0.28).toFixed(3)),
-    shimmerStrength: Number((plan.parameters.motionMode === "shimmer" ? 0.9 : 0.2).toFixed(3)),
+    scanlineStrength: Number(
+      (plan.parameters.motionMode === "sweep" ? 0.82 : 0.28).toFixed(3),
+    ),
+    shimmerStrength: Number(
+      (plan.parameters.motionMode === "shimmer" ? 0.9 : 0.2).toFixed(3),
+    ),
     reflectionStrength: p.reflection,
   });
 }
@@ -252,7 +276,9 @@ export function createHoloScene(
   const family = familyForPlan(plan);
   const sourceType = sourceTypeForPlan(plan);
   const objectId = `hf-object-${plan.creationType}`;
-  const sourceAssetId = plan.sourceImageRef ? String(plan.sourceImageRef) : undefined;
+  const sourceAssetId = plan.sourceImageRef
+    ? String(plan.sourceImageRef)
+    : undefined;
 
   return Object.freeze({
     schemaVersion: 1 as const,
@@ -328,7 +354,8 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
     errors.push("source text exceeds 96 characters");
   }
   if (!scene.objects.length) errors.push("scene requires at least one object");
-  if (scene.objects.length > 128) errors.push("scene supports at most 128 objects");
+  if (scene.objects.length > 128)
+    errors.push("scene supports at most 128 objects");
 
   const ids = new Set<string>();
   for (const object of scene.objects) {
@@ -362,8 +389,13 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
     }
 
     const material = object.material;
-    if (material.baseColor.length > 128 || material.emissionColor.length > 128) {
-      errors.push(`object ${object.id} material color strings exceed 128 characters`);
+    if (
+      material.baseColor.length > 128 ||
+      material.emissionColor.length > 128
+    ) {
+      errors.push(
+        `object ${object.id} material color strings exceed 128 characters`,
+      );
     }
     const normalizedMaterialFields: ReadonlyArray<
       readonly [string, number, number, number]
@@ -398,7 +430,9 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
       !Number.isInteger(object.geometry.bevelSegments) ||
       !inRange(object.geometry.bevelSegments, 0, 32)
     ) {
-      errors.push(`object ${object.id} bevel segments must be an integer from 0 to 32`);
+      errors.push(
+        `object ${object.id} bevel segments must be an integer from 0 to 32`,
+      );
     }
 
     for (const track of object.animationTracks) {
@@ -412,16 +446,25 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
           errors.push(`object ${object.id} keyframe id is required`);
         }
         if (!finiteVec3(keyframe.value)) {
-          errors.push(`object ${object.id} keyframe ${keyframe.id} value must be finite`);
+          errors.push(
+            `object ${object.id} keyframe ${keyframe.id} value must be finite`,
+          );
         }
-        if (keyframe.timeMs < 0 || keyframe.timeMs > scene.timeline.durationMs) {
-          errors.push(`object ${object.id} keyframe ${keyframe.id} is outside the timeline`);
+        if (
+          keyframe.timeMs < 0 ||
+          keyframe.timeMs > scene.timeline.durationMs
+        ) {
+          errors.push(
+            `object ${object.id} keyframe ${keyframe.id} is outside the timeline`,
+          );
         }
         if (keyframe.timeMs < previousTime) {
           errors.push(`object ${object.id} keyframes must be time-sorted`);
         }
         if (keyframeTimes.has(keyframe.timeMs)) {
-          errors.push(`object ${object.id} keyframe times must be unique within a track`);
+          errors.push(
+            `object ${object.id} keyframe times must be unique within a track`,
+          );
         }
         keyframeTimes.add(keyframe.timeMs);
         previousTime = keyframe.timeMs;
@@ -438,7 +481,10 @@ export function validateHoloScene(scene: HoloScene): readonly string[] {
   if (!Number.isFinite(scene.camera.near) || scene.camera.near <= 0) {
     errors.push("camera near plane must be positive");
   }
-  if (!Number.isFinite(scene.camera.far) || scene.camera.far <= scene.camera.near) {
+  if (
+    !Number.isFinite(scene.camera.far) ||
+    scene.camera.far <= scene.camera.near
+  ) {
     errors.push("camera far plane must be greater than near");
   }
 

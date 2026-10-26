@@ -41,7 +41,10 @@ export type HoloSceneAction =
         scale: Partial<SceneTransform["scale"]>;
       }>;
     }>
-  | Readonly<{ type: "patch_environment"; environment: Partial<HoloEnvironment> }>
+  | Readonly<{
+      type: "patch_environment";
+      environment: Partial<HoloEnvironment>;
+    }>
   | Readonly<{
       type: "patch_camera";
       camera: Partial<{
@@ -105,9 +108,11 @@ export function holoSceneReducer(
     case "replace_scene": {
       const selectedObjectId =
         state.selectedObjectId &&
-        action.scene.objects.some((object) => object.id === state.selectedObjectId)
+        action.scene.objects.some(
+          (object) => object.id === state.selectedObjectId,
+        )
           ? state.selectedObjectId
-          : action.scene.objects[0]?.id ?? null;
+          : (action.scene.objects[0]?.id ?? null);
       return Object.freeze({ scene: action.scene, selectedObjectId });
     }
 
@@ -162,7 +167,7 @@ export function holoSceneReducer(
       );
       const nextSelected =
         state.selectedObjectId === action.objectId
-          ? objects[Math.min(sourceIndex, objects.length - 1)]?.id ?? null
+          ? (objects[Math.min(sourceIndex, objects.length - 1)]?.id ?? null)
           : state.selectedObjectId;
 
       return Object.freeze({
@@ -180,9 +185,7 @@ export function holoSceneReducer(
       );
       if (sourceIndex < 0) return state;
       const targetIndex =
-        action.direction === "forward"
-          ? sourceIndex + 1
-          : sourceIndex - 1;
+        action.direction === "forward" ? sourceIndex + 1 : sourceIndex - 1;
       if (targetIndex < 0 || targetIndex >= state.scene.objects.length) {
         return state;
       }
@@ -209,7 +212,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
@@ -221,7 +227,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
@@ -314,7 +323,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
@@ -334,7 +346,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
@@ -352,7 +367,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
@@ -368,7 +386,10 @@ export function holoSceneReducer(
       );
       return Object.freeze({
         ...state,
-        scene: Object.freeze({ ...state.scene, objects: Object.freeze(objects) }),
+        scene: Object.freeze({
+          ...state.scene,
+          objects: Object.freeze(objects),
+        }),
       });
     }
 
