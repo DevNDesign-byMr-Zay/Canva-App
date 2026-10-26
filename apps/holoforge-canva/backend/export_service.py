@@ -15,6 +15,7 @@ from models import (
     utc_now,
 )
 from renderers import RendererRegistry
+from diagnostics import log_failure, SAFE_JOB_ERROR, run_background_job
 def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -78,8 +79,8 @@ class ExportService:
         self.jobs.put(job)
 
         task = asyncio.create_task(
-            self._run(
-                submission,
+            run_background_job(
+                job_id, self._run, submission,
                 job_id=job_id,
                 export_id=export_id,
                 user_id=user_id,
@@ -193,6 +194,7 @@ class ExportService:
                 message="Export complete",
             )
         except Exception as exc:
+            log_failure("export_failed", exc, job_id=job_id, stage=job.stage, service="holoforge-canva-backend")
             if output_dir is not None:
                 shutil.rmtree(output_dir, ignore_errors=True)
             self._update(
@@ -201,5 +203,5 @@ class ExportService:
                 stage="error",
                 percent=min(job.percent, 99),
                 message="Export failed",
-                error=str(exc)[:1000],
+                error=SAFE_JOB_ERROR,
             )

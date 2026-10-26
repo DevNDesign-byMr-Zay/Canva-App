@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from diagnostics import log_failure, SAFE_JOB_ERROR, run_background_job
+
 import base64
 import math
 import os
@@ -187,12 +189,13 @@ async def run_scene_decomposition_job(
             brand_id=brand_id,
         )
     except Exception as exc:
+        log_failure("scene_decomposition_failed", exc, job_id=job_id, stage=current_stage, service="depthpop-canva-backend")
         scene_asset_repo.cleanup_scene_assets_sync(scene_id)
         await job_repo.update_job_stage(
             job_id,
             stage=current_stage if current_stage != "queued" else "error",
             status="error",
-            error=str(exc),
+            error=SAFE_JOB_ERROR,
             progress=1.0,
             user_id=user_id,
             brand_id=brand_id,
@@ -290,7 +293,7 @@ async def create_scene(
     )
 
     background_tasks.add_task(
-        run_scene_decomposition_job,
+        run_background_job, job_id, run_scene_decomposition_job,
         job_id=job_id,
         scene_id=scene_id,
         raw_image_bytes=raw_bytes,

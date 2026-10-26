@@ -59,3 +59,23 @@ The maintained production render image pins Blender 4.5.14 and installs FFmpeg.
 
 See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/LIVE_CANVA_ACCEPTANCE_CHECKLIST.md` for the external deployment and live Canva acceptance contract.
 
+
+
+### Isolated tests and safe diagnostics
+
+Run `python -m pytest -q` inside this backend's own locked virtual environment.
+The autouse test fixture removes inherited FAL credentials and blocks outbound
+Internet sockets and unmocked FAL inference/upload helpers. Provider contract tests
+replace those boundaries with deterministic responses; passing tests do not prove
+live model processing. Production adapters and authentication remain enabled.
+The existing paid-provider workflow is manual, requires `RUN_ONCE`, and invokes
+`live_provider_smoke.py` directly outside pytest. It now installs the backend lock.
+
+Unexpected HTTP failures return a generic JSON error and server-generated
+`requestId`; each response also includes `X-Request-ID`. Operational errors emit
+JSON records through `canva.diagnostics`, containing request/job IDs, stage, error
+class/category and bounded traceback file/function/line metadata. Request bodies,
+headers, raw URLs, user IDs, source text, exception messages and locals are omitted.
+Background job errors are safe generic messages; use the job ID to locate the
+corresponding internal diagnostic. Export state transitions and owner checks are
+preserved. Existing logging/monitoring handlers can consume this logger.

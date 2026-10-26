@@ -4,6 +4,7 @@ import asyncio
 import os
 import time
 import uuid
+from diagnostics import log_failure, SAFE_JOB_ERROR
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Awaitable, Callable
@@ -132,7 +133,10 @@ async def run_export_job(
         found = await current()
         return bool(found and found.cancelRequested)
 
+    last_stage = "queued"
+
     async def report(stage: str, progress: float) -> None:
+        nonlocal last_stage
         found = await current()
         if found is None:
             raise RuntimeError("export job metadata disappeared")
@@ -145,6 +149,7 @@ async def run_export_job(
             progress=progress,
             error="",
         )
+        last_stage = stage
 
     workspace: Path | None = None
     try:
@@ -260,6 +265,7 @@ async def run_export_job(
                 cancel_requested=True,
             )
     except Exception as exc:
+        log_failure("export_failed", exc, job_id=job_id, stage=last_stage, service="depthpop-canva-backend")
         if workspace is not None:
             export_storage.cleanup_workspace(workspace)
         found = await current()
@@ -269,7 +275,7 @@ async def run_export_job(
                 status="failed",
                 stage="failed",
                 progress=1.0,
-                error=str(exc),
+                error=SAFE_JOB_ERROR,
             )
     finally:
         _RUNNER_OWNERS.pop(job_id, None)
