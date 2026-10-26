@@ -2,7 +2,11 @@ import { TransformControls } from "@react-three/drei";
 import React, { useRef } from "react";
 import type { Group } from "three";
 
-import type { HoloObject as HoloObjectSpec, HoloScene as HoloSceneSpec, SceneTransform } from "../scene/holo-scene";
+import type {
+  HoloObject as HoloObjectSpec,
+  HoloScene as HoloSceneSpec,
+  SceneTransform,
+} from "../scene/holo-scene";
 import { HoloObject } from "./HoloObject";
 import type { TransformMode } from "./ObjectInspector";
 

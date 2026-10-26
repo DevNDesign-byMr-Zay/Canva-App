@@ -73,8 +73,7 @@ export function ObjectStackPanel({
                   <strong>{object.name}</strong>
                   <small>
                     {object.creationType.replaceAll("_", " ").toUpperCase()}
-                    {" · "}
-                    Z {object.transform.position.z.toFixed(2)}
+                    {" · "}Z {object.transform.position.z.toFixed(2)}
                   </small>
                 </span>
               </button>
@@ -130,8 +129,9 @@ export function ObjectStackPanel({
       </div>
 
       <p>
-        Duplicate a hologram to build layered compositions. Stack order is preserved in HoloScene
-        while X/Y/Z still control the real spatial placement.
+        Duplicate a hologram to build layered compositions. Stack order is
+        preserved in HoloScene while X/Y/Z still control the real spatial
+        placement.
       </p>
     </section>
   );

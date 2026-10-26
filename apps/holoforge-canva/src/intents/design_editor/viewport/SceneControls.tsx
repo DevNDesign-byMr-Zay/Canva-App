@@ -1,9 +1,6 @@
 import React from "react";
 
-import type {
-  HoloCamera,
-  HoloEnvironment,
-} from "../scene/holo-scene";
+import type { HoloCamera, HoloEnvironment } from "../scene/holo-scene";
 
 type CameraPatch = Partial<{
   position: Partial<HoloCamera["position"]>;
@@ -49,7 +46,9 @@ const CAMERA_PRESETS: ReadonlyArray<
   },
 ];
 
-function numberValue(event: React.ChangeEvent<HTMLInputElement>): number | null {
+function numberValue(
+  event: React.ChangeEvent<HTMLInputElement>,
+): number | null {
   const value = Number(event.currentTarget.value);
   return Number.isFinite(value) ? value : null;
 }
@@ -129,7 +128,10 @@ export function SceneControls({
   onPatchCamera: (patch: CameraPatch) => void;
 }) {
   return (
-    <section className="hf-scene-controls" aria-label="HoloForge scene and camera controls">
+    <section
+      className="hf-scene-controls"
+      aria-label="HoloForge scene and camera controls"
+    >
       <div className="hf-scene-controls-head">
         <div>
           <span>05 · SCENE / CAMERA</span>
@@ -147,7 +149,11 @@ export function SceneControls({
         </button>
       </div>
 
-      <div className="hf-camera-presets" role="group" aria-label="Camera presets">
+      <div
+        className="hf-camera-presets"
+        role="group"
+        aria-label="Camera presets"
+      >
         {CAMERA_PRESETS.map((preset) => (
           <button
             key={preset.id}
