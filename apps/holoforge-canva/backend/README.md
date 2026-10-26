@@ -60,6 +60,14 @@ The maintained production render image pins Blender 4.5.14 and installs FFmpeg.
 See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/LIVE_CANVA_ACCEPTANCE_CHECKLIST.md` for the external deployment and live Canva acceptance contract.
 
 
+### Worker module boundaries
+
+`blender_worker.py` keeps the Blender CLI and format dispatch. Its internal
+`blender_materials.py`, `blender_geometry.py` and `blender_animation.py` modules
+own shader construction, embedded image/silhouette geometry and object keyframes.
+Scene and output-directory context are passed explicitly. Pure helper contracts
+run under pytest without importing Blender or starting a render. Full rendering
+still requires the pinned production Blender image and its existing smoke gates.
 
 ### Isolated tests and safe diagnostics
 

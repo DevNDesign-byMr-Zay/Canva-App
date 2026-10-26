@@ -212,6 +212,14 @@ DepthPop production storage is:
 See `docs/PRODUCTION_DEPLOYMENT.md` and `docs/LIVE_CANVA_ACCEPTANCE_CHECKLIST.md` for the external deployment and live Canva acceptance contract.
 
 
+### Export module boundaries
+
+`services/export_formats.py` retains the job-facing export functions. Internal
+modules separate authored timeline sampling (`export_animation.py`), owned asset
+collection (`export_assets.py`), glTF/GLB serialization (`export_gltf.py`) and shared
+resource limits (`export_limits.py`). Portable JSON, layers and video orchestration
+remain in the facade. Golden GLB/glTF tests compare against pre-refactor main;
+existing format, persistence and animation tests remain authoritative.
 
 ### Isolated tests and safe diagnostics
 
