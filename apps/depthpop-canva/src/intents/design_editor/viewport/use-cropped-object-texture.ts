@@ -43,9 +43,7 @@ export function useCroppedObjectTexture(
           );
           loaded.offset.set(
             object.bbox.x / Math.max(1, sceneWidth),
-            1 -
-              (object.bbox.y + object.bbox.height) /
-                Math.max(1, sceneHeight),
+            1 - (object.bbox.y + object.bbox.height) / Math.max(1, sceneHeight),
           );
         } else {
           // Future providers may return an already-cropped cutout.

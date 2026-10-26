@@ -10,7 +10,10 @@ import {
 
 function fixture(): DepthObject {
   return {
-    id: "demo", label: "Demo", semanticType: "product", confidence: 1,
+    id: "demo",
+    label: "Demo",
+    semanticType: "product",
+    confidence: 1,
     bbox: { x: 0, y: 0, width: 50, height: 50 },
     assets: { cutoutUrl: "", maskUrl: "", thumbnailUrl: "" },
     depth: { min: 0, max: 1, mean: 0.5, median: 0.5 },
@@ -19,14 +22,21 @@ function fixture(): DepthObject {
       rotation: { x: 0, y: 10, z: 0 },
       scale: { x: 1, y: 1, z: 1 },
     },
-    opacity: 0.8, feather: 0, visible: true, locked: false, order: 0,
-    animationTracks: [{
-      id: "move-x", property: "position.x",
-      keyframes: [
-        { timeMs: 0, value: 0.1, easing: "linear" },
-        { timeMs: 1000, value: 0.9, easing: "linear" },
-      ],
-    }],
+    opacity: 0.8,
+    feather: 0,
+    visible: true,
+    locked: false,
+    order: 0,
+    animationTracks: [
+      {
+        id: "move-x",
+        property: "position.x",
+        keyframes: [
+          { timeMs: 0, value: 0.1, easing: "linear" },
+          { timeMs: 1000, value: 0.9, easing: "linear" },
+        ],
+      },
+    ],
   };
 }
 

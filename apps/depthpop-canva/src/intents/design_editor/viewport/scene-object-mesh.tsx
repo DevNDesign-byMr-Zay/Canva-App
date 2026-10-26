@@ -4,7 +4,12 @@ import * as THREE from "three";
 import type { DepthObject, ObjectTransform } from "../scene/depth-scene";
 import type { TransformMode } from "./DepthViewport";
 import { useCroppedObjectTexture } from "./use-cropped-object-texture";
-import { objectWorldPosition, sampledTransform, trackValue, worldTransformToDepthTransform } from "./scene-sampling";
+import {
+  objectWorldPosition,
+  sampledTransform,
+  trackValue,
+  worldTransformToDepthTransform,
+} from "./scene-sampling";
 
 export function SceneObjectMesh({
   object,
@@ -35,17 +40,11 @@ export function SceneObjectMesh({
     sceneHeight,
   );
   const transform = sampledTransform(object, currentTimeMs);
-  const opacity = trackValue(
-    object,
-    "opacity",
-    currentTimeMs,
-    object.opacity,
-  );
+  const opacity = trackValue(object, "opacity", currentTimeMs, object.opacity);
   const aspect = sceneWidth / Math.max(1, sceneHeight);
   const bboxWidth =
     (object.bbox.width / Math.max(1, sceneWidth)) * (aspect * 4);
-  const bboxHeight =
-    (object.bbox.height / Math.max(1, sceneHeight)) * 4;
+  const bboxHeight = (object.bbox.height / Math.max(1, sceneHeight)) * 4;
 
   const objectNode = (
     <group
@@ -84,10 +83,7 @@ export function SceneObjectMesh({
         <lineSegments renderOrder={10000}>
           <edgesGeometry
             args={[
-              new THREE.PlaneGeometry(
-                bboxWidth || 0.01,
-                bboxHeight || 0.01,
-              ),
+              new THREE.PlaneGeometry(bboxWidth || 0.01, bboxHeight || 0.01),
             ]}
           />
           <lineBasicMaterial

@@ -3,10 +3,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import React, { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 
-import type {
-  DepthScene,
-  ObjectTransform,
-} from "../scene/depth-scene";
+import type { DepthScene, ObjectTransform } from "../scene/depth-scene";
 import { bindWebGLRecovery } from "./webgl-recovery";
 
 export type TransformMode = "translate" | "rotate" | "scale";
@@ -16,14 +13,12 @@ export interface DepthViewportProps {
   selectedObjectId: string | null;
   transformMode?: TransformMode;
   onSelectObject?: (id: string | null) => void;
-  onUpdateTransform?: (
-    objectId: string,
-    transform: ObjectTransform,
-  ) => void;
+  onUpdateTransform?: (objectId: string, transform: ObjectTransform) => void;
   onUpdateCamera?: (camera: DepthScene["camera"]) => void;
   onTransformingChange?: (active: boolean) => void;
   isFallback?: boolean;
-}import { ScenePlate } from "./scene-plate";
+}
+import { ScenePlate } from "./scene-plate";
 import { SceneObjectMesh } from "./scene-object-mesh";
 
 function RecoveryBridge({
@@ -216,10 +211,7 @@ export function DepthViewport({
   }
 
   return (
-    <div
-      data-testid="depth-webgl-viewport"
-      className="dp-webgl-viewport"
-    >
+    <div data-testid="depth-webgl-viewport" className="dp-webgl-viewport">
       <Canvas
         data-testid="depth-webgl-canvas"
         dpr={[1, 1.5]}

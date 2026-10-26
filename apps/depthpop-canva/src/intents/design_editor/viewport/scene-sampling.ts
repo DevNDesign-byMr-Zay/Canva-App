@@ -61,24 +61,9 @@ export function sampledTransform(
       ),
     },
     scale: {
-      x: trackValue(
-        object,
-        "scale.x",
-        currentTimeMs,
-        object.transform.scale.x,
-      ),
-      y: trackValue(
-        object,
-        "scale.y",
-        currentTimeMs,
-        object.transform.scale.y,
-      ),
-      z: trackValue(
-        object,
-        "scale.z",
-        currentTimeMs,
-        object.transform.scale.z,
-      ),
+      x: trackValue(object, "scale.x", currentTimeMs, object.transform.scale.x),
+      y: trackValue(object, "scale.y", currentTimeMs, object.transform.scale.y),
+      z: trackValue(object, "scale.z", currentTimeMs, object.transform.scale.z),
     },
   };
 }
