@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from diagnostics import run_background_job
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse
 
@@ -56,7 +58,7 @@ async def create_export(
         )
 
     background_tasks.add_task(
-        run_export_job,
+        run_background_job, job.jobId, run_export_job,
         job.jobId,
         body,
         fetch_asset=fetch_asset,

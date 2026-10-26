@@ -22,6 +22,7 @@ _BLENDER_READINESS_TTL_SECONDS = 300
 _blender_readiness_cache: tuple[float, str, str, bool] | None = None
 
 app = FastAPI(title="HoloForge Render Backend", version="0.1.0")
+from diagnostics import DiagnosticMiddleware, log_failure
 if CANVA_APP_ORIGIN:
     app.add_middleware(
         CORSMiddleware,
@@ -29,7 +30,10 @@ if CANVA_APP_ORIGIN:
         allow_credentials=False,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["X-Request-ID"],
     )
+
+app.add_middleware(DiagnosticMiddleware, service="holoforge-canva-backend")
 
 from persistence import create_artifact_repository, create_job_repository
 
@@ -170,7 +174,8 @@ async def create_export(
     try:
         renderers.resolve(submission.request.format)
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        log_failure("renderer_unavailable", exc, service="holoforge-canva-backend")
+        raise HTTPException(status_code=503, detail="Requested export renderer is unavailable") from exc
 
     job, export_id = exports.create(
         submission,

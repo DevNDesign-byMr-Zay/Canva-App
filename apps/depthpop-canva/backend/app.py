@@ -58,6 +58,7 @@ def _resolve_cors_origins(
 
 
 app = FastAPI(title="DepthPop Canva Backend", version="1.0.1")
+from diagnostics import DiagnosticMiddleware, log_failure
 CORS_ORIGINS = _resolve_cors_origins(
     CANVA_APP_ID,
     CANVA_APP_ORIGIN,
@@ -70,7 +71,10 @@ if CORS_ORIGINS:
         allow_credentials=False,
         allow_methods=["POST", "GET", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["X-Request-ID"],
     )
+
+app.add_middleware(DiagnosticMiddleware, service="depthpop-canva-backend")
 
 app.include_router(assets_router)
 app.include_router(scenes_router)
@@ -169,6 +173,7 @@ async def _depth_map(raw: bytes, mime: str) -> tuple[bytes, str]:
             arguments={"image_url": data_url},
         )
     except Exception as exc:
+        log_failure("depth_provider_failed", exc, service="depthpop-canva-backend")
         raise HTTPException(status_code=502, detail="Depth-map provider failed") from exc
 
     depth_url = (_extract_image_url(result) or "").strip()
