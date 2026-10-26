@@ -1,12 +1,12 @@
 ast_serialize==0.11.2
 boolean.py==5.0
 CacheControl==0.14.4
-certifi==2026.7.22
+certifi==2026.10.19
 charset-normalizer==3.5.1
 coverage==7.16.1
 cyclonedx-python-lib==11.12.0
 defusedxml==0.7.1
-filelock==4.0.1
+filelock==4.2.1
 idna==3.20
 iniconfig==2.3.0
 librt==0.15.0

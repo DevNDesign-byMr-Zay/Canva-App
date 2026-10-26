@@ -22,7 +22,7 @@ for (const app of ["holoforge-canva", "depthpop-canva"]) {
 
     assert.ok(locked.length >= 30, `expected a complete transitive lock for ${app}`);
     for (const item of locked) {
-      const match = /^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9.+!_-]+)$/u.exec(item);
+      const match = /^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9.+!_-]+)(; sys_platform != "win32")?$/u.exec(item);
       assert.ok(match, `unpinned or invalid locked requirement: ${item}`);
       const key = normalize(match[1]);
       assert.ok(!packageNames.has(key), `duplicate pinned package ${match[1]}`);

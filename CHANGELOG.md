@@ -1,3 +1,8 @@
+# Unreleased
+
+- Extend clean-clone verification to both independent apps, isolated backend environments, browser previews and ZIP handoffs.
+- Cover all maintained dependency graphs with scheduled updates and root Python vulnerability auditing.
+
 # Changelog
 
 All notable maintained-surface changes to this repository are documented here.

@@ -29,7 +29,8 @@
     "package:canva-ui": "node scripts/assemble-canva-ui-package.mjs",
     "verify:standalone-apps": "node scripts/verify-standalone-canva-apps.mjs",
     "deployment:check": "node scripts/verify-deployment-readiness.mjs",
-    "deployment:check:ci": "node scripts/verify-deployment-readiness.mjs --ci-fixture"
+    "deployment:check:ci": "node scripts/verify-deployment-readiness.mjs --ci-fixture",
+    "verify:fresh": "node scripts/verify-fresh-clone.mjs"
   },
   "engines": {
     "node": ">=22"
