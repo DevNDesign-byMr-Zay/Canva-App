@@ -61,9 +61,9 @@ describe("DepthTextureCache", () => {
 
     const cache = new DepthTextureCache(resolver);
 
-    await expect(cache.resolve("https://evil.example/cutout.png")).rejects.toThrow(
-      "cross-origin scene asset",
-    );
+    await expect(
+      cache.resolve("https://evil.example/cutout.png"),
+    ).rejects.toThrow("cross-origin scene asset");
     await expect(
       cache.resolve("https://evil.example/cutout.png"),
     ).resolves.toBe("blob:retry");
@@ -85,7 +85,9 @@ describe("DepthTextureCache", () => {
     cache.dispose();
     complete("blob:late");
 
-    await expect(pending).rejects.toThrow("DepthPop texture cache was disposed");
+    await expect(pending).rejects.toThrow(
+      "DepthPop texture cache was disposed",
+    );
     expect(revoke).toHaveBeenCalledWith("blob:late");
   });
 });

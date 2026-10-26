@@ -18,10 +18,7 @@ export interface DepthViewportProps {
   selectedObjectId: string | null;
   transformMode?: TransformMode;
   onSelectObject?: (id: string | null) => void;
-  onUpdateTransform?: (
-    objectId: string,
-    transform: ObjectTransform,
-  ) => void;
+  onUpdateTransform?: (objectId: string, transform: ObjectTransform) => void;
   onUpdateCamera?: (camera: DepthScene["camera"]) => void;
   onTransformingChange?: (active: boolean) => void;
   isFallback?: boolean;
@@ -86,24 +83,9 @@ function sampledTransform(
       ),
     },
     scale: {
-      x: trackValue(
-        object,
-        "scale.x",
-        currentTimeMs,
-        object.transform.scale.x,
-      ),
-      y: trackValue(
-        object,
-        "scale.y",
-        currentTimeMs,
-        object.transform.scale.y,
-      ),
-      z: trackValue(
-        object,
-        "scale.z",
-        currentTimeMs,
-        object.transform.scale.z,
-      ),
+      x: trackValue(object, "scale.x", currentTimeMs, object.transform.scale.x),
+      y: trackValue(object, "scale.y", currentTimeMs, object.transform.scale.y),
+      z: trackValue(object, "scale.z", currentTimeMs, object.transform.scale.z),
     },
   };
 }
@@ -212,9 +194,7 @@ function useCroppedObjectTexture(
           );
           loaded.offset.set(
             object.bbox.x / Math.max(1, sceneWidth),
-            1 -
-              (object.bbox.y + object.bbox.height) /
-                Math.max(1, sceneHeight),
+            1 - (object.bbox.y + object.bbox.height) / Math.max(1, sceneHeight),
           );
         } else {
           // Future providers may return an already-cropped cutout.
@@ -315,17 +295,11 @@ function SceneObjectMesh({
     sceneHeight,
   );
   const transform = sampledTransform(object, currentTimeMs);
-  const opacity = trackValue(
-    object,
-    "opacity",
-    currentTimeMs,
-    object.opacity,
-  );
+  const opacity = trackValue(object, "opacity", currentTimeMs, object.opacity);
   const aspect = sceneWidth / Math.max(1, sceneHeight);
   const bboxWidth =
     (object.bbox.width / Math.max(1, sceneWidth)) * (aspect * 4);
-  const bboxHeight =
-    (object.bbox.height / Math.max(1, sceneHeight)) * 4;
+  const bboxHeight = (object.bbox.height / Math.max(1, sceneHeight)) * 4;
 
   const objectNode = (
     <group
@@ -364,10 +338,7 @@ function SceneObjectMesh({
         <lineSegments renderOrder={10000}>
           <edgesGeometry
             args={[
-              new THREE.PlaneGeometry(
-                bboxWidth || 0.01,
-                bboxHeight || 0.01,
-              ),
+              new THREE.PlaneGeometry(bboxWidth || 0.01, bboxHeight || 0.01),
             ]}
           />
           <lineBasicMaterial
@@ -595,10 +566,7 @@ export function DepthViewport({
   }
 
   return (
-    <div
-      data-testid="depth-webgl-viewport"
-      className="dp-webgl-viewport"
-    >
+    <div data-testid="depth-webgl-viewport" className="dp-webgl-viewport">
       <Canvas
         data-testid="depth-webgl-canvas"
         dpr={[1, 1.5]}

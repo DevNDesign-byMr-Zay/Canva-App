@@ -28,11 +28,9 @@ vi.mock("@react-three/fiber", () => ({
 
 vi.mock("@react-three/drei", () => ({
   OrbitControls: () => <div data-testid="orbit-controls" />,
-  TransformControls: ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => <div data-testid="transform-controls">{children}</div>,
+  TransformControls: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="transform-controls">{children}</div>
+  ),
 }));
 
 import type { DepthScene } from "../scene/depth-scene";
