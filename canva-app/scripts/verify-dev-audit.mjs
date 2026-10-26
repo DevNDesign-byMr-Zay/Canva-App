@@ -1,74 +1,41 @@
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-const file = process.argv[2];
-if (!file) throw new TypeError('audit report path is required');
-
-const [audit, manifest, lock] = await Promise.all([
-  readFile(file, 'utf8').then(JSON.parse),
-  readFile('package.json', 'utf8').then(JSON.parse),
-  readFile('package-lock.json', 'utf8').then(JSON.parse),
-]);
-
-const vulnerabilities = audit?.vulnerabilities ?? {};
-const names = Object.keys(vulnerabilities).sort();
-const allowed = [
-  '@canva/app-scripts',
-  '@formatjs/cli-lib',
-  'braces',
-  'chokidar',
-  'fast-glob',
-  'http-proxy-middleware',
-  'micromatch',
-  'node-forge',
-  'nodemon',
-  'proxy-addr',
-  'shell-quote',
-  'source-map-js',
-  'webpack-dev-server',
-].sort();
-
-if (JSON.stringify(names) !== JSON.stringify(allowed)) {
-  throw new Error(
-    `unexpected development advisory set: expected ${allowed.join(', ')}, received ${names.join(', ') || 'none'}`,
-  );
+// Existing vendor dev-server exception, reduced from thirteen package names.
+// Production audit remains independently blocking. Never add new advisories here.
+export function verifyDevelopmentAudit(audit, manifest, lock) {
+  if (!audit?.vulnerabilities || typeof audit.vulnerabilities !== 'object') {
+    throw new Error('A valid npm audit report is required');
+  }
+  if (manifest?.overrides?.uuid !== '11.1.1' ||
+      lock?.packages?.['node_modules/uuid']?.version !== '11.1.1' ||
+      lock.packages['node_modules/uuid'].dev !== true) {
+    throw new Error('uuid must remain patched and dev-only at reviewed 11.1.1');
+  }
+  for (const [name, record] of Object.entries(audit.vulnerabilities)) {
+    if (!['node-forge', '@canva/app-scripts'].includes(name) || record.severity !== 'high' || record.fixAvailable !== false) {
+      throw new Error(`Unreviewed or fixable development vulnerability: ${name}`);
+    }
+    if (!record.nodes?.length || record.nodes.some(node => lock.packages?.[node]?.dev !== true)) {
+      throw new Error(`Vulnerability crosses the dev-only boundary: ${name}`);
+    }
+    if (!record.via?.length || record.via.some(via => name === 'node-forge'
+      ? via?.url !== 'https://github.com/advisories/GHSA-86w9-cpqp-85rv'
+      : via !== 'node-forge')) {
+      throw new Error(`Unreviewed development advisory identity: ${name}`);
+    }
+  }
 }
 
-if (typeof audit?.metadata?.vulnerabilities?.total !== 'number' || audit.metadata.vulnerabilities.total < 1) {
-  throw new Error(
-    `expected development advisory records, received ${audit?.metadata?.vulnerabilities?.total ?? 'unknown'}`,
-  );
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const file = process.argv[2];
+  if (!file) throw new TypeError('audit report path is required');
+  const [audit, manifest, lock] = await Promise.all([
+    readFile(file, 'utf8').then(JSON.parse),
+    readFile('package.json', 'utf8').then(JSON.parse),
+    readFile('package-lock.json', 'utf8').then(JSON.parse),
+  ]);
+  verifyDevelopmentAudit(audit, manifest, lock);
+  console.log('Verified development audit: only the existing unfixable dev-only node-forge vendor boundary may remain.');
 }
-
-if (manifest?.overrides?.uuid !== '11.1.1') {
-  throw new Error(
-    'uuid security override must remain pinned to patched 11.1.1',
-  );
-}
-
-const lockedUuid = lock?.packages?.['node_modules/uuid'];
-if (
-  lockedUuid?.version !== '11.1.1' ||
-  lockedUuid?.dev !== true
-) {
-  throw new Error(
-    'uuid must remain locked to reviewed dev-only version 11.1.1',
-  );
-}
-
-const nodeForge = vulnerabilities['node-forge'];
-if (nodeForge?.severity !== 'high') {
-  throw new Error(
-    'node-forge advisory severity changed from the reviewed high level',
-  );
-}
-
-const appScripts = vulnerabilities['@canva/app-scripts'];
-if (appScripts?.severity !== 'high') {
-  throw new Error(
-    '@canva/app-scripts severity changed from the reviewed high meta-vulnerability level',
-  );
-}
-
-console.log(
-  'verified Canva dev-tool boundary: uuid is patched via override; development advisories reviewed; production audit remains independently blocking',
-);

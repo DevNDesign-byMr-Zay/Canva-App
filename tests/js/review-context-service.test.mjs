@@ -402,3 +402,53 @@ test('validateReviewContextRequest rejects malformed HTTP payloads explicitly', 
     { designToken: 'valid-token' }
   );
 });
+
+// Upstream envelopes are untrusted even after a successful identity check.
+for (const [name, mutate] of [
+  ['null', () => null],
+  ['array', () => []],
+  ['extra field', value => ({ ...value, extra: true })],
+  ['missing scenario', () => ({})],
+  ['contract version', value => ({ ...value, scenario: { ...value.scenario, contractVersion: 2 } })],
+  ['missing source', value => ({ ...value, scenario: { ...value.scenario, source: null } })],
+  ['page scope', value => ({ ...value, scenario: { ...value.scenario, source: { ...value.scenario.source, pageIds: null } } })],
+  ['automatic apply', value => ({ ...value, scenario: { ...value.scenario, presentation: { autoApply: true } } })],
+  ['nonfinite number', value => ({ ...value, scenario: { ...value.scenario, metric: Infinity } })],
+  ['undefined', value => ({ ...value, scenario: { ...value.scenario, metric: undefined } })],
+  ['symbol', value => ({ ...value, scenario: { ...value.scenario, [Symbol('secret')]: true } })],
+  ['nonplain object', value => ({ ...value, scenario: { ...value.scenario, extra: new Date() } })],
+  ['accessor', value => { Object.defineProperty(value.scenario, 'extra', { enumerable: true, get() { throw new Error('must not run'); } }); return value; }],
+  ['hidden property', value => { Object.defineProperty(value.scenario, 'extra', { value: 1 }); return value; }],
+  ['circular', value => { value.scenario.cycle = value; return value; }],
+]) {
+  test(`rejects unsafe upstream envelope: ${name}`, async t => {
+    const service = await startServer({ loadScenario: async () => mutate({ scenario: scenario(), trustedPageId: 'page-1' }) });
+    t.after(service.close);
+    const response = await fetch(`${service.base}/review-context`, {
+      method: 'POST',
+      headers: { origin: 'https://app.example.test', authorization: 'Bearer user-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ designToken: 'design-token' }),
+    });
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: 'review_context_unavailable' });
+  });
+}
+
+test('default Canva middleware rejects malformed JWTs without trusting request claims', async t => {
+  const server = createReviewContextServer({ appId: 'app-1', allowedOrigin: 'https://app.example.test', loadScenario: async () => assert.fail('unverified source'), logger: { info() {}, warn() {} } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/review-context`, requestOptions());
+  assert.equal(response.status, 401);
+});
+
+test('malformed JSON and oversized request bodies fail closed', async t => {
+  const service = await startServer();
+  t.after(service.close);
+  for (const [body, expected] of [['{bad', 400], [JSON.stringify({ designToken: 'x'.repeat(70_000) }), 413]]) {
+    const response = await fetch(service.base + '/review-context', { ...requestOptions(), body });
+    assert.equal(response.status, expected);
+  }
+  assert.equal(service.sourceCalls.length, 0);
+});

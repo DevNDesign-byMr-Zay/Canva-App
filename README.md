@@ -249,3 +249,6 @@ See `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `app/authenticate
 ## Coverage evidence artifacts
 
 The engineering workflow keeps the existing blocking coverage/test gates and now retains their evidence for review. Python emits a standard `coverage.xml` artifact, while the maintained Node runtime writes raw V8 coverage data from the same `npm test` execution. Both artifacts are retained for 30 days and are tied to the exact workflow commit.
+
+Complete root/editor and independent-app verification: `npm run verify:fresh`.
+See [clean-clone commands and PowerShell setup](docs/CLEAN_CLONE_VERIFICATION.md).

@@ -62,3 +62,4 @@ check: lint typecheck test syntax-js test-js audit verify
 app-check: audit-app format-check-app typecheck-app test-app coverage-app build-app
 
 verify-fresh: setup check app-check
+	node scripts/verify-fresh-clone.mjs --standalone
