@@ -30,3 +30,6 @@ Never commit credentials, private keys, personal identifiers, client/customer re
 ## Provenance rules
 
 Do not manufacture missing historical source or present derived/reconstructed code as an exact original artifact. Do not fabricate historical commits, authors, dates, tags, or releases. Legitimate future work should be committed incrementally under the actual contributor identity.
+
+Complete root/editor and independent-app verification: `npm run verify:fresh`.
+See [clean-clone commands and PowerShell setup](docs/CLEAN_CLONE_VERIFICATION.md).

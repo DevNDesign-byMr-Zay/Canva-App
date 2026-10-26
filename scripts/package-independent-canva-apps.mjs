@@ -2,6 +2,8 @@ import { access, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { includeBackendSource } from "./backend-package-filter.mjs";
+
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptsDir, "..");
 const outputRoot = resolve(root, process.argv[2] ?? ".artifacts/independent-canva-apps");
@@ -318,7 +320,10 @@ for (const app of APPS) {
   }
 
   if (app.includeBackend) {
-    await cp(join(source, "backend"), join(destination, "backend"), { recursive: true });
+    const backendRoot = join(source, "backend");
+    await cp(backendRoot, join(destination, "backend"), {
+      recursive: true, filter: file => includeBackendSource(backendRoot, file),
+    });
   }
   await writeFile(join(destination, "START-HERE.html"), startHereHtml(app.displayName), "utf8");
   await writeFile(join(destination, "UPLOAD-TO-CANVA.txt"), uploadInstructions(app.displayName), "utf8");

@@ -231,3 +231,45 @@ test("invalid bounded resource values fail closed", () => {
     ),
   );
 });
+
+test('real storage probes reject relative and unwritable paths without leaving files', async t => {
+  const { mkdtemp, writeFile, readdir, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+  const { createRealRuntime } = await import('../../scripts/verify-deployment-readiness.mjs');
+  const directory = await mkdtemp(path.join(tmpdir(), 'readiness-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const runtime = createRealRuntime();
+  assert.equal(await runtime.writableDirectory('relative'), false);
+  assert.equal(await runtime.writableDirectory(directory), true);
+  assert.deepEqual(await readdir(directory), []);
+  const file = path.join(directory, 'file');
+  await writeFile(file, 'not a directory');
+  assert.equal(await runtime.writableDirectory(path.join(file, 'child')), false);
+  assert.equal((await runtime.blender(path.join(directory, 'missing'), '4.5.14')).ok, false);
+  assert.equal((await runtime.blender('', '4.5.14')).ok, false);
+});
+
+test('real Blender version probe distinguishes mismatch, malformed output and execution failure', async t => {
+  if (process.platform === 'win32') return t.skip('POSIX executable fixture');
+  const { mkdtemp, writeFile, chmod, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+  const { createRealRuntime } = await import('../../scripts/verify-deployment-readiness.mjs');
+  const directory = await mkdtemp(path.join(tmpdir(), 'blender-version-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const binary = path.join(directory, 'blender');
+  const runtime = createRealRuntime();
+  for (const [body, expected, detail] of [
+    ['echo Blender 4.5.14', true, /matches/],
+    ['echo Blender 4.0.0', false, /mismatch/],
+    ['echo malformed', false, /parsed/],
+    ['exit 1', false, /failed/],
+  ]) {
+    await writeFile(binary, '#!/bin/sh\n' + body + '\n');
+    await chmod(binary, 0o700);
+    const result = await runtime.blender(binary, '4.5.14');
+    assert.equal(result.ok, expected);
+    assert.match(result.detail, detail);
+  }
+});
