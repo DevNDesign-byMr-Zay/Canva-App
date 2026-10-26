@@ -14,7 +14,11 @@ function signedArea(points: readonly Point2[]): number {
   return area / 2;
 }
 
-function perpendicularDistance(point: Point2, start: Point2, end: Point2): number {
+function perpendicularDistance(
+  point: Point2,
+  start: Point2,
+  end: Point2,
+): number {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   if (dx === 0 && dy === 0) {
@@ -218,7 +222,6 @@ export function normalizeContour(
     ),
   );
 }
-
 
 export function normalizeContours(
   contours: readonly (readonly Point2[])[],

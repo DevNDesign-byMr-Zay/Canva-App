@@ -57,7 +57,10 @@ export function useAlphaShape(url?: string): AlphaShapeResult {
         const sourceWidth = image.naturalWidth || image.width;
         const sourceHeight = image.naturalHeight || image.height;
         const maxSide = 160;
-        const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+        const scale = Math.min(
+          1,
+          maxSide / Math.max(sourceWidth, sourceHeight),
+        );
         const width = Math.max(2, Math.round(sourceWidth * scale));
         const height = Math.max(2, Math.round(sourceHeight * scale));
 
@@ -83,7 +86,8 @@ export function useAlphaShape(url?: string): AlphaShapeResult {
 
         const coverage = opaque / mask.length;
         const targetWidth = 2.3;
-        const targetHeight = targetWidth * (sourceHeight / Math.max(1, sourceWidth));
+        const targetHeight =
+          targetWidth * (sourceHeight / Math.max(1, sourceWidth));
 
         if (coverage >= 0.985 || coverage <= 0.002) {
           setResult(
@@ -98,8 +102,20 @@ export function useAlphaShape(url?: string): AlphaShapeResult {
           return;
         }
 
-        const contours = usefulAlphaContours(mask, width, height, 1.15, 32, 0.002);
-        const normalized = normalizeContours(contours, width, height, targetWidth);
+        const contours = usefulAlphaContours(
+          mask,
+          width,
+          height,
+          1.15,
+          32,
+          0.002,
+        );
+        const normalized = normalizeContours(
+          contours,
+          width,
+          height,
+          targetWidth,
+        );
         const shapes = Object.freeze(
           normalized
             .map((contour) => contourToShape(contour))
