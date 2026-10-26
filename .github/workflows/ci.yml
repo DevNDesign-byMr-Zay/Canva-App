@@ -223,6 +223,13 @@ jobs:
           node-version: "22"
       - name: Audit locked production Canva app dependencies
         run: npm audit --prefix apps/${{ matrix.app }} --omit=dev --audit-level=high
+      - name: Audit development dependencies against the narrow vendor boundary
+        working-directory: apps/${{ matrix.app }}
+        shell: bash
+        run: |
+          trap 'rm -f npm-audit.json' EXIT
+          npm audit --json > npm-audit.json || audit_status=$?
+          node ../../canva-app/scripts/verify-dev-audit.mjs npm-audit.json
       - name: Set up Python
         uses: actions/setup-python@v7
         with:

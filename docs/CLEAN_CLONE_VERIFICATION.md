@@ -98,3 +98,22 @@ Root `dependency-audit` runs both `pip check` (consistency) and `pip-audit`
 (vulnerabilities); app backend locks are audited independently. Updating a
 `requirements.txt` range alone is insufficient: regenerate its complete Python 3.12
 lock in a clean environment and commit both, then run that backend suite and audit.
+
+### Packaging after verification
+
+Backend source packaging excludes Python bytecode, test caches, virtual
+environments, populated environment files, symlinks and runtime data. This matters
+because tests and compilation create caches even in a clean clone. Source modules,
+backend tests, pinned locks and blank environment examples remain in each handoff.
+The integrity gate still rejects any excluded material that reaches a package.
+
+### Reviewed vendor development advisory
+
+Production npm audits remain blocking. Development audits now reject every
+fixable advisory and every new advisory identity. The sole retained vendor
+exception is the previously reviewed, unfixable high-severity node-forge
+GHSA-86w9-cpqp-85rv in Canva build tooling (and its app-scripts meta-vulnerability).
+It must stay dev-only, have no available fix, and remain high rather than critical.
+All three frontend graphs use the patched UUID override; other reported vulnerable
+development packages were updated within supported dependency ranges. Do not run
+an exposed development server. Remove the exception when the vendor supplies a fix.
