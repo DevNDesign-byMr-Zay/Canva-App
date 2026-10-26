@@ -58,3 +58,11 @@ def test_worker_passes_only_supported_geometry_arguments():
     for call in ast.walk(tree):
         if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id in contracts:
             contracts[call.func.id].bind(*[None for arg in call.args], **{kw.arg: None for kw in call.keywords})
+
+
+def test_worker_material_color_helper_is_bound():
+    import ast
+    from pathlib import Path
+    tree = ast.parse(Path(__file__).with_name('blender_worker.py').read_text())
+    names = {alias.asname or alias.name for node in tree.body if isinstance(node, ast.ImportFrom) for alias in node.names}
+    assert 'rgba' in names, 'worker world shader must resolve the extracted color helper'

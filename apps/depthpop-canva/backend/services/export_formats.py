@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import io
 import json
 import math
-import os
 import shutil
-import struct
 import subprocess
 import zipfile
 from pathlib import Path
@@ -16,20 +13,17 @@ from typing import Awaitable, Callable
 from PIL import Image
 
 from models.export import ExportRequest
-from models.object import AnimationTrack, DepthObject, ObjectTransform, Vector3
 from models.scene import DepthScene
 from services.compositor import composite_scene
 # Preserve the existing facade used by jobs and integrations.
 from services.export_assets import _mime_for_bytes, _data_url, _safe_name, _collect_scene_assets
 from services.export_animation import scene_at_time
-from services.export_gltf import export_gltf_or_glb
+from services.export_limits import MAX_EXPORT_PIXELS, MAX_EXPORT_FRAMES, MAX_EXPORT_DURATION_MS
+from services.export_gltf import export_gltf_or_glb as export_gltf_or_glb
 
 AssetFetcher = Callable[[str], Awaitable[bytes]]
 ProgressReporter = Callable[[str, float], Awaitable[None]]
 CancelChecker = Callable[[], Awaitable[bool]]
-
-from services.export_limits import MAX_EXPORT_PIXELS, MAX_EXPORT_FRAMES, MAX_EXPORT_DURATION_MS
-
 
 async def export_portable_scene_json(
     scene: DepthScene,

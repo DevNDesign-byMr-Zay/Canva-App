@@ -1,21 +1,17 @@
 from __future__ import annotations
 
-import base64
-import colorsys
 import json
 import math
-import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import zipfile
 from pathlib import Path
 
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from blender_materials import material_for, animate_material
+from blender_materials import rgba, material_for, animate_material
 from blender_geometry import decode_data_image, source_alpha_geometry, create_extruded_contour_object, attach_source_face
 from blender_animation import apply_transform, add_keyframes
 

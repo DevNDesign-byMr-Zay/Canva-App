@@ -3,7 +3,7 @@ import json
 import math
 import struct
 from pathlib import Path
-from models.object import DepthObject, Vector3
+from models.object import DepthObject
 from models.scene import DepthScene
 from services.export_assets import AssetFetcher, _collect_scene_assets, _data_url
 from services.export_animation import _animated_object

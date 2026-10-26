@@ -72,6 +72,8 @@ jobs:
         run: python -m pytest -q
       - name: Lint Python
         run: python -m ruff check archive_verifier scripts tests
+      - name: Check both backends for undefined Python names
+        run: python -m ruff check --isolated --select F821 apps/holoforge-canva/backend apps/depthpop-canva/backend
       - name: Type-check Python
         run: python -m mypy archive_verifier scripts
 
