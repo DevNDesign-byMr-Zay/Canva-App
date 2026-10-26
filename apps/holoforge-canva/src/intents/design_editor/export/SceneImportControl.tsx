@@ -43,10 +43,7 @@ export function SceneImportControl({
 
   return (
     <div
-      className={
-        "hf-scene-import" +
-        (dragActive ? " is-dragging" : "")
-      }
+      className={"hf-scene-import" + (dragActive ? " is-dragging" : "")}
       onDragEnter={(event) => {
         event.preventDefault();
         if (!busy) setDragActive(true);
@@ -70,7 +67,9 @@ export function SceneImportControl({
     >
       <div>
         <span>HOLOSCENE PROJECT</span>
-        <strong>{dragActive ? "Drop project to open" : "Resume an authored scene"}</strong>
+        <strong>
+          {dragActive ? "Drop project to open" : "Resume an authored scene"}
+        </strong>
         <small aria-live="polite">
           {message ?? "Open or drop a saved .holoscene.json project."}
         </small>

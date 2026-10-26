@@ -77,7 +77,9 @@ describe("HoloScene import", () => {
     const restored = parseHoloSceneJson(JSON.stringify(parsed));
 
     expect(restored.objects).toHaveLength(2);
-    expect(restored.objects[0]?.animationTracks[0]?.keyframes[1]?.value.x).toBe(1.2);
+    expect(restored.objects[0]?.animationTracks[0]?.keyframes[1]?.value.x).toBe(
+      1.2,
+    );
     expect(restored.objects[1]?.transform.position.x).toBe(-0.75);
     expect(restored.camera.position).toEqual({ x: 2.25, y: 1.25, z: 4.65 });
     expect(restored.camera.fov).toBe(38);
@@ -87,9 +89,7 @@ describe("HoloScene import", () => {
   });
 
   it("rejects invalid JSON", () => {
-    expect(() => parseHoloSceneJson("{not-json")).toThrow(
-      /not valid JSON/i,
-    );
+    expect(() => parseHoloSceneJson("{not-json")).toThrow(/not valid JSON/i);
   });
 
   it("rejects a non-HoloScene payload", () => {

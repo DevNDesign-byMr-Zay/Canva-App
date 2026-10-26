@@ -45,7 +45,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "client",
     ready: true,
     animated: true,
-    description: "Lossless HoloForge scene snapshot including transforms, materials, camera, timeline and keyframes.",
+    description:
+      "Lossless HoloForge scene snapshot including transforms, materials, camera, timeline and keyframes.",
   },
   {
     format: "glb",
@@ -56,7 +57,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: true,
-    description: "Portable binary glTF scene. Production export waits for the geometry/render worker so source meshes and animation clips stay faithful.",
+    description:
+      "Portable binary glTF scene. Production export waits for the geometry/render worker so source meshes and animation clips stay faithful.",
   },
   {
     format: "gltf",
@@ -67,7 +69,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: true,
-    description: "Interchange-oriented glTF package produced by the geometry/render worker.",
+    description:
+      "Interchange-oriented glTF package produced by the geometry/render worker.",
   },
   {
     format: "usdz",
@@ -78,7 +81,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: false,
-    description: "AR-oriented USDZ package generated directly by Blender's USD archive exporter.",
+    description:
+      "AR-oriented USDZ package generated directly by Blender's USD archive exporter.",
   },
   {
     format: "webm-alpha",
@@ -89,7 +93,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: true,
-    description: "Transparent animated hologram render for compositing and compatible display pipelines.",
+    description:
+      "Transparent animated hologram render for compositing and compatible display pipelines.",
   },
   {
     format: "mp4",
@@ -100,7 +105,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: true,
-    description: "Widely compatible review/preview render; transparency is not assumed.",
+    description:
+      "Widely compatible review/preview render; transparency is not assumed.",
   },
   {
     format: "png-sequence",
@@ -111,7 +117,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: true,
-    description: "Frame-accurate transparent sequence for compositing, LED/display pipelines, and archival interchange.",
+    description:
+      "Frame-accurate transparent sequence for compositing, LED/display pipelines, and archival interchange.",
   },
   {
     format: "png-still",
@@ -122,7 +129,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: false,
-    description: "Transparent still render of the currently authored HoloScene timeline frame, suitable for direct Canva insertion.",
+    description:
+      "Transparent still render of the currently authored HoloScene timeline frame, suitable for direct Canva insertion.",
   },
   {
     format: "lightfield-quilt",
@@ -133,7 +141,8 @@ export const EXPORT_CAPABILITIES: readonly ExportCapability[] = Object.freeze([
     execution: "render-worker",
     ready: false,
     animated: false,
-    description: "Multi-view light-field quilt PNG. HoloForge renders discrete camera views into a quilt; final optical interlacing/calibration remains the display runtime's responsibility.",
+    description:
+      "Multi-view light-field quilt PNG. HoloForge renders discrete camera views into a quilt; final optical interlacing/calibration remains the display runtime's responsibility.",
   },
 ]);
 
@@ -166,14 +175,20 @@ export type HoloExportRequest = Readonly<{
 
 export function capabilityFor(format: HoloExportFormat): ExportCapability {
   const capability = EXPORT_CAPABILITIES.find((item) => item.format === format);
-  if (!capability) throw new Error("Unknown HoloForge export format: " + format);
+  if (!capability)
+    throw new Error("Unknown HoloForge export format: " + format);
   return capability;
 }
 
 export function buildExportRequest(
   scene: HoloScene,
   format: HoloExportFormat,
-  overrides: Partial<Pick<HoloExportRequest, "includeAnimation" | "resolution" | "transparentBackground" | "quilt">> = {},
+  overrides: Partial<
+    Pick<
+      HoloExportRequest,
+      "includeAnimation" | "resolution" | "transparentBackground" | "quilt"
+    >
+  > = {},
 ): HoloExportRequest {
   const capability = capabilityFor(format);
   const request: HoloExportRequest = {
@@ -187,12 +202,12 @@ export function buildExportRequest(
       (format === "lightfield-quilt"
         ? { width: 3600, height: 3600 }
         : { width: 1920, height: 1080 }),
-    transparentBackground: overrides.transparentBackground ?? (
-      format === "webm-alpha" ||
-      format === "png-sequence" ||
-      format === "png-still" ||
-      format === "lightfield-quilt"
-    ),
+    transparentBackground:
+      overrides.transparentBackground ??
+      (format === "webm-alpha" ||
+        format === "png-sequence" ||
+        format === "png-still" ||
+        format === "lightfield-quilt"),
     ...(format === "lightfield-quilt"
       ? { quilt: overrides.quilt ?? GENERIC_45_VIEW_QUILT }
       : overrides.quilt

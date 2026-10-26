@@ -7,16 +7,25 @@ const MAX_CANVA_RENDER_BYTES = 20 * 1024 * 1024;
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   if (blob.size <= 0 || blob.size > MAX_CANVA_RENDER_BYTES) {
-    throw new Error("HoloForge PNG render is empty or exceeds the 20 MB Canva insertion limit.");
+    throw new Error(
+      "HoloForge PNG render is empty or exceeds the 20 MB Canva insertion limit.",
+    );
   }
 
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () =>
-      reject(new Error("HoloForge could not prepare the PNG render for Canva."));
+      reject(
+        new Error("HoloForge could not prepare the PNG render for Canva."),
+      );
     reader.onload = () => {
-      if (typeof reader.result !== "string" || !reader.result.startsWith("data:image/png")) {
-        reject(new Error("HoloForge render did not resolve to a PNG data URL."));
+      if (
+        typeof reader.result !== "string" ||
+        !reader.result.startsWith("data:image/png")
+      ) {
+        reject(
+          new Error("HoloForge render did not resolve to a PNG data URL."),
+        );
         return;
       }
       resolve(reader.result);
@@ -31,7 +40,9 @@ export async function insertBackendPngIntoCanva(
 ): Promise<string> {
   const artifact = await fetchBackendExportBlob(exportId);
   if (artifact.mimeType !== "image/png" && artifact.blob.type !== "image/png") {
-    throw new Error("Only completed PNG still exports can be inserted into Canva.");
+    throw new Error(
+      "Only completed PNG still exports can be inserted into Canva.",
+    );
   }
 
   const dataUrl = await blobToDataUrl(artifact.blob);
