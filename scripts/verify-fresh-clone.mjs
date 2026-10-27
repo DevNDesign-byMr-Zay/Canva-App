@@ -34,7 +34,7 @@ export function createPlan({ root = process.cwd(), python = process.env.PYTHON |
   for (const app of ['holoforge-canva', 'depthpop-canva']) {
     const frontend = path.join(root, 'apps', app);
     add(`Install ${app} locked frontend`, npm, ['ci', '--ignore-scripts'], frontend);
-    for (const command of ['lint', 'format:check', 'typecheck', 'test', 'build']) {
+    for (const command of ['lint', 'format:check', 'typecheck', 'test:coverage', 'build']) {
       add(`${app} ${command}`, npm, ['run', command], frontend);
     }
     const backend = path.join(frontend, 'backend');

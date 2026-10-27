@@ -297,6 +297,39 @@ jobs:
       - name: Authenticated archive verification
         run: python -m archive_verifier
 
+  standalone-frontend-coverage:
+    name: coverage-${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [holoforge-canva, depthpop-canva]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci --ignore-scripts
+      - name: Enforce app-wide and critical-module coverage
+        run: npm run test:coverage
+      - name: Retain frontend coverage summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.app }}-${{ github.sha }}
+          path: apps/${{ matrix.app }}/coverage/coverage-summary.json
+          if-no-files-found: warn
+          retention-days: 30
+
   deployment-readiness:
     name: deployment-readiness
     runs-on: ubuntu-latest
