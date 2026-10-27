@@ -26,26 +26,36 @@ export type HolographicExecutionAdapters = Readonly<{
   derivedImage: DerivedImageAdapter;
 }>;
 
-export function previewOnlyProperties(plan: HolographicEffectPlan): readonly string[] {
+export function previewOnlyProperties(
+  plan: HolographicEffectPlan,
+): readonly string[] {
   return Object.freeze(
-    plan.layers.filter((layer) => layer.type === "PREVIEW_ONLY").map((layer) => layer.property),
+    plan.layers
+      .filter((layer) => layer.type === "PREVIEW_ONLY")
+      .map((layer) => layer.property),
   );
 }
 
-export function resolveExecutionRoute(plan: HolographicEffectPlan): HolographicExecutionRoute {
+export function resolveExecutionRoute(
+  plan: HolographicEffectPlan,
+): HolographicExecutionRoute {
   if (plan.creationType === "holo_logo") return "DERIVED_IMAGE";
-  if (plan.creationType === "holo_graphic" && plan.sourceImageRef) return "DERIVED_IMAGE";
+  if (plan.creationType === "holo_graphic" && plan.sourceImageRef)
+    return "DERIVED_IMAGE";
   return "APP_OWNED_EFFECT";
 }
 
 function hasRequiredSource(plan: HolographicEffectPlan): boolean {
   const support = getCreationForgeSupport(plan.creationType);
   if (support.requiredSource === "image") return Boolean(plan.sourceImageRef);
-  if (support.requiredSource === "text") return Boolean(plan.sourceText?.trim());
+  if (support.requiredSource === "text")
+    return Boolean(plan.sourceText?.trim());
   return true;
 }
 
-export function canExecuteHolographicPlan(plan: HolographicEffectPlan): boolean {
+export function canExecuteHolographicPlan(
+  plan: HolographicEffectPlan,
+): boolean {
   if (!plan.isValid || !hasRequiredSource(plan)) return false;
   return getCreationForgeSupport(plan.creationType).forgeable;
 }
@@ -58,7 +68,9 @@ export async function executeHolographicEffectPlan(
 
   const support = getCreationForgeSupport(plan.creationType);
   if (support.requiredSource === "image" && !plan.sourceImageRef) {
-    throw new Error("Choose or upload a raster image before forging this holographic logo.");
+    throw new Error(
+      "Choose or upload a raster image before forging this holographic logo.",
+    );
   }
   if (support.requiredSource === "text" && !plan.sourceText?.trim()) {
     throw new Error("Enter text before forging a holographic text element.");

@@ -1,10 +1,7 @@
 import { auth } from "@canva/user";
 
 import type { HoloScene } from "../scene/holo-scene";
-import type {
-  HoloExportFormat,
-  HoloExportRequest,
-} from "./export-contract";
+import type { HoloExportFormat, HoloExportRequest } from "./export-contract";
 
 declare const BACKEND_HOST: string;
 
@@ -71,15 +68,27 @@ export function isWorkerExportImplemented(format: HoloExportFormat): boolean {
 
 async function blobToDataUrl(blob: Blob): Promise<string> {
   if (blob.size > 15 * 1024 * 1024) {
-    throw new Error("HoloForge export source exceeds the 15 MB browser materialization limit.");
+    throw new Error(
+      "HoloForge export source exceeds the 15 MB browser materialization limit.",
+    );
   }
 
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("HoloForge could not encode the source image for export."));
+    reader.onerror = () =>
+      reject(
+        new Error("HoloForge could not encode the source image for export."),
+      );
     reader.onload = () => {
-      if (typeof reader.result !== "string" || !reader.result.startsWith("data:image/")) {
-        reject(new Error("HoloForge export source did not resolve to an image data URL."));
+      if (
+        typeof reader.result !== "string" ||
+        !reader.result.startsWith("data:image/")
+      ) {
+        reject(
+          new Error(
+            "HoloForge export source did not resolve to an image data URL.",
+          ),
+        );
         return;
       }
       resolve(reader.result);
@@ -98,16 +107,22 @@ async function materializeSourceUrl(url?: string): Promise<string | undefined> {
     credentials: "omit",
   });
   if (!response.ok) {
-    throw new Error("HoloForge could not materialize the Canva source for export.");
+    throw new Error(
+      "HoloForge could not materialize the Canva source for export.",
+    );
   }
   const blob = await response.blob();
   if (!["image/png", "image/jpeg", "image/webp"].includes(blob.type)) {
-    throw new Error("HoloForge export source must resolve to PNG, JPEG, or WebP.");
+    throw new Error(
+      "HoloForge export source must resolve to PNG, JPEG, or WebP.",
+    );
   }
   return await blobToDataUrl(blob);
 }
 
-export async function prepareSceneForBackend(scene: HoloScene): Promise<HoloScene> {
+export async function prepareSceneForBackend(
+  scene: HoloScene,
+): Promise<HoloScene> {
   const urls = new Set<string>();
   if (scene.source.previewUrl) urls.add(scene.source.previewUrl);
   for (const object of scene.objects) {
@@ -163,14 +178,18 @@ async function authorizedFetch(
 }
 
 async function jsonOrError<T>(response: Response): Promise<T> {
-  const body = await response.json().catch(() => null) as
+  const body = (await response.json().catch(() => null)) as
     | T
     | { detail?: string; error?: string }
     | null;
   if (!response.ok) {
     const detail =
       body && typeof body === "object"
-        ? ("detail" in body ? body.detail : "error" in body ? body.error : null)
+        ? "detail" in body
+          ? body.detail
+          : "error" in body
+            ? body.error
+            : null
         : null;
     throw new Error(detail || "HoloForge render backend request failed.");
   }
@@ -224,7 +243,9 @@ export async function waitForExport(
     }
     await new Promise((resolve) => window.setTimeout(resolve, 750));
   }
-  throw new Error("HoloForge export timed out while waiting for the render worker.");
+  throw new Error(
+    "HoloForge export timed out while waiting for the render worker.",
+  );
 }
 
 export async function fetchBackendExportBlob(
@@ -232,7 +253,9 @@ export async function fetchBackendExportBlob(
 ): Promise<ExportArtifactBlob> {
   const status = await readExportStatus(exportId);
   if (status.status !== "complete" || !status.downloadUrl) {
-    throw new Error(status.error || "HoloForge export is not ready to download.");
+    throw new Error(
+      status.error || "HoloForge export is not ready to download.",
+    );
   }
 
   const response = await authorizedFetch(status.downloadUrl);
@@ -249,9 +272,7 @@ export async function fetchBackendExportBlob(
   });
 }
 
-export async function downloadBackendExport(
-  exportId: string,
-): Promise<string> {
+export async function downloadBackendExport(exportId: string): Promise<string> {
   const artifact = await fetchBackendExportBlob(exportId);
   const url = URL.createObjectURL(artifact.blob);
   const anchor = document.createElement("a");

@@ -47,8 +47,7 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
     capability.execution === "render-worker" &&
     isWorkerExportImplemented(format);
   const actionable =
-    capability.ready ||
-    (workerImplemented && backendConfigured);
+    capability.ready || (workerImplemented && backendConfigured);
 
   const requestPreview = useMemo(() => {
     const request = buildExportRequest(scene, format);
@@ -129,16 +128,15 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
     }
   };
 
-  const availabilityLabel =
-    capability.ready
-      ? "READY"
-      : workerImplemented
-        ? backendConfigured
-          ? "WORKER READY"
-          : "BACKEND REQUIRED"
-        : capability.execution === "device-adapter"
-          ? "DEVICE ADAPTER"
-          : "NOT IMPLEMENTED";
+  const availabilityLabel = capability.ready
+    ? "READY"
+    : workerImplemented
+      ? backendConfigured
+        ? "WORKER READY"
+        : "BACKEND REQUIRED"
+      : capability.execution === "device-adapter"
+        ? "DEVICE ADAPTER"
+        : "NOT IMPLEMENTED";
 
   return (
     <section className="hf-export-panel" aria-label="HoloForge export profiles">
@@ -147,9 +145,7 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
           <span>07 · EXPORT / DEPLOY</span>
           <strong>{capability.label}</strong>
         </div>
-        <b className={actionable ? "is-ready" : ""}>
-          {availabilityLabel}
-        </b>
+        <b className={actionable ? "is-ready" : ""}>{availabilityLabel}</b>
       </div>
 
       <div className="hf-export-groups">
@@ -226,21 +222,28 @@ export function ExportPanel({ scene }: { scene: HoloScene }) {
         </div>
       )}
 
-      {status && <p className="hf-export-status" aria-live="polite">{status}</p>}
+      {status && (
+        <p className="hf-export-status" aria-live="polite">
+          {status}
+        </p>
+      )}
 
       <p className="hf-export-boundary">
         Scene JSON is generated locally and materializes source imagery into the
-        project file so it can be reopened after temporary Canva URLs expire. Static transparent PNG, GLB, glTF,
-        transparent VP9 WebM, MP4, PNG sequences and multi-view quilt PNGs use
-        the authenticated HoloForge render backend when configured. PNG Still
-        renders the authored timeline frame and inserts the finished result
-        directly back into Canva. Quilt output is display-ready content,
-        but optical interlacing still belongs to the connected display runtime.
-        USDZ is generated directly by Blender's USDZ exporter; optical interlacing remains specific to each light-field display runtime.
+        project file so it can be reopened after temporary Canva URLs expire.
+        Static transparent PNG, GLB, glTF, transparent VP9 WebM, MP4, PNG
+        sequences and multi-view quilt PNGs use the authenticated HoloForge
+        render backend when configured. PNG Still renders the authored timeline
+        frame and inserts the finished result directly back into Canva. Quilt
+        output is display-ready content, but optical interlacing still belongs
+        to the connected display runtime. USDZ is generated directly by
+        Blender's USDZ exporter; optical interlacing remains specific to each
+        light-field display runtime.
       </p>
 
       <span className="hf-export-count">
-        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 8 WORKER IMPLEMENTED
+        {EXPORT_CAPABILITIES.length} FORMAT CONTRACTS · 1 CLIENT · 8 WORKER
+        IMPLEMENTED
       </span>
     </section>
   );

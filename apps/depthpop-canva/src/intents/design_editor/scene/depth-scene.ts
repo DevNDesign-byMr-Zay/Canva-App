@@ -47,11 +47,7 @@ export type AnimationProperty =
   | "scale.z"
   | "opacity";
 
-export type AnimationEasing =
-  | "linear"
-  | "ease-in"
-  | "ease-out"
-  | "ease-in-out";
+export type AnimationEasing = "linear" | "ease-in" | "ease-out" | "ease-in-out";
 
 export interface AnimationKeyframe {
   timeMs: number;
@@ -177,11 +173,7 @@ function isDepthPopSceneSettings(
 ): value is DepthPopSceneSettings {
   if (!isRecord(value)) return false;
   const quality = value.renderQuality;
-  if (
-    quality !== "fast" &&
-    quality !== "balanced" &&
-    quality !== "cinematic"
-  ) {
+  if (quality !== "fast" && quality !== "balanced" && quality !== "cinematic") {
     return false;
   }
   return (
@@ -229,8 +221,7 @@ function isAnimationTrack(
     if (!isFiniteNumber(rawKeyframe.value)) return false;
     if (
       value.property === "opacity" &&
-      ((rawKeyframe.value as number) < 0 ||
-        (rawKeyframe.value as number) > 1)
+      ((rawKeyframe.value as number) < 0 || (rawKeyframe.value as number) > 1)
     ) {
       return false;
     }

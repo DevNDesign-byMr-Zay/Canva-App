@@ -28,7 +28,7 @@ const canvasBindings = new WeakMap<HTMLCanvasElement, BindingRecord>();
 export function bindWebGLRecovery(
   target: HTMLCanvasElement,
   getSnapshot: () => WebGLRecoverySnapshot,
-  options: WebGLRecoveryOptions = {}
+  options: WebGLRecoveryOptions = {},
 ): () => void {
   let record = canvasBindings.get(target);
 
@@ -74,7 +74,10 @@ export function bindWebGLRecovery(
     current.refCount -= 1;
     if (current.refCount <= 0) {
       target.removeEventListener("webglcontextlost", current.handleLost);
-      target.removeEventListener("webglcontextrestored", current.handleRestored);
+      target.removeEventListener(
+        "webglcontextrestored",
+        current.handleRestored,
+      );
       canvasBindings.delete(target);
     }
   };

@@ -7,7 +7,9 @@ import {
   type WebGLRecoverySnapshot,
 } from "./webgl-recovery";
 
-function snapshot(overrides: Partial<WebGLRecoverySnapshot> = {}): WebGLRecoverySnapshot {
+function snapshot(
+  overrides: Partial<WebGLRecoverySnapshot> = {},
+): WebGLRecoverySnapshot {
   return {
     sceneId: "scene-webgl",
     selectedObjectId: "person-01",

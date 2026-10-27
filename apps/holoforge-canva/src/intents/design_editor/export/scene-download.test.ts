@@ -8,10 +8,7 @@ vi.mock("@canva/user", () => ({
 import type { HoloScene } from "../scene/holo-scene";
 import { serializeHoloScene } from "./export-contract";
 import { parseHoloSceneJson } from "./scene-import";
-import {
-  preparePortableHoloScene,
-  sceneDownloadName,
-} from "./scene-download";
+import { preparePortableHoloScene, sceneDownloadName } from "./scene-download";
 
 function portableScene(): HoloScene {
   return {
@@ -107,7 +104,8 @@ describe("HoloScene download", () => {
 
     const prepared = await preparePortableHoloScene(duplicated);
     const serialized = serializeHoloScene(prepared);
-    const occurrences = serialized.split("data:image/png;base64,AAAA").length - 1;
+    const occurrences =
+      serialized.split("data:image/png;base64,AAAA").length - 1;
 
     expect(occurrences).toBe(1);
     expect(prepared.objects[0]?.geometry.sourceUrl).toBeUndefined();

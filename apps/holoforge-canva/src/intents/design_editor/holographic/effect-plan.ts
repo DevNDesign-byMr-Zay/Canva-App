@@ -1,5 +1,8 @@
 import type { ImageRef } from "@canva/asset";
-import { getPropertyCapability, type CapabilityTier } from "./capability-matrix";
+import {
+  getPropertyCapability,
+  type CapabilityTier,
+} from "./capability-matrix";
 import {
   getPresetById,
   validateMaterialParameters,
@@ -41,7 +44,8 @@ export function createEffectPlan(options: {
   nativeTransform?: { x?: number; y?: number; rotation?: number };
 }): HolographicEffectPlan {
   const preset = getPresetById(options.presetId);
-  if (!preset) throw new Error(`Unknown material preset ID: ${options.presetId}`);
+  if (!preset)
+    throw new Error(`Unknown material preset ID: ${options.presetId}`);
 
   const parameters: HolographicMaterialPreset["parameters"] = {
     ...preset.parameters,

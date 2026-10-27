@@ -31,10 +31,7 @@ function plan(overrides: Partial<HolographicEffectPlan["parameters"]> = {}) {
 
 describe("HoloForge derived-image material engine", () => {
   it("preserves transparent pixels while transforming visible color", () => {
-    const pixels = new Uint8ClampedArray([
-      120, 120, 120, 255,
-      10, 20, 30, 0,
-    ]);
+    const pixels = new Uint8ClampedArray([120, 120, 120, 255, 10, 20, 30, 0]);
 
     applyHolographicPixels(pixels, 2, 1, plan());
 

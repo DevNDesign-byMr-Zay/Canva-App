@@ -1,5 +1,8 @@
 import React from "react";
-import { MATERIAL_PRESETS, type HolographicMaterialPreset } from "../holographic/material-contract";
+import {
+  MATERIAL_PRESETS,
+  type HolographicMaterialPreset,
+} from "../holographic/material-contract";
 
 export type MaterialPresetsProps = {
   selectedPresetId: string;
@@ -11,7 +14,11 @@ export const MaterialPresets: React.FC<MaterialPresetsProps> = ({
   onSelectPreset,
 }) => {
   return (
-    <div className="hf-material-presets-grid" role="radiogroup" aria-label="Material Presets">
+    <div
+      className="hf-material-presets-grid"
+      role="radiogroup"
+      aria-label="Material Presets"
+    >
       {MATERIAL_PRESETS.map((preset) => {
         const isSelected = selectedPresetId === preset.id;
         return (

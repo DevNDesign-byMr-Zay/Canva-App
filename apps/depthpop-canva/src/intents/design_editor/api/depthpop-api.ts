@@ -78,9 +78,11 @@ function scenePatchPayload(scene: DepthScene): DepthScenePatchPayload {
 async function apiError(response: Response, fallback: string): Promise<Error> {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
-    const payload = (await response.json().catch(() => null)) as
-      | { detail?: unknown; error?: unknown; message?: unknown }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      detail?: unknown;
+      error?: unknown;
+      message?: unknown;
+    } | null;
     const detail = payload?.detail ?? payload?.error ?? payload?.message;
     if (typeof detail === "string" && detail.trim()) {
       return new Error(detail);
@@ -311,7 +313,9 @@ export class DepthPopApiClient {
     if (!res.ok) throw await apiError(res, fallback);
     const payload: unknown = await res.json();
     if (!isDepthScene(payload)) {
-      throw new Error("DepthPop object operation returned an invalid DepthScene.");
+      throw new Error(
+        "DepthPop object operation returned an invalid DepthScene.",
+      );
     }
     return payload;
   }
@@ -456,7 +460,9 @@ export class DepthPopApiClient {
 
     const contentLength = Number(res.headers.get("content-length") || "0");
     if (contentLength > 512 * 1024 * 1024) {
-      throw new Error("DepthPop export artifact exceeds the 512 MB client limit.");
+      throw new Error(
+        "DepthPop export artifact exceeds the 512 MB client limit.",
+      );
     }
     const blob = await res.blob();
     if (blob.size <= 0 || blob.size > 512 * 1024 * 1024) {

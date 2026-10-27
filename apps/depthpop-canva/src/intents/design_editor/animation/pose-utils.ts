@@ -1,5 +1,10 @@
 import { evaluateTrackValue } from "./interpolation";
-import type { AnimationEasing, AnimationProperty, AnimationTrack, DepthObject } from "../scene/depth-scene";
+import type {
+  AnimationEasing,
+  AnimationProperty,
+  AnimationTrack,
+  DepthObject,
+} from "../scene/depth-scene";
 
 const ANIMATION_PROPERTIES: AnimationProperty[] = [
   "position.x",
@@ -13,7 +18,6 @@ const ANIMATION_PROPERTIES: AnimationProperty[] = [
   "scale.z",
   "opacity",
 ];
-
 
 export function animationValue(
   object: DepthObject,
@@ -52,9 +56,7 @@ export function sampledAnimationValue(
   const track = object.animationTracks.find(
     (candidate) => candidate.property === property,
   );
-  return track
-    ? evaluateTrackValue(track, timeMs, fallback)
-    : fallback;
+  return track ? evaluateTrackValue(track, timeMs, fallback) : fallback;
 }
 
 export function upsertPose(
@@ -68,9 +70,8 @@ export function upsertPose(
       (track) => track.property === property,
     );
     const value =
-      values?.[property] ??
-      sampledAnimationValue(object, property, timeMs);
-    let keyframes = existing ? [...existing.keyframes] : [];
+      values?.[property] ?? sampledAnimationValue(object, property, timeMs);
+    const keyframes = existing ? [...existing.keyframes] : [];
 
     if (!existing && timeMs > 0) {
       keyframes.push({
@@ -80,9 +81,7 @@ export function upsertPose(
       });
     }
 
-    const index = keyframes.findIndex(
-      (keyframe) => keyframe.timeMs === timeMs,
-    );
+    const index = keyframes.findIndex((keyframe) => keyframe.timeMs === timeMs);
     const nextKeyframe = { timeMs, value, easing };
     if (index >= 0) {
       keyframes[index] = nextKeyframe;

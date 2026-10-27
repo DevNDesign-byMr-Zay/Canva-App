@@ -11,7 +11,10 @@ export type PropertyCapability = {
   description: string;
 };
 
-export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability> = {
+export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<
+  string,
+  PropertyCapability
+> = {
   x: {
     property: "x",
     tier: "NATIVE_CANVA_EDIT",
@@ -55,19 +58,22 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
     property: "colorShift",
     tier: "APP_OWNED_EFFECT",
     canvaSupported: true,
-    description: "Spectral color distribution persisted in a HoloForge app element.",
+    description:
+      "Spectral color distribution persisted in a HoloForge app element.",
   },
   reflection: {
     property: "reflection",
     tier: "APP_OWNED_EFFECT",
     canvaSupported: true,
-    description: "Specular highlight intensity persisted in a HoloForge app element.",
+    description:
+      "Specular highlight intensity persisted in a HoloForge app element.",
   },
   glow: {
     property: "glow",
     tier: "APP_OWNED_EFFECT",
     canvaSupported: true,
-    description: "Photonic bloom intensity rendered by a HoloForge app element.",
+    description:
+      "Photonic bloom intensity rendered by a HoloForge app element.",
   },
   grain: {
     property: "grain",
@@ -79,7 +85,8 @@ export const CANVA_CAPABILITY_MATRIX: ReadonlyRecord<string, PropertyCapability>
     property: "angle",
     tier: "APP_OWNED_EFFECT",
     canvaSupported: true,
-    description: "Material-light direction persisted in a HoloForge app element.",
+    description:
+      "Material-light direction persisted in a HoloForge app element.",
   },
   transparency: {
     property: "transparency",
@@ -111,7 +118,8 @@ export function getPropertyCapability(property: string): PropertyCapability {
       property,
       tier: "PREVIEW_ONLY",
       canvaSupported: false,
-      description: "Unsupported or unclassified property, restricted to preview only.",
+      description:
+        "Unsupported or unclassified property, restricted to preview only.",
     }
   );
 }

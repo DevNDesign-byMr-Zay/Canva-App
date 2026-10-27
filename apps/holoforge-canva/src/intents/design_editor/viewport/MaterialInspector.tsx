@@ -62,7 +62,10 @@ export function MaterialInspector({
   const geometry = object.geometry;
 
   return (
-    <section className="hf-material-inspector" aria-label="HoloForge material and geometry controls">
+    <section
+      className="hf-material-inspector"
+      aria-label="HoloForge material and geometry controls"
+    >
       <div className="hf-material-inspector-head">
         <div>
           <span>04 · MATERIAL / FORM</span>

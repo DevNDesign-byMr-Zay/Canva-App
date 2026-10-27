@@ -15,9 +15,10 @@ export interface WorldTransform {
   scale: Vector3;
 }
 
-export function sceneWorldSize(
-  scene: Pick<DepthScene, "width" | "height">,
-): { width: number; height: number } {
+export function sceneWorldSize(scene: Pick<DepthScene, "width" | "height">): {
+  width: number;
+  height: number;
+} {
   const aspect = scene.width / scene.height;
   return {
     width: DEPTHPOP_WORLD_HEIGHT * aspect,

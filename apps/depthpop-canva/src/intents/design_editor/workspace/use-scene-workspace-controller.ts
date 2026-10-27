@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
   type DepthPopExportRequest,
@@ -18,7 +12,6 @@ import {
 import type {
   AnimationEasing,
   AnimationProperty,
-  DepthObject,
   DepthScene,
   ObjectTransform,
 } from "../scene/depth-scene";
@@ -55,8 +48,7 @@ export function useSceneWorkspaceController({
     selectedObjectId: initialScene.objects[0]?.id ?? null,
     parallaxStrength: 1,
   });
-  const [activePanel, setActivePanel] =
-    useState<WorkspacePanel>("SCENE");
+  const [activePanel, setActivePanel] = useState<WorkspacePanel>("SCENE");
   const [transformMode, setTransformMode] =
     useState<TransformMode>("translate");
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
@@ -65,8 +57,7 @@ export function useSceneWorkspaceController({
   const [isRenderingToCanva, setIsRenderingToCanva] = useState(false);
   const [isObjectBusy, setIsObjectBusy] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [easing, setEasing] =
-    useState<AnimationEasing>("ease-in-out");
+  const [easing, setEasing] = useState<AnimationEasing>("ease-in-out");
   const [mergeSelection, setMergeSelection] = useState<Set<string>>(
     () => new Set(),
   );
@@ -77,9 +68,7 @@ export function useSceneWorkspaceController({
   const [exportWidth, setExportWidth] = useState(1920);
   const [exportHeight, setExportHeight] = useState(1080);
   const [objectNameDraft, setObjectNameDraft] = useState("");
-  const [statusMessage, setStatusMessage] = useState<string | null>(
-    null,
-  );
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const playbackFrame = useRef(0);
   const playbackLastPaint = useRef(0);
 
@@ -96,12 +85,25 @@ export function useSceneWorkspaceController({
   );
   const dirty = scene.updatedAt !== state.initialScene.updatedAt;
 
-  const { exportStatus, exportBusy, startExport, cancelExport, downloadExport } =
-    useSceneExports({
-      apiClient, scene, onSave, dirty, dispatch,
-      exportFormat, includeAnimation, exportFps, exportWidth, exportHeight,
-      setStatusMessage,
-    });
+  const {
+    exportStatus,
+    exportBusy,
+    startExport,
+    cancelExport,
+    downloadExport,
+  } = useSceneExports({
+    apiClient,
+    scene,
+    onSave,
+    dirty,
+    dispatch,
+    exportFormat,
+    includeAnimation,
+    exportFps,
+    exportWidth,
+    exportHeight,
+    setStatusMessage,
+  });
 
   const assetKey = useMemo(
     () =>
@@ -179,8 +181,7 @@ export function useSceneWorkspaceController({
     if (!isPlaying || scene.timeline.durationMs <= 0) return;
 
     const duration = Math.max(1, scene.timeline.durationMs);
-    const anchor =
-      performance.now() - scene.timeline.currentTimeMs;
+    const anchor = performance.now() - scene.timeline.currentTimeMs;
 
     const tick = (now: number) => {
       if (now - playbackLastPaint.current >= 32) {
@@ -195,10 +196,7 @@ export function useSceneWorkspaceController({
 
     playbackFrame.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(playbackFrame.current);
-  }, [
-    isPlaying,
-    scene.timeline.durationMs,
-  ]);
+  }, [isPlaying, scene.timeline.durationMs]);
 
   useEffect(() => {
     setObjectNameDraft(selectedObject?.label ?? "");
@@ -247,9 +245,7 @@ export function useSceneWorkspaceController({
       setStatusMessage("Scene saved.");
     } catch (cause) {
       setStatusMessage(
-        cause instanceof Error
-          ? cause.message
-          : "DepthScene save failed.",
+        cause instanceof Error ? cause.message : "DepthScene save failed.",
       );
     } finally {
       setIsSaving(false);
@@ -271,9 +267,7 @@ export function useSceneWorkspaceController({
       setStatusMessage("Rendered scene applied to Canva.");
     } catch (cause) {
       setStatusMessage(
-        cause instanceof Error
-          ? cause.message
-          : "DepthScene render failed.",
+        cause instanceof Error ? cause.message : "DepthScene render failed.",
       );
     } finally {
       setIsRenderingToCanva(false);
@@ -319,12 +313,7 @@ export function useSceneWorkspaceController({
     const nextLabel = objectNameDraft.trim();
     if (!nextLabel || nextLabel === selectedObject.label) return;
     void runObjectOperation(
-      () =>
-        apiClient.renameObject(
-          scene.id,
-          selectedObject.id,
-          nextLabel,
-        ),
+      () => apiClient.renameObject(scene.id, selectedObject.id, nextLabel),
       "Renaming object…",
     );
   };
@@ -351,13 +340,7 @@ export function useSceneWorkspaceController({
   const handleSplit = () => {
     if (!apiClient || !selectedObject || selectedObject.locked) return;
     void runObjectOperation(
-      () =>
-        apiClient.splitObject(
-          scene.id,
-          selectedObject.id,
-          4,
-          "auto",
-        ),
+      () => apiClient.splitObject(scene.id, selectedObject.id, 4, "auto"),
       "Re-segmenting selected object…",
     );
   };
@@ -366,11 +349,7 @@ export function useSceneWorkspaceController({
     if (!apiClient || mergeSelection.size < 2) return;
     void runObjectOperation(
       () =>
-        apiClient.mergeObjects(
-          scene.id,
-          [...mergeSelection],
-          "Merged Object",
-        ),
+        apiClient.mergeObjects(scene.id, [...mergeSelection], "Merged Object"),
       "Merging selected objects…",
     ).then(() => setMergeSelection(new Set()));
   };
@@ -418,22 +397,17 @@ export function useSceneWorkspaceController({
     dispatch({
       type: "SET_ANIMATION_TRACKS",
       objectId,
-      tracks: upsertPose(
-        object,
-        scene.timeline.currentTimeMs,
-        easing,
-        {
-          "position.x": transform.position.x,
-          "position.y": transform.position.y,
-          "position.z": transform.position.z,
-          "rotation.x": transform.rotation.x,
-          "rotation.y": transform.rotation.y,
-          "rotation.z": transform.rotation.z,
-          "scale.x": transform.scale.x,
-          "scale.y": transform.scale.y,
-          "scale.z": transform.scale.z,
-        },
-      ),
+      tracks: upsertPose(object, scene.timeline.currentTimeMs, easing, {
+        "position.x": transform.position.x,
+        "position.y": transform.position.y,
+        "position.z": transform.position.z,
+        "rotation.x": transform.rotation.x,
+        "rotation.y": transform.rotation.y,
+        "rotation.z": transform.rotation.z,
+        "scale.x": transform.scale.x,
+        "scale.y": transform.scale.y,
+        "scale.z": transform.scale.z,
+      }),
     });
   };
 
@@ -447,22 +421,65 @@ export function useSceneWorkspaceController({
     setStatusMessage(`${preset.replace("_", " ")} motion applied.`);
   };
 
-  const selectedPoseTimes = selectedObject
-    ? poseTimes(selectedObject)
-    : [];
+  const selectedPoseTimes = selectedObject ? poseTimes(selectedObject) : [];
 
   return {
-    state, dispatch, scene, dirty, onExit,
-    setIsPlaying, activePanel, setActivePanel, backgroundReconstructionEnabled, degradedObjects,
-    assetError, transformMode, setTransformMode, viewportScene, handleViewportTransform,
-    apiClient, mergeSelection, setMergeSelection, isObjectBusy, handleMerge,
-    sortedObjects, resolveUrl, selectedObject, objectNameDraft, setObjectNameDraft,
-    handleRename, handleDuplicate, handleSplit, handleDelete, selectedPoseTimes,
-    isPlaying, easing, setEasing, addPose, applyPreset,
-    exportFormat, setExportFormat, includeAnimation, setIncludeAnimation, exportFps,
-    setExportFps, exportWidth, setExportWidth, exportHeight, setExportHeight,
-    exportBusy, exportStatus, startExport, cancelExport, downloadExport,
-    onSave, isSaving, isRenderingToCanva, handleSave, onExport,
-    handleRenderToCanva, statusMessage,
+    state,
+    dispatch,
+    scene,
+    dirty,
+    onExit,
+    setIsPlaying,
+    activePanel,
+    setActivePanel,
+    backgroundReconstructionEnabled,
+    degradedObjects,
+    assetError,
+    transformMode,
+    setTransformMode,
+    viewportScene,
+    handleViewportTransform,
+    apiClient,
+    mergeSelection,
+    setMergeSelection,
+    isObjectBusy,
+    handleMerge,
+    sortedObjects,
+    resolveUrl,
+    selectedObject,
+    objectNameDraft,
+    setObjectNameDraft,
+    handleRename,
+    handleDuplicate,
+    handleSplit,
+    handleDelete,
+    selectedPoseTimes,
+    isPlaying,
+    easing,
+    setEasing,
+    addPose,
+    applyPreset,
+    exportFormat,
+    setExportFormat,
+    includeAnimation,
+    setIncludeAnimation,
+    exportFps,
+    setExportFps,
+    exportWidth,
+    setExportWidth,
+    exportHeight,
+    setExportHeight,
+    exportBusy,
+    exportStatus,
+    startExport,
+    cancelExport,
+    downloadExport,
+    onSave,
+    isSaving,
+    isRenderingToCanva,
+    handleSave,
+    onExport,
+    handleRenderToCanva,
+    statusMessage,
   };
 }

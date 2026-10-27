@@ -49,8 +49,12 @@ describe("material-contract", () => {
 
   it("rejects invalid material parameters", () => {
     const valid = MATERIAL_PRESETS[0].parameters;
-    expect(validateMaterialParameters({ ...valid, colorShift: -10 })).toBe(false);
-    expect(validateMaterialParameters({ ...valid, colorShift: 150 })).toBe(false);
+    expect(validateMaterialParameters({ ...valid, colorShift: -10 })).toBe(
+      false,
+    );
+    expect(validateMaterialParameters({ ...valid, colorShift: 150 })).toBe(
+      false,
+    );
     expect(validateMaterialParameters({ ...valid, angle: 400 })).toBe(false);
     expect(
       validateMaterialParameters({

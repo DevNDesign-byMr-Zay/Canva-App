@@ -90,7 +90,11 @@ export function ObjectInspector({
         <b>{object.geometry.type.toUpperCase()}</b>
       </div>
 
-      <div className="hf-transform-mode" role="group" aria-label="Transform gizmo mode">
+      <div
+        className="hf-transform-mode"
+        role="group"
+        aria-label="Transform gizmo mode"
+      >
         {(["translate", "rotate", "scale"] as const).map((nextMode) => (
           <button
             key={nextMode}
@@ -120,7 +124,8 @@ export function ObjectInspector({
                     max={group.max}
                     onChange={(event) => {
                       const value = Number(event.currentTarget.value);
-                      if (Number.isFinite(value)) patchAxis(group.key, axis, value);
+                      if (Number.isFinite(value))
+                        patchAxis(group.key, axis, value);
                     }}
                   />
                 </label>

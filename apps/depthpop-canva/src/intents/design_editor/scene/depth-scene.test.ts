@@ -101,9 +101,7 @@ describe("DepthScene Contract", () => {
     scene.objects[0]!.animationTracks[0] = {
       id: "track-opacity",
       property: "opacity",
-      keyframes: [
-        { timeMs: 0, value: 1.25, easing: "linear" },
-      ],
+      keyframes: [{ timeMs: 0, value: 1.25, easing: "linear" }],
     };
     expect(isDepthScene(scene)).toBe(false);
   });

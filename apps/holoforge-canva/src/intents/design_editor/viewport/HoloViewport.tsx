@@ -1,6 +1,12 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import React, { Suspense, useEffect, useReducer, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { SRGBColorSpace } from "three";
 
 import type { HoloScene as HoloSceneSpec } from "../scene/holo-scene";
@@ -62,7 +68,9 @@ export function HoloViewport({
   }, [state.scene, onSceneChange]);
 
   const selected =
-    state.scene.objects.find((object) => object.id === state.selectedObjectId) ?? null;
+    state.scene.objects.find(
+      (object) => object.id === state.selectedObjectId,
+    ) ?? null;
 
   useEffect(() => {
     if (!state.scene.timeline.playing) return;
@@ -111,9 +119,14 @@ export function HoloViewport({
             gl.outputColorSpace = SRGBColorSpace;
             gl.setClearColor(state.scene.environment.background, 1);
           }}
-          onPointerMissed={() => dispatch({ type: "select_object", objectId: null })}
+          onPointerMissed={() =>
+            dispatch({ type: "select_object", objectId: null })
+          }
         >
-          <color attach="background" args={[state.scene.environment.background]} />
+          <color
+            attach="background"
+            args={[state.scene.environment.background]}
+          />
           <HoloCamera key={controlsRevision} spec={state.scene.camera} />
           <StageEnvironment environment={state.scene.environment} />
           <Suspense fallback={null}>
@@ -161,7 +174,10 @@ export function HoloViewport({
         </Canvas>
       </div>
 
-      <div className="hf-webgl-toolbar" aria-label="HoloForge 3D viewport controls">
+      <div
+        className="hf-webgl-toolbar"
+        aria-label="HoloForge 3D viewport controls"
+      >
         <button
           type="button"
           className={autoOrbit ? "is-active" : ""}
@@ -195,9 +211,7 @@ export function HoloViewport({
       <ObjectStackPanel
         objects={state.scene.objects}
         selectedObjectId={state.selectedObjectId}
-        onSelect={(objectId) =>
-          dispatch({ type: "select_object", objectId })
-        }
+        onSelect={(objectId) => dispatch({ type: "select_object", objectId })}
         onDuplicate={(objectId) =>
           dispatchPersistent({ type: "duplicate_object", objectId })
         }
@@ -300,7 +314,10 @@ export function HoloViewport({
         }}
         onClearAnimation={() => {
           if (!selected) return;
-          dispatchPersistent({ type: "clear_animation", objectId: selected.id });
+          dispatchPersistent({
+            type: "clear_animation",
+            objectId: selected.id,
+          });
           dispatch({ type: "set_playing", playing: false });
           dispatch({ type: "set_time", currentTimeMs: 0 });
         }}
@@ -329,8 +346,9 @@ export function HoloViewport({
       </div>
 
       <p className="hf-webgl-help">
-        Select the object, MOVE / ROTATE / SCALE it, scrub time, then ADD POSE to author real
-        transform keyframes. Drag empty space to orbit · wheel/pinch to zoom · right-drag to pan.
+        Select the object, MOVE / ROTATE / SCALE it, scrub time, then ADD POSE
+        to author real transform keyframes. Drag empty space to orbit ·
+        wheel/pinch to zoom · right-drag to pan.
       </p>
     </div>
   );

@@ -1,7 +1,11 @@
 import { initAppElement } from "@canva/design";
 
 import type { HolographicEffectPlan } from "./effect-plan";
-import type { CreationType, MaterialFamily, MotionMode } from "./material-contract";
+import type {
+  CreationType,
+  MaterialFamily,
+  MotionMode,
+} from "./material-contract";
 
 export type HolographicAppElementData = Readonly<{
   version: 2;
@@ -23,16 +27,17 @@ export type AppOwnedEffectAdapter = Readonly<{
   addEffect(data: HolographicAppElementData): Promise<void>;
 }>;
 
-const FAMILY_PALETTES: Readonly<Record<MaterialFamily, readonly [string, string, string, string]>> =
-  Object.freeze({
-    iridescent: ["#ffd36a", "#53e5ff", "#ba6cff", "#ff6dcf"],
-    glass: ["#dff8ff", "#86d8ff", "#c6a6ff", "#ffffff"],
-    foil: ["#ff6fd8", "#74f8ff", "#f8ff7a", "#9a7cff"],
-    metal: ["#171922", "#c9d2e3", "#54dcff", "#7f5cff"],
-    pearl: ["#fff4e8", "#d9f6ff", "#efd8ff", "#ffdce9"],
-    neon: ["#00f0ff", "#7157ff", "#ff4fd8", "#07131c"],
-    crystal: ["#e9fbff", "#79dfff", "#c4b1ff", "#ffffff"],
-  });
+const FAMILY_PALETTES: Readonly<
+  Record<MaterialFamily, readonly [string, string, string, string]>
+> = Object.freeze({
+  iridescent: ["#ffd36a", "#53e5ff", "#ba6cff", "#ff6dcf"],
+  glass: ["#dff8ff", "#86d8ff", "#c6a6ff", "#ffffff"],
+  foil: ["#ff6fd8", "#74f8ff", "#f8ff7a", "#9a7cff"],
+  metal: ["#171922", "#c9d2e3", "#54dcff", "#7f5cff"],
+  pearl: ["#fff4e8", "#d9f6ff", "#efd8ff", "#ffdce9"],
+  neon: ["#00f0ff", "#7157ff", "#ff4fd8", "#07131c"],
+  crystal: ["#e9fbff", "#79dfff", "#c4b1ff", "#ffffff"],
+});
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
@@ -55,7 +60,10 @@ function escapeXml(value: string): string {
 function textMarkup(data: HolographicAppElementData): string {
   const raw = (data.sourceText?.trim() || "HOLOFORGE").slice(0, 96);
   const text = escapeXml(raw);
-  const fontSize = Math.max(44, Math.min(116, Math.round(560 / Math.max(4, raw.length) * 4.2)));
+  const fontSize = Math.max(
+    44,
+    Math.min(116, Math.round((560 / Math.max(4, raw.length)) * 4.2)),
+  );
   const depthOffset = Math.round(2 + (clamp(data.depth) / 100) * 12);
   return `
   <g transform="translate(320 180)" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" font-weight="900" letter-spacing="4">
@@ -103,7 +111,9 @@ export function renderHolographicSvg(data: HolographicAppElementData): string {
   const palette = FAMILY_PALETTES[data.family];
   const opacity = Number((1 - clamp(data.transparency) / 100).toFixed(3));
   const glow = Number(((clamp(data.glow) / 100) * 18).toFixed(2));
-  const reflectionOpacity = Number(((clamp(data.reflection) / 100) * 0.72).toFixed(3));
+  const reflectionOpacity = Number(
+    ((clamp(data.reflection) / 100) * 0.72).toFixed(3),
+  );
   const grainOpacity = Number(((clamp(data.grain) / 100) * 0.18).toFixed(3));
   const shift = clamp(data.colorShift);
   const angle = Math.max(0, Math.min(360, data.angle));
@@ -160,10 +170,10 @@ export function renderHolographicSvg(data: HolographicAppElementData): string {
       <feBlend in="SourceGraphic" in2="grain" mode="soft-light"/>
     </filter>
     <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="${Math.max(2, glow * .55)}"/>
+      <feGaussianBlur stdDeviation="${Math.max(2, glow * 0.55)}"/>
     </filter>
     <filter id="textGlow" x="-30%" y="-80%" width="160%" height="260%">
-      <feGaussianBlur stdDeviation="${Math.max(.5, glow * .12)}" result="g"/>
+      <feGaussianBlur stdDeviation="${Math.max(0.5, glow * 0.12)}" result="g"/>
       <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>

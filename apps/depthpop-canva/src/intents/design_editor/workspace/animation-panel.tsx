@@ -1,6 +1,10 @@
 import React from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { AnimationEasing, DepthObject, DepthScene } from "../scene/depth-scene";
+import type {
+  AnimationEasing,
+  DepthObject,
+  DepthScene,
+} from "../scene/depth-scene";
 import { removePose } from "../animation/pose-utils";
 import type { MotionPresetName } from "../animation/motion-presets";
 import type { SceneAction } from "./scene-reducer";
@@ -28,19 +32,23 @@ export interface AnimationPanelProps {
 }
 
 export function AnimationPanel({
-  scene, selectedObject, selectedPoseTimes, isPlaying,
-  setIsPlaying, dispatch, easing, setEasing, addPose, applyPreset,
+  scene,
+  selectedObject,
+  selectedPoseTimes,
+  isPlaying,
+  setIsPlaying,
+  dispatch,
+  easing,
+  setEasing,
+  addPose,
+  applyPreset,
 }: AnimationPanelProps) {
   return (
     <section className="dp-animation-panel">
       <div className="dp-section-heading">
         <div>
           <span>4D TIMELINE</span>
-          <h3>
-            {selectedObject
-              ? selectedObject.label
-              : "SELECT AN OBJECT"}
-          </h3>
+          <h3>{selectedObject ? selectedObject.label : "SELECT AN OBJECT"}</h3>
         </div>
         <div className="dp-playback-actions">
           <button
@@ -63,7 +71,7 @@ export function AnimationPanel({
           </button>
         </div>
       </div>
-    
+
       <div className="dp-timeline-settings">
         <label>
           DURATION
@@ -79,10 +87,7 @@ export function AnimationPanel({
                 type: "PATCH_TIMELINE",
                 timeline: {
                   durationMs:
-                    Math.max(
-                      1,
-                      Number(event.currentTarget.value),
-                    ) * 1000,
+                    Math.max(1, Number(event.currentTarget.value)) * 1000,
                 },
               });
             }}
@@ -112,9 +117,7 @@ export function AnimationPanel({
           <select
             value={easing}
             onChange={(event) =>
-              setEasing(
-                event.currentTarget.value as AnimationEasing,
-              )
+              setEasing(event.currentTarget.value as AnimationEasing)
             }
           >
             <option value="linear">LINEAR</option>
@@ -124,7 +127,7 @@ export function AnimationPanel({
           </select>
         </label>
       </div>
-    
+
       <label className="dp-timeline-scrubber">
         <span>TIME</span>
         <input
@@ -147,7 +150,7 @@ export function AnimationPanel({
           {(scene.timeline.durationMs / 1000).toFixed(2)}s
         </strong>
       </label>
-    
+
       <div className="dp-pose-actions">
         <button
           type="button"
@@ -163,9 +166,7 @@ export function AnimationPanel({
           disabled={
             !selectedObject ||
             selectedObject.locked ||
-            !selectedPoseTimes.includes(
-              scene.timeline.currentTimeMs,
-            )
+            !selectedPoseTimes.includes(scene.timeline.currentTimeMs)
           }
           onClick={() => {
             if (!selectedObject) return;
@@ -182,7 +183,7 @@ export function AnimationPanel({
           DELETE KEYFRAME
         </button>
       </div>
-    
+
       {selectedObject && (
         <div className="dp-keyframe-strip">
           {selectedPoseTimes.length === 0 ? (
@@ -193,9 +194,7 @@ export function AnimationPanel({
                 key={timeMs}
                 type="button"
                 className={
-                  timeMs === scene.timeline.currentTimeMs
-                    ? "is-active"
-                    : ""
+                  timeMs === scene.timeline.currentTimeMs ? "is-active" : ""
                 }
                 onClick={() => {
                   setIsPlaying(false);
@@ -211,7 +210,7 @@ export function AnimationPanel({
           )}
         </div>
       )}
-    
+
       <div className="dp-motion-presets">
         <span>MOTION PRESETS</span>
         <div className="dp-preset-grid">
@@ -219,9 +218,7 @@ export function AnimationPanel({
             <button
               key={preset}
               type="button"
-              disabled={
-                scene.objects.every((object) => object.locked)
-              }
+              disabled={scene.objects.every((object) => object.locked)}
               onClick={() => applyPreset(preset)}
             >
               {preset.replace("_", " ")}
@@ -229,12 +226,11 @@ export function AnimationPanel({
           ))}
         </div>
       </div>
-    
+
       <p className="dp-help">
-        Move the playhead, transform the selected object in the WebGL
-        viewport, then add/update a keyframe. Transform gizmo commits
-        automatically write the pose at the current time when the
-        timeline is active.
+        Move the playhead, transform the selected object in the WebGL viewport,
+        then add/update a keyframe. Transform gizmo commits automatically write
+        the pose at the current time when the timeline is active.
       </p>
     </section>
   );

@@ -31,7 +31,9 @@ describe("effect-plan", () => {
       presetId: "liquid-metal",
       nativeTransform: { x: 100, y: 200, rotation: 45 },
     });
-    const nativeLayers = plan.layers.filter((layer) => layer.type === "NATIVE_CANVA_EDIT");
+    const nativeLayers = plan.layers.filter(
+      (layer) => layer.type === "NATIVE_CANVA_EDIT",
+    );
     expect(nativeLayers).toHaveLength(3);
   });
 

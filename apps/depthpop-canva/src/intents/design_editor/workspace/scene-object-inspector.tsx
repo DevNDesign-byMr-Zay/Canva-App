@@ -18,8 +18,16 @@ export interface SceneObjectInspectorProps {
 }
 
 export function SceneObjectInspector({
-  selectedObject, objectNameDraft, setObjectNameDraft, apiClient,
-  isObjectBusy, handleRename, handleDuplicate, handleSplit, handleDelete, dispatch,
+  selectedObject,
+  objectNameDraft,
+  setObjectNameDraft,
+  apiClient,
+  isObjectBusy,
+  handleRename,
+  handleDuplicate,
+  handleSplit,
+  handleDelete,
+  dispatch,
 }: SceneObjectInspectorProps) {
   return (
     <section className="dp-object-inspector">
@@ -69,11 +77,7 @@ export function SceneObjectInspector({
           <button
             type="button"
             className="dp-btn-small"
-            disabled={
-              !apiClient ||
-              isObjectBusy ||
-              selectedObject.locked
-            }
+            disabled={!apiClient || isObjectBusy || selectedObject.locked}
             onClick={handleSplit}
           >
             SPLIT
@@ -81,18 +85,14 @@ export function SceneObjectInspector({
           <button
             type="button"
             className="dp-btn-small dp-danger"
-            disabled={
-              !apiClient ||
-              isObjectBusy ||
-              selectedObject.locked
-            }
+            disabled={!apiClient || isObjectBusy || selectedObject.locked}
             onClick={handleDelete}
           >
             DELETE
           </button>
         </div>
       </header>
-    
+
       <div className="dp-inspector-grid">
         <label>
           X
@@ -116,9 +116,7 @@ export function SceneObjectInspector({
               })
             }
           />
-          <span>
-            {selectedObject.transform.position.x.toFixed(3)}
-          </span>
+          <span>{selectedObject.transform.position.x.toFixed(3)}</span>
         </label>
         <label>
           Y
@@ -142,9 +140,7 @@ export function SceneObjectInspector({
               })
             }
           />
-          <span>
-            {selectedObject.transform.position.y.toFixed(3)}
-          </span>
+          <span>{selectedObject.transform.position.y.toFixed(3)}</span>
         </label>
         <label>
           Z / DEPTH
@@ -168,9 +164,7 @@ export function SceneObjectInspector({
               })
             }
           />
-          <span>
-            {selectedObject.transform.position.z.toFixed(2)}
-          </span>
+          <span>{selectedObject.transform.position.z.toFixed(2)}</span>
         </label>
         <label>
           SCALE
@@ -193,9 +187,7 @@ export function SceneObjectInspector({
               });
             }}
           />
-          <span>
-            {selectedObject.transform.scale.x.toFixed(2)}×
-          </span>
+          <span>{selectedObject.transform.scale.x.toFixed(2)}×</span>
         </label>
         <label>
           ROTATION Z
@@ -219,9 +211,7 @@ export function SceneObjectInspector({
               })
             }
           />
-          <span>
-            {selectedObject.transform.rotation.z.toFixed(0)}°
-          </span>
+          <span>{selectedObject.transform.rotation.z.toFixed(0)}°</span>
         </label>
         <label>
           OPACITY

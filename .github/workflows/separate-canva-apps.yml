@@ -70,6 +70,10 @@ jobs:
           node-version: 24
       - name: Install app dependencies
         run: npm ci --ignore-scripts
+      - name: ESLint
+        run: npm run lint
+      - name: Prettier check
+        run: npm run format:check
       - name: Type-check
         run: npm run typecheck
       - name: Unit tests

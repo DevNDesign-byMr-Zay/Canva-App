@@ -3,7 +3,9 @@ import React from "react";
 import { poseTimes } from "../animation/keyframe-model";
 import type { HoloAnimationPreset, HoloObject } from "../scene/holo-scene";
 
-const PRESETS: ReadonlyArray<Readonly<{id:HoloAnimationPreset;label:string}>> = [
+const PRESETS: ReadonlyArray<
+  Readonly<{ id: HoloAnimationPreset; label: string }>
+> = [
   { id: "static", label: "STATIC" },
   { id: "turntable", label: "TURN" },
   { id: "shimmer", label: "SHIMMER" },
@@ -36,7 +38,10 @@ export function AnimationPanel({
   const atPose = times.some((time) => Math.abs(time - currentTimeMs) <= 18);
 
   return (
-    <section className="hf-animation-panel" aria-label="HoloForge animation controls">
+    <section
+      className="hf-animation-panel"
+      aria-label="HoloForge animation controls"
+    >
       <div className="hf-animation-head">
         <div>
           <span>06 · TIME / MOTION</span>
@@ -62,16 +67,15 @@ export function AnimationPanel({
         <button type="button" onClick={onAddPose}>
           {atPose ? "UPDATE POSE" : "ADD POSE"}
         </button>
-        <button
-          type="button"
-          disabled={!atPose}
-          onClick={onRemovePose}
-        >
+        <button type="button" disabled={!atPose} onClick={onRemovePose}>
           REMOVE POSE
         </button>
         <button
           type="button"
-          disabled={object.animationTracks.length === 0 && object.animationPreset === "static"}
+          disabled={
+            object.animationTracks.length === 0 &&
+            object.animationPreset === "static"
+          }
           onClick={onClearAnimation}
         >
           CLEAR
@@ -86,16 +90,21 @@ export function AnimationPanel({
             <i
               key={time}
               title={(time / 1000).toFixed(2) + "s"}
-              className={Math.abs(time-currentTimeMs)<=18 ? "is-current" : ""}
-              style={{ left: `${Math.max(0, Math.min(100, (time / durationMs) * 100))}%` }}
+              className={
+                Math.abs(time - currentTimeMs) <= 18 ? "is-current" : ""
+              }
+              style={{
+                left: `${Math.max(0, Math.min(100, (time / durationMs) * 100))}%`,
+              }}
             />
           ))
         )}
       </div>
 
       <p>
-        Move, rotate or scale the object, scrub to another time, then add another pose.
-        HoloForge stores the motion as real transform keyframes in the scene contract.
+        Move, rotate or scale the object, scrub to another time, then add
+        another pose. HoloForge stores the motion as real transform keyframes in
+        the scene contract.
       </p>
     </section>
   );

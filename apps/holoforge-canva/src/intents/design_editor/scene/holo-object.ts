@@ -46,10 +46,7 @@ function patchMaterial(
       patch.transmission === undefined
         ? material.transmission
         : clamp(patch.transmission, 0, 1),
-    ior:
-      patch.ior === undefined
-        ? material.ior
-        : clamp(patch.ior, 1, 2.5),
+    ior: patch.ior === undefined ? material.ior : clamp(patch.ior, 1, 2.5),
     emissionStrength:
       patch.emissionStrength === undefined
         ? material.emissionStrength
@@ -101,7 +98,10 @@ function patchGeometry(
   });
 }
 
-export function patchHoloObject(object: HoloObject, patch: HoloObjectPatch): HoloObject {
+export function patchHoloObject(
+  object: HoloObject,
+  patch: HoloObjectPatch,
+): HoloObject {
   const transformPatch = patch.transform;
   return Object.freeze({
     ...object,

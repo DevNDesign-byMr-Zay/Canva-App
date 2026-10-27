@@ -7,7 +7,10 @@ import {
   type HoloScene,
   type HoloSourceType,
 } from "../scene/holo-scene";
-import type { CreationType, MaterialFamily } from "../holographic/material-contract";
+import type {
+  CreationType,
+  MaterialFamily,
+} from "../holographic/material-contract";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -88,7 +91,9 @@ function isPortableImageUrl(value: unknown): boolean {
   if (value === undefined) return true;
   if (typeof value !== "string") return false;
   if (value.length > 20 * 1024 * 1024) return false;
-  return /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=\r\n]+$/iu.test(value);
+  return /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=\r\n]+$/iu.test(
+    value,
+  );
 }
 
 function isVec3(value: unknown): boolean {
@@ -102,7 +107,11 @@ function isVec3(value: unknown): boolean {
 
 function isTransform(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (!isVec3(value.position) || !isVec3(value.rotation) || !isVec3(value.scale)) {
+  if (
+    !isVec3(value.position) ||
+    !isVec3(value.rotation) ||
+    !isVec3(value.scale)
+  ) {
     return false;
   }
   const scale = value.scale as UnknownRecord;

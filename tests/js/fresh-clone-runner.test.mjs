@@ -15,7 +15,7 @@ for (const platform of ['linux', 'win32']) {
       assert.match(install.command, new RegExp(app));
       assert.ok(install.command.endsWith(path.join(platform === 'win32' ? 'Scripts' : 'bin', platform === 'win32' ? 'python.exe' : 'python')));
       const frontend = plan.filter(step => step.cwd.endsWith(path.join('apps', app)));
-      for (const command of ['ci', 'typecheck', 'test', 'build']) {
+      for (const command of ['ci', 'lint', 'format:check', 'typecheck', 'test:coverage', 'build']) {
         assert.ok(frontend.some(step => step.args.includes(command)), `${app}: ${command}`);
       }
     }

@@ -10,11 +10,7 @@ import {
 describe("alpha contour extraction", () => {
   it("extracts one closed object from an opaque block", () => {
     const mask = new Uint8Array([
-      0,0,0,0,0,
-      0,1,1,1,0,
-      0,1,1,1,0,
-      0,1,1,1,0,
-      0,0,0,0,0,
+      0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0,
     ]);
 
     const contours = traceAlphaContours(mask, 5, 5);
@@ -24,10 +20,7 @@ describe("alpha contour extraction", () => {
 
   it("keeps the largest disconnected silhouette", () => {
     const mask = new Uint8Array([
-      1,0,0,0,0,0,
-      0,0,1,1,1,0,
-      0,0,1,1,1,0,
-      0,0,1,1,1,0,
+      1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0,
     ]);
 
     const contour = largestAlphaContour(mask, 6, 4, 0);
@@ -36,14 +29,10 @@ describe("alpha contour extraction", () => {
     expect(Math.min(...xs)).toBeGreaterThanOrEqual(2);
   });
 
-
   it("keeps multiple useful disconnected silhouettes while dropping tiny noise", () => {
     const mask = new Uint8Array([
-      1,1,1,0,0,0,0,0,
-      1,1,1,0,0,1,1,0,
-      1,1,1,0,0,1,1,0,
-      0,0,0,0,0,0,0,0,
-      0,0,0,0,0,0,0,1,
+      1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
     ]);
 
     const contours = usefulAlphaContours(mask, 8, 5, 0, 8, 0.002);
@@ -55,18 +44,18 @@ describe("alpha contour extraction", () => {
   it("normalizes the contour around the scene origin while preserving aspect", () => {
     const normalized = normalizeContour(
       [
-        {x:0,y:0},
-        {x:4,y:0},
-        {x:4,y:2},
-        {x:0,y:2},
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 4, y: 2 },
+        { x: 0, y: 2 },
       ],
       4,
       2,
       2,
     );
 
-    expect(normalized[0]).toEqual({x:-1,y:0.5});
-    expect(normalized[2]).toEqual({x:1,y:-0.5});
+    expect(normalized[0]).toEqual({ x: -1, y: 0.5 });
+    expect(normalized[2]).toEqual({ x: 1, y: -0.5 });
   });
 
   it("rejects inconsistent mask dimensions", () => {

@@ -9,8 +9,14 @@ import {
 } from "./holographic/effect-executor";
 import type { HolographicEffectPlan } from "./holographic/effect-plan";
 import { SceneImportControl } from "./export/SceneImportControl";
-import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
-import { createHoloScene, type HoloScene as HoloSceneSpec } from "./scene/holo-scene";
+import {
+  LocalImageUpload,
+  type UploadedImageResult,
+} from "./local-image-upload";
+import {
+  createHoloScene,
+  type HoloScene as HoloSceneSpec,
+} from "./scene/holo-scene";
 import { useCanvaImageSelection } from "./use-canva-image-selection";
 import { HoloViewport } from "./viewport/HoloViewport";
 
@@ -21,50 +27,163 @@ type SourceMode = "selected" | "uploaded";
 
 function HoloForgeLogo() {
   return (
-    <svg className="hf-logo-mark" viewBox="0 0 512 512" role="img" aria-label="HoloForge holographic prism emblem">
+    <svg
+      className="hf-logo-mark"
+      viewBox="0 0 512 512"
+      role="img"
+      aria-label="HoloForge holographic prism emblem"
+    >
       <defs>
-        <linearGradient id="hf-ring" x1="70" y1="70" x2="442" y2="442" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="hf-ring"
+          x1="70"
+          y1="70"
+          x2="442"
+          y2="442"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0" stopColor="#19F2FF" />
           <stop offset=".38" stopColor="#2787FF" />
           <stop offset=".68" stopColor="#7A55FF" />
           <stop offset="1" stopColor="#FF4FD8" />
         </linearGradient>
-        <linearGradient id="hf-prism" x1="150" y1="88" x2="365" y2="390" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="hf-prism"
+          x1="150"
+          y1="88"
+          x2="365"
+          y2="390"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0" stopColor="#49F6FF" />
           <stop offset=".35" stopColor="#18A7FF" />
           <stop offset=".64" stopColor="#7D55FF" />
           <stop offset="1" stopColor="#FF48D0" />
         </linearGradient>
-        <linearGradient id="hf-metal" x1="160" y1="190" x2="352" y2="376" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="hf-metal"
+          x1="160"
+          y1="190"
+          x2="352"
+          y2="376"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#243554" />
           <stop offset=".28" stopColor="#09101E" />
           <stop offset=".55" stopColor="#374866" />
           <stop offset=".75" stopColor="#090D18" />
           <stop offset="1" stopColor="#16203A" />
         </linearGradient>
-        <linearGradient id="hf-glass" x1="188" y1="108" x2="322" y2="270" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="hf-glass"
+          x1="188"
+          y1="108"
+          x2="322"
+          y2="270"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#DFFFFF" stopOpacity=".9" />
           <stop offset=".28" stopColor="#25E6FF" stopOpacity=".75" />
           <stop offset=".62" stopColor="#6A62FF" stopOpacity=".62" />
           <stop offset="1" stopColor="#FF62DA" stopOpacity=".82" />
         </linearGradient>
       </defs>
-      <circle cx="256" cy="256" r="205" fill="none" stroke="#07111F" strokeWidth="28" opacity=".95" />
-      <circle cx="256" cy="256" r="205" fill="none" stroke="url(#hf-ring)" strokeWidth="13" />
-      <circle cx="256" cy="256" r="186" fill="none" stroke="#7BEFFF" strokeOpacity=".2" strokeWidth="2" />
-      <path d="M256 68 354 229 256 283 158 229Z" fill="url(#hf-glass)" stroke="#9BFAFF" strokeWidth="5" />
+      <circle
+        cx="256"
+        cy="256"
+        r="205"
+        fill="none"
+        stroke="#07111F"
+        strokeWidth="28"
+        opacity=".95"
+      />
+      <circle
+        cx="256"
+        cy="256"
+        r="205"
+        fill="none"
+        stroke="url(#hf-ring)"
+        strokeWidth="13"
+      />
+      <circle
+        cx="256"
+        cy="256"
+        r="186"
+        fill="none"
+        stroke="#7BEFFF"
+        strokeOpacity=".2"
+        strokeWidth="2"
+      />
+      <path
+        d="M256 68 354 229 256 283 158 229Z"
+        fill="url(#hf-glass)"
+        stroke="#9BFAFF"
+        strokeWidth="5"
+      />
       <path d="M256 68 256 283 158 229Z" fill="#20D7FF" fillOpacity=".32" />
       <path d="M256 68 354 229 256 283Z" fill="#FF57DB" fillOpacity=".27" />
-      <path d="M256 80 313 221 256 256 199 221Z" fill="none" stroke="#EFFFFF" strokeOpacity=".7" strokeWidth="2" />
-      <path d="M256 94 224 213M256 94 291 215M185 225 256 150 330 226" fill="none" stroke="#FFFFFF" strokeOpacity=".33" strokeWidth="2" />
-      <path d="M154 235 210 219 256 283 302 219 358 235 327 310 256 420 185 310Z" fill="url(#hf-metal)" stroke="#7C8FB0" strokeWidth="4" />
-      <path d="M171 246 216 236 246 284 200 327Z" fill="url(#hf-prism)" opacity=".82" />
-      <path d="M341 246 296 236 266 284 312 327Z" fill="url(#hf-prism)" opacity=".82" />
-      <path d="M198 319 256 405 314 319 278 336 256 374 234 336Z" fill="url(#hf-prism)" stroke="#8EFBFF" strokeWidth="3" />
-      <path d="M205 247 244 292 221 314" fill="none" stroke="#27EFFF" strokeWidth="7" strokeLinecap="round" />
-      <path d="M307 247 268 292 291 314" fill="none" stroke="#FF4FD8" strokeWidth="7" strokeLinecap="round" />
-      <path d="M256 283 256 389" stroke="#F8FAFF" strokeOpacity=".6" strokeWidth="2" />
-      <path d="M160 229 115 266 182 285M352 229 397 266 330 285" fill="none" stroke="url(#hf-ring)" strokeWidth="5" />
+      <path
+        d="M256 80 313 221 256 256 199 221Z"
+        fill="none"
+        stroke="#EFFFFF"
+        strokeOpacity=".7"
+        strokeWidth="2"
+      />
+      <path
+        d="M256 94 224 213M256 94 291 215M185 225 256 150 330 226"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeOpacity=".33"
+        strokeWidth="2"
+      />
+      <path
+        d="M154 235 210 219 256 283 302 219 358 235 327 310 256 420 185 310Z"
+        fill="url(#hf-metal)"
+        stroke="#7C8FB0"
+        strokeWidth="4"
+      />
+      <path
+        d="M171 246 216 236 246 284 200 327Z"
+        fill="url(#hf-prism)"
+        opacity=".82"
+      />
+      <path
+        d="M341 246 296 236 266 284 312 327Z"
+        fill="url(#hf-prism)"
+        opacity=".82"
+      />
+      <path
+        d="M198 319 256 405 314 319 278 336 256 374 234 336Z"
+        fill="url(#hf-prism)"
+        stroke="#8EFBFF"
+        strokeWidth="3"
+      />
+      <path
+        d="M205 247 244 292 221 314"
+        fill="none"
+        stroke="#27EFFF"
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M307 247 268 292 291 314"
+        fill="none"
+        stroke="#FF4FD8"
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M256 283 256 389"
+        stroke="#F8FAFF"
+        strokeOpacity=".6"
+        strokeWidth="2"
+      />
+      <path
+        d="M160 229 115 266 182 285M352 229 397 266 330 285"
+        fill="none"
+        stroke="url(#hf-ring)"
+        strokeWidth="5"
+      />
     </svg>
   );
 }
@@ -83,7 +202,10 @@ function SpatialPreview({
       <div className="hf-empty-state">
         <span className="hf-empty-orb" />
         <strong>No hologram staged yet</strong>
-        <p>Build a material in CREATE, then preview it in the real WebGL studio before forging it into Canva.</p>
+        <p>
+          Build a material in CREATE, then preview it in the real WebGL studio
+          before forging it into Canva.
+        </p>
       </div>
     );
   }
@@ -115,7 +237,10 @@ function SpatialPreview({
         <div>
           <span>Shift</span>
           <strong>
-            {Math.round(p?.colorShift ?? firstObject?.material.spectralShift ?? 0)}%
+            {Math.round(
+              p?.colorShift ?? firstObject?.material.spectralShift ?? 0,
+            )}
+            %
           </strong>
         </div>
         <div>
@@ -131,7 +256,8 @@ function SpatialPreview({
           <strong>
             {Math.round(
               p?.reflection ?? firstObject?.material.reflectionStrength ?? 0,
-            )}%
+            )}
+            %
           </strong>
         </div>
         <div>
@@ -145,14 +271,17 @@ function SpatialPreview({
       </div>
 
       <p className="hf-boundary-copy">
-        This SPATIAL view is a real Three.js scene inside the Canva app iframe. Orbit, pan, zoom,
-        object selection, transform controls, playback and timeline scrubbing operate on the same
-        HoloScene contract used by the authenticated render backend. Transparent source silhouettes
-        are extruded in-browser and in Blender exports. Authored transforms, keyframes and timeline
-        state stay in the active studio session when you move between tabs. GLB, glTF, USDZ, MP4,
-        transparent WebM, PNG sequence and light-field quilt output become available when the
-        production render backend is configured. Exported HoloScene JSON can also be reopened here,
-        restoring the authored objects, camera, environment, timeline and keyframes.
+        This SPATIAL view is a real Three.js scene inside the Canva app iframe.
+        Orbit, pan, zoom, object selection, transform controls, playback and
+        timeline scrubbing operate on the same HoloScene contract used by the
+        authenticated render backend. Transparent source silhouettes are
+        extruded in-browser and in Blender exports. Authored transforms,
+        keyframes and timeline state stay in the active studio session when you
+        move between tabs. GLB, glTF, USDZ, MP4, transparent WebM, PNG sequence
+        and light-field quilt output become available when the production render
+        backend is configured. Exported HoloScene JSON can also be reopened
+        here, restoring the authored objects, camera, environment, timeline and
+        keyframes.
       </p>
     </div>
   );
@@ -191,10 +320,24 @@ function VerifyPanel({
       </div>
       {plan && (
         <div className="hf-receipt">
-          <div><span>Preset</span><strong>{plan.presetName}</strong></div>
-          <div><span>Creation</span><strong>{plan.creationType.replaceAll("_", " ").toUpperCase()}</strong></div>
-          <div><span>Plan</span><strong>{plan.isValid ? "VALID" : "INVALID"}</strong></div>
-          <div><span>Route</span><strong>{result?.route ?? "NOT EXECUTED"}</strong></div>
+          <div>
+            <span>Preset</span>
+            <strong>{plan.presetName}</strong>
+          </div>
+          <div>
+            <span>Creation</span>
+            <strong>
+              {plan.creationType.replaceAll("_", " ").toUpperCase()}
+            </strong>
+          </div>
+          <div>
+            <span>Plan</span>
+            <strong>{plan.isValid ? "VALID" : "INVALID"}</strong>
+          </div>
+          <div>
+            <span>Route</span>
+            <strong>{result?.route ?? "NOT EXECUTED"}</strong>
+          </div>
         </div>
       )}
       {result && result.previewOnlyProperties.length > 0 && (
@@ -215,13 +358,18 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [isForging, setIsForging] = useState(false);
   const selectedImage = useCanvaImageSelection();
-  const [uploadedSource, setUploadedSource] = useState<UploadedImageResult | null>(null);
+  const [uploadedSource, setUploadedSource] =
+    useState<UploadedImageResult | null>(null);
   const [sourceMode, setSourceMode] = useState<SourceMode>("selected");
 
   const activeSourceRef =
-    sourceMode === "selected" ? selectedImage.ref ?? undefined : uploadedSource?.ref;
+    sourceMode === "selected"
+      ? (selectedImage.ref ?? undefined)
+      : uploadedSource?.ref;
   const activeSourcePreview =
-    sourceMode === "selected" ? selectedImage.previewUrl : uploadedSource?.dataUrl ?? null;
+    sourceMode === "selected"
+      ? selectedImage.previewUrl
+      : (uploadedSource?.dataUrl ?? null);
   const sourceDescription =
     sourceMode === "selected"
       ? selectedImage.ref
@@ -229,7 +377,7 @@ export function App() {
         : selectedImage.count > 1
           ? `${selectedImage.count} images selected`
           : "No Canva image selected"
-      : uploadedSource?.fileName ?? "No upload staged";
+      : (uploadedSource?.fileName ?? "No upload staged");
 
   const preview = (nextPlan: HolographicEffectPlan) => {
     setPlan(nextPlan);
@@ -251,7 +399,11 @@ export function App() {
       setResult(receipt);
       setTab("verify");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "HoloForge could not create the Canva output.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "HoloForge could not create the Canva output.",
+      );
       setTab("verify");
     } finally {
       setIsForging(false);
@@ -261,11 +413,16 @@ export function App() {
   return (
     <main className="hf-app">
       <header className="hf-hero">
-        <div className="hf-logo-wrap"><HoloForgeLogo /></div>
+        <div className="hf-logo-wrap">
+          <HoloForgeLogo />
+        </div>
         <div className="hf-brand-copy">
           <span className="hf-eyebrow">HOLOGRAPHIC DESIGN STUDIO</span>
           <h1>HOLOFORGE</h1>
-          <p>Design spectral text, logos, graphics, glass, chrome and photonic overlays inside Canva.</p>
+          <p>
+            Design spectral text, logos, graphics, glass, chrome and photonic
+            overlays inside Canva.
+          </p>
         </div>
         <span className="hf-canva-pill">CANVA</span>
       </header>
@@ -276,7 +433,9 @@ export function App() {
             <span>CANVA SOURCE</span>
             <strong>{sourceDescription}</strong>
           </div>
-          <span className={"hf-source-led " + (activeSourceRef ? "is-ready" : "")} />
+          <span
+            className={"hf-source-led " + (activeSourceRef ? "is-ready" : "")}
+          />
         </div>
         <div className="hf-source-mode-group">
           <button
@@ -296,7 +455,9 @@ export function App() {
             USE UPLOAD
           </button>
         </div>
-        {selectedImage.error && <p className="hf-source-warning">{selectedImage.error}</p>}
+        {selectedImage.error && (
+          <p className="hf-source-warning">{selectedImage.error}</p>
+        )}
       </section>
 
       <LocalImageUpload
@@ -329,7 +490,8 @@ export function App() {
             aria-pressed={tab === item}
             onClick={() => setTab(item)}
           >
-            <span>0{index + 1}</span>{item.toUpperCase()}
+            <span>0{index + 1}</span>
+            {item.toUpperCase()}
           </button>
         ))}
       </nav>
@@ -352,7 +514,9 @@ export function App() {
             onSceneChange={setStudioScene}
           />
         )}
-        {tab === "verify" && <VerifyPanel plan={plan} result={result} error={error} />}
+        {tab === "verify" && (
+          <VerifyPanel plan={plan} result={result} error={error} />
+        )}
       </section>
 
       <footer className="hf-footer">

@@ -18,8 +18,16 @@ export interface SceneLayersPanelProps {
 }
 
 export function SceneLayersPanel({
-  scene, apiClient, mergeSelection, setMergeSelection, isObjectBusy,
-  handleMerge, sortedObjects, state, dispatch, resolveUrl,
+  scene,
+  apiClient,
+  mergeSelection,
+  setMergeSelection,
+  isObjectBusy,
+  handleMerge,
+  sortedObjects,
+  state,
+  dispatch,
+  resolveUrl,
 }: SceneLayersPanelProps) {
   return (
     <section className="dp-layers-panel">
@@ -28,11 +36,7 @@ export function SceneLayersPanel({
         <button
           type="button"
           className="dp-btn-small"
-          disabled={
-            !apiClient ||
-            mergeSelection.size < 2 ||
-            isObjectBusy
-          }
+          disabled={!apiClient || mergeSelection.size < 2 || isObjectBusy}
           onClick={handleMerge}
         >
           MERGE {mergeSelection.size > 1 ? mergeSelection.size : ""}
@@ -44,9 +48,7 @@ export function SceneLayersPanel({
             key={object.id}
             className={
               "dp-layer-item" +
-              (object.id === state.selectedObjectId
-                ? " is-active"
-                : "")
+              (object.id === state.selectedObjectId ? " is-active" : "")
             }
             onClick={() =>
               dispatch({
@@ -83,8 +85,7 @@ export function SceneLayersPanel({
             <div className="dp-layer-info">
               <strong>{object.label}</strong>
               <span>
-                {object.semanticType} ·{" "}
-                {Math.round(object.confidence * 100)}%
+                {object.semanticType} · {Math.round(object.confidence * 100)}%
                 {object.extractionQuality === "bbox_fallback"
                   ? " · BBOX FALLBACK"
                   : ""}

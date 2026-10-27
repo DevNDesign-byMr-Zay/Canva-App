@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DepthScene } from "../scene/depth-scene";
-import {
-  DepthPopApiClient,
-  scenePatchPayload,
-} from "./depthpop-api";
+import { DepthPopApiClient, scenePatchPayload } from "./depthpop-api";
 
 function validScene(): DepthScene {
   return {
@@ -227,7 +224,6 @@ describe("DepthPopApiClient", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
   });
 
-
   it("rejects cross-origin protected assets before sending Canva authorization", async () => {
     const mockFetch = vi.fn();
     vi.stubGlobal("fetch", mockFetch);
@@ -290,10 +286,13 @@ describe("DepthPopApiClient", () => {
   });
   it("sends the four maintained DepthPop settings without provider-specific invented fields", async () => {
     const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ jobId: "job_settings", status: "queued" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ jobId: "job_settings", status: "queued" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     vi.stubGlobal("fetch", mockFetch);
 
@@ -319,9 +318,7 @@ describe("DepthPopApiClient", () => {
     expect(form.get("florence_steps")).toBeNull();
     expect(form.get("sam_steps")).toBeNull();
   });
-
 });
-
 
 describe("DepthPopApiClient production object and export routes", () => {
   it("uses authenticated server object operations", async () => {
@@ -352,12 +349,8 @@ describe("DepthPopApiClient production object and export routes", () => {
         expect.objectContaining({ Authorization: "Bearer token" }),
       );
     }
-    expect(mockFetch.mock.calls[0]?.[0]).toContain(
-      "/objects/person_01",
-    );
-    expect((mockFetch.mock.calls[0]?.[1] as RequestInit).method).toBe(
-      "PATCH",
-    );
+    expect(mockFetch.mock.calls[0]?.[0]).toContain("/objects/person_01");
+    expect((mockFetch.mock.calls[0]?.[1] as RequestInit).method).toBe("PATCH");
     expect(
       JSON.parse(String((mockFetch.mock.calls[3]?.[1] as RequestInit).body)),
     ).toEqual({
@@ -370,13 +363,10 @@ describe("DepthPopApiClient production object and export routes", () => {
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ jobId: "export_1", status: "queued" }),
-          {
-            status: 202,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
+        new Response(JSON.stringify({ jobId: "export_1", status: "queued" }), {
+          status: 202,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(

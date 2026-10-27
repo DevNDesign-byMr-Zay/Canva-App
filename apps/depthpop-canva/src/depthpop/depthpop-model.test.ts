@@ -24,8 +24,12 @@ describe("DepthPop maintained Drive runtime contract", () => {
 
   it("maps Fast Balanced and Cinematic to the maintained 14 22 and 34 steps", () => {
     const fast = normalizeDepthPopSettings({ renderQuality: "fast" } as never);
-    const balanced = normalizeDepthPopSettings({ renderQuality: "balanced" } as never);
-    const cinematic = normalizeDepthPopSettings({ renderQuality: "cinematic" } as never);
+    const balanced = normalizeDepthPopSettings({
+      renderQuality: "balanced",
+    } as never);
+    const cinematic = normalizeDepthPopSettings({
+      renderQuality: "cinematic",
+    } as never);
 
     expect(buildDepthPopFormFields(fast).num_inference_steps).toBe("14");
     expect(buildDepthPopFormFields(balanced).num_inference_steps).toBe("22");

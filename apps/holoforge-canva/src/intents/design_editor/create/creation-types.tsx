@@ -1,14 +1,24 @@
 import React from "react";
-import { CREATION_TYPES, type CreationType } from "../holographic/material-contract";
+import {
+  CREATION_TYPES,
+  type CreationType,
+} from "../holographic/material-contract";
 
 export type CreationTypesProps = {
   selectedType: CreationType;
   onSelectType: (type: CreationType) => void;
 };
 
-export const CreationTypes: React.FC<CreationTypesProps> = ({ selectedType, onSelectType }) => {
+export const CreationTypes: React.FC<CreationTypesProps> = ({
+  selectedType,
+  onSelectType,
+}) => {
   return (
-    <div className="hf-creation-types-grid" role="radiogroup" aria-label="Creation Type">
+    <div
+      className="hf-creation-types-grid"
+      role="radiogroup"
+      aria-label="Creation Type"
+    >
       {CREATION_TYPES.map((type) => {
         const isSelected = selectedType === type.id;
         return (

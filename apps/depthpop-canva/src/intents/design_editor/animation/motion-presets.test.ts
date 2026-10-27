@@ -130,5 +130,4 @@ describe("DepthPop motion presets", () => {
       locked.objects[0]!.animationTracks,
     );
   });
-
 });

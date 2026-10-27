@@ -176,9 +176,7 @@ describe("SceneWorkspace interactions", () => {
 
     render(<SceneWorkspace initialScene={degraded} />);
 
-    expect(
-      screen.getByText(/bounding-box fallback extraction/i),
-    ).toBeTruthy();
+    expect(screen.getByText(/bounding-box fallback extraction/i)).toBeTruthy();
     expect(screen.getByText(/BBOX FALLBACK/i)).toBeTruthy();
   });
 
@@ -195,7 +193,6 @@ describe("SceneWorkspace interactions", () => {
     await waitFor(() => expect(onExport).toHaveBeenCalledOnce());
     expect(onExport.mock.calls[0]![0].objects[0]!.opacity).toBe(0.45);
   });
-
 
   it("authors a gizmo pose into typed keyframes and saves it", async () => {
     const onSave = vi.fn(async (value: DepthScene) => ({
@@ -243,9 +240,7 @@ describe("SceneWorkspace interactions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "DUPLICATE" }));
 
-    await waitFor(() =>
-      expect(screen.getByText("Person Copy")).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText("Person Copy")).toBeTruthy());
     expect(client.duplicateObject).toHaveBeenCalledWith(
       "scene-ui",
       "person_01",
@@ -330,5 +325,4 @@ describe("SceneWorkspace interactions", () => {
       0.77,
     );
   });
-
 });

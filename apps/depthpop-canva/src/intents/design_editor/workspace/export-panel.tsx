@@ -1,6 +1,10 @@
 import React from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DepthPopExportRequest, DepthPopExportStatus, DepthPopApiClient } from "../api/depthpop-api";
+import type {
+  DepthPopExportRequest,
+  DepthPopExportStatus,
+  DepthPopApiClient,
+} from "../api/depthpop-api";
 
 export interface ExportPanelProps {
   apiClient?: DepthPopApiClient | null;
@@ -22,10 +26,22 @@ export interface ExportPanelProps {
 }
 
 export function ExportPanel({
-  apiClient, exportFormat, setExportFormat, includeAnimation, setIncludeAnimation,
-  exportFps, setExportFps, exportWidth, setExportWidth,
-  exportHeight, setExportHeight, exportBusy, exportStatus,
-  startExport, cancelExport, downloadExport,
+  apiClient,
+  exportFormat,
+  setExportFormat,
+  includeAnimation,
+  setIncludeAnimation,
+  exportFps,
+  setExportFps,
+  exportWidth,
+  setExportWidth,
+  exportHeight,
+  setExportHeight,
+  exportBusy,
+  exportStatus,
+  startExport,
+  cancelExport,
+  downloadExport,
 }: ExportPanelProps) {
   return (
     <section className="dp-export-panel">
@@ -35,15 +51,14 @@ export function ExportPanel({
           <h3>PRODUCTION EXPORT</h3>
         </div>
       </div>
-    
+
       <label className="dp-field">
         FORMAT
         <select
           value={exportFormat}
           onChange={(event) =>
             setExportFormat(
-              event.currentTarget
-                .value as DepthPopExportRequest["format"],
+              event.currentTarget.value as DepthPopExportRequest["format"],
             )
           }
         >
@@ -55,18 +70,16 @@ export function ExportPanel({
           <option value="mp4">MP4</option>
         </select>
       </label>
-    
+
       <label className="dp-check-field">
         <input
           type="checkbox"
           checked={includeAnimation}
-          onChange={(event) =>
-            setIncludeAnimation(event.currentTarget.checked)
-          }
+          onChange={(event) => setIncludeAnimation(event.currentTarget.checked)}
         />
         INCLUDE AUTHORED ANIMATION
       </label>
-    
+
       {(exportFormat === "mp4" || exportFormat === "webm") && (
         <div className="dp-video-settings">
           <label className="dp-field">
@@ -78,13 +91,7 @@ export function ExportPanel({
               value={exportFps}
               onChange={(event) =>
                 setExportFps(
-                  Math.max(
-                    1,
-                    Math.min(
-                      60,
-                      Number(event.currentTarget.value),
-                    ),
-                  ),
+                  Math.max(1, Math.min(60, Number(event.currentTarget.value))),
                 )
               }
             />
@@ -101,10 +108,7 @@ export function ExportPanel({
                 setExportWidth(
                   Math.max(
                     64,
-                    Math.min(
-                      4096,
-                      Number(event.currentTarget.value),
-                    ),
+                    Math.min(4096, Number(event.currentTarget.value)),
                   ),
                 )
               }
@@ -122,10 +126,7 @@ export function ExportPanel({
                 setExportHeight(
                   Math.max(
                     64,
-                    Math.min(
-                      4096,
-                      Number(event.currentTarget.value),
-                    ),
+                    Math.min(4096, Number(event.currentTarget.value)),
                   ),
                 )
               }
@@ -133,7 +134,7 @@ export function ExportPanel({
           </label>
         </div>
       )}
-    
+
       <button
         type="button"
         className="dp-exec"
@@ -142,7 +143,7 @@ export function ExportPanel({
       >
         {exportBusy ? "EXPORTING…" : "START EXPORT"}
       </button>
-    
+
       {exportStatus && (
         <div className="dp-export-status" role="status">
           <div>
@@ -151,10 +152,7 @@ export function ExportPanel({
           </div>
           <progress
             max={1}
-            value={Math.max(
-              0,
-              Math.min(1, exportStatus.progress ?? 0),
-            )}
+            value={Math.max(0, Math.min(1, exportStatus.progress ?? 0))}
           />
           {exportStatus.error && (
             <p className="dp-error">{exportStatus.error}</p>
@@ -170,24 +168,23 @@ export function ExportPanel({
                 CANCEL
               </button>
             )}
-            {exportStatus.status === "complete" &&
-              exportStatus.downloadUrl && (
-                <button
-                  type="button"
-                  className="dp-btn-small"
-                  onClick={() => void downloadExport()}
-                >
-                  DOWNLOAD
-                </button>
-              )}
+            {exportStatus.status === "complete" && exportStatus.downloadUrl && (
+              <button
+                type="button"
+                className="dp-btn-small"
+                onClick={() => void downloadExport()}
+              >
+                DOWNLOAD
+              </button>
+            )}
           </div>
         </div>
       )}
-    
+
       <p className="dp-help">
-        Scene JSON and PNG layers preserve project assets; glTF/GLB
-        preserve spatial transforms and transform animation; WebM/MP4
-        render the authored timeline through the backend job system.
+        Scene JSON and PNG layers preserve project assets; glTF/GLB preserve
+        spatial transforms and transform animation; WebM/MP4 render the authored
+        timeline through the backend job system.
       </p>
     </section>
   );

@@ -42,9 +42,26 @@ function DepthPopLogo() {
       role="img"
       aria-label="DepthPop layered square depth emblem"
     >
-      <path d="M7 7h10v10H7V7Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".35" />
-      <path d="M5 9h10v10H5V9Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" opacity=".6" />
-      <path d="M9 5h10v10H9V5Z" fill="none" stroke="#FFFFFF" strokeWidth="1.6" />
+      <path
+        d="M7 7h10v10H7V7Z"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1.6"
+        opacity=".35"
+      />
+      <path
+        d="M5 9h10v10H5V9Z"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1.6"
+        opacity=".6"
+      />
+      <path
+        d="M9 5h10v10H9V5Z"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1.6"
+      />
       <path
         d="M14.5 10.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Z"
         fill="#A855F7"
@@ -106,13 +123,17 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () =>
-      reject(new Error("DepthPop could not prepare the rendered PNG for Canva."));
+      reject(
+        new Error("DepthPop could not prepare the rendered PNG for Canva."),
+      );
     reader.onload = () => {
       if (
         typeof reader.result !== "string" ||
         !reader.result.startsWith("data:image/png")
       ) {
-        reject(new Error("DepthPop compositor did not resolve to a PNG data URL."));
+        reject(
+          new Error("DepthPop compositor did not resolve to a PNG data URL."),
+        );
         return;
       }
       resolve(reader.result);
@@ -138,14 +159,20 @@ function isAbortError(cause: unknown): boolean {
 
 export function App() {
   const selectedImages = useSelection("image");
-  const [settings, setSettings] = useState<DepthPopSettings>(DEFAULT_DEPTHPOP_SETTINGS);
+  const [settings, setSettings] = useState<DepthPopSettings>(
+    DEFAULT_DEPTHPOP_SETTINGS,
+  );
   const [stage, setStage] = useState<RunStage>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [activeScene, setActiveScene] = useState<DepthScene | null>(null);
-  const [localSource, setLocalSource] = useState<UploadedImageResult | null>(null);
+  const [localSource, setLocalSource] = useState<UploadedImageResult | null>(
+    null,
+  );
   const [activeSourceRef, setActiveSourceRef] = useState<ImageRef | null>(null);
-  const [activeSourceKind, setActiveSourceKind] = useState<SourceKind | null>(null);
+  const [activeSourceKind, setActiveSourceKind] = useState<SourceKind | null>(
+    null,
+  );
 
   const runController = useRef<AbortController | null>(null);
   const exportController = useRef<AbortController | null>(null);
@@ -218,7 +245,8 @@ export function App() {
       } else {
         const draft = await selectedImages.read();
         const content = draft.contents[0];
-        if (!content) throw new Error("Select one raster image in Canva first.");
+        if (!content)
+          throw new Error("Select one raster image in Canva first.");
 
         const temporary = await getTemporaryUrl({
           type: "image",
@@ -230,7 +258,9 @@ export function App() {
           signal: controller.signal,
         });
         if (!sourceResponse.ok) {
-          throw new Error("Canva's temporary source image could not be downloaded.");
+          throw new Error(
+            "Canva's temporary source image could not be downloaded.",
+          );
         }
 
         sourceBlob = await sourceResponse.blob();
@@ -240,7 +270,9 @@ export function App() {
 
       ensureSupportedInput(sourceBlob);
       if (sourceBlob.size <= 0 || sourceBlob.size > 50 * 1024 * 1024) {
-        throw new Error("Selected image exceeds the 50 MB processing limit or is empty.");
+        throw new Error(
+          "Selected image exceeds the 50 MB processing limit or is empty.",
+        );
       }
 
       setActiveSourceRef(sourceRef);
@@ -291,7 +323,9 @@ export function App() {
     }
   };
 
-  const handleSaveScene = async (sceneToSave: DepthScene): Promise<DepthScene> => {
+  const handleSaveScene = async (
+    sceneToSave: DepthScene,
+  ): Promise<DepthScene> => {
     if (!apiClient) throw new Error("DepthPop backend is not configured.");
     const updated = await apiClient.patchScene(sceneToSave.id, sceneToSave);
     setActiveScene(updated);
@@ -423,7 +457,11 @@ export function App() {
             className="dp-reset"
             type="button"
             onClick={reset}
-            aria-label={isBusy ? "Cancel current DepthPop run and reset" : "Reset DepthPop"}
+            aria-label={
+              isBusy
+                ? "Cancel current DepthPop run and reset"
+                : "Reset DepthPop"
+            }
           >
             {isBusy ? "×" : "↺"}
           </button>
@@ -440,37 +478,108 @@ export function App() {
           composition, then render the authored scene back into Canva.
         </p>
 
-
         <div className="dp-controls" aria-label="DepthPop controls">
           <label className="dp-control">
-            <span className="dp-control-label"><span>Depth Strength (subject pop)</span><strong>{settings.depthStrength.toFixed(2)}</strong></span>
-            <input className="dp-range" aria-label="Depth Strength" type="range" min={0.05} max={0.75} step={0.01} value={settings.depthStrength}
-              onChange={(event) => setSettings((current) => ({ ...current, depthStrength: Number(event.currentTarget.value) }))} />
+            <span className="dp-control-label">
+              <span>Depth Strength (subject pop)</span>
+              <strong>{settings.depthStrength.toFixed(2)}</strong>
+            </span>
+            <input
+              className="dp-range"
+              aria-label="Depth Strength"
+              type="range"
+              min={0.05}
+              max={0.75}
+              step={0.01}
+              value={settings.depthStrength}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  depthStrength: Number(event.currentTarget.value),
+                }))
+              }
+            />
           </label>
           <label className="dp-control">
-            <span className="dp-control-label"><span>Depth Blur (background softness)</span><strong>{Math.round(settings.depthBlur)}%</strong></span>
-            <input className="dp-range" aria-label="Depth Blur" type="range" min={0} max={100} step={1} value={settings.depthBlur}
-              onChange={(event) => setSettings((current) => ({ ...current, depthBlur: Number(event.currentTarget.value) }))} />
+            <span className="dp-control-label">
+              <span>Depth Blur (background softness)</span>
+              <strong>{Math.round(settings.depthBlur)}%</strong>
+            </span>
+            <input
+              className="dp-range"
+              aria-label="Depth Blur"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={settings.depthBlur}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  depthBlur: Number(event.currentTarget.value),
+                }))
+              }
+            />
           </label>
           <label className="dp-control">
-            <span className="dp-control-label"><span>Depth Fidelity (depth-map accuracy)</span><strong>{settings.depthFidelity.toFixed(2)}</strong></span>
-            <input className="dp-range" aria-label="Depth Fidelity" type="range" min={0.05} max={1} step={0.01} value={settings.depthFidelity}
-              onChange={(event) => setSettings((current) => ({ ...current, depthFidelity: Number(event.currentTarget.value) }))} />
+            <span className="dp-control-label">
+              <span>Depth Fidelity (depth-map accuracy)</span>
+              <strong>{settings.depthFidelity.toFixed(2)}</strong>
+            </span>
+            <input
+              className="dp-range"
+              aria-label="Depth Fidelity"
+              type="range"
+              min={0.05}
+              max={1}
+              step={0.01}
+              value={settings.depthFidelity}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  depthFidelity: Number(event.currentTarget.value),
+                }))
+              }
+            />
           </label>
           <div className="dp-control">
-            <span className="dp-control-label"><span>Render Quality</span><strong>{settings.renderQuality.toUpperCase()}</strong></span>
-            <div className="dp-quality-row" role="group" aria-label="Render Quality">
+            <span className="dp-control-label">
+              <span>Render Quality</span>
+              <strong>{settings.renderQuality.toUpperCase()}</strong>
+            </span>
+            <div
+              className="dp-quality-row"
+              role="group"
+              aria-label="Render Quality"
+            >
               {(["fast", "balanced", "cinematic"] as const).map((quality) => (
-                <button key={quality} type="button" className={settings.renderQuality === quality ? "is-active" : ""} aria-pressed={settings.renderQuality === quality}
-                  onClick={() => setSettings((current) => ({ ...current, renderQuality: quality }))}>
-                  {quality === "fast" ? "Fast" : quality === "balanced" ? "Balanced" : "Cinematic"}
+                <button
+                  key={quality}
+                  type="button"
+                  className={
+                    settings.renderQuality === quality ? "is-active" : ""
+                  }
+                  aria-pressed={settings.renderQuality === quality}
+                  onClick={() =>
+                    setSettings((current) => ({
+                      ...current,
+                      renderQuality: quality,
+                    }))
+                  }
+                >
+                  {quality === "fast"
+                    ? "Fast"
+                    : quality === "balanced"
+                      ? "Balanced"
+                      : "Cinematic"}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <LocalImageUpload productName="DepthPop"
+        <LocalImageUpload
+          productName="DepthPop"
           classPrefix="dp"
           sourceLabel="LOCAL SOURCE"
           insertIntoDesign={false}

@@ -2,7 +2,11 @@ import React from "react";
 
 import type { HoloEnvironment } from "../scene/holo-scene";
 
-export function StageEnvironment({ environment }: { environment: HoloEnvironment }) {
+export function StageEnvironment({
+  environment,
+}: {
+  environment: HoloEnvironment;
+}) {
   return (
     <>
       <ambientLight intensity={environment.ambientIntensity} />

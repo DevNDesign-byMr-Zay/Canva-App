@@ -39,7 +39,9 @@ export function interpolateVec3(a: Vec3, b: Vec3, t: number): Vec3 {
   });
 }
 
-function sortedKeyframes(keyframes: readonly HoloKeyframe[]): readonly HoloKeyframe[] {
+function sortedKeyframes(
+  keyframes: readonly HoloKeyframe[],
+): readonly HoloKeyframe[] {
   return Object.freeze([...keyframes].sort((a, b) => a.timeMs - b.timeMs));
 }
 
@@ -114,7 +116,9 @@ export function upsertKeyframe(
     property,
     keyframes: Object.freeze(
       [
-        ...(existing?.keyframes.filter((keyframe) => keyframe.timeMs !== normalizedTime) ?? []),
+        ...(existing?.keyframes.filter(
+          (keyframe) => keyframe.timeMs !== normalizedTime,
+        ) ?? []),
         nextKeyframe,
       ].sort((a, b) => a.timeMs - b.timeMs),
     ),

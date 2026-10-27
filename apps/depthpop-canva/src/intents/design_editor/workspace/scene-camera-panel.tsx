@@ -10,7 +10,9 @@ export interface SceneCameraPanelProps {
 }
 
 export function SceneCameraPanel({
-  scene, state, dispatch,
+  scene,
+  state,
+  dispatch,
 }: SceneCameraPanelProps) {
   return (
     <section className="dp-camera-panel">
@@ -124,8 +126,8 @@ export function SceneCameraPanel({
         </label>
       </div>
       <p className="dp-help">
-        Drag empty space to orbit · wheel/pinch to zoom · right-drag
-        to pan. Camera navigation is persisted to the scene.
+        Drag empty space to orbit · wheel/pinch to zoom · right-drag to pan.
+        Camera navigation is persisted to the scene.
       </p>
     </section>
   );
