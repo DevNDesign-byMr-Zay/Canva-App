@@ -240,6 +240,18 @@ jobs:
           trap 'rm -f npm-audit.json' EXIT
           npm audit --json > npm-audit.json || audit_status=$?
           node ../../canva-app/scripts/verify-dev-audit.mjs npm-audit.json
+
+  backend-python-dependency-audit:
+    name: python-audit-${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [holoforge-canva, depthpop-canva]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
