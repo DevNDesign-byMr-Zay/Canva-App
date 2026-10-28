@@ -12,7 +12,7 @@
     "build": "npx --yes @canva/cli@2.13.0 apps build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test:coverage": "vitest run --coverage"
