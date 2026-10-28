@@ -32,7 +32,7 @@ jobs:
           import {readFileSync} from 'node:fs';
           import {resolve} from 'node:path';
           const req=createRequire(resolve('package.json'));
-          const merge=req('deepmerge');
+          const merge=createRequire(req.resolve('@svgr/plugin-svgo'))('deepmerge');
           const payload=()=>JSON.parse('{"safe":{"value":1},"__proto__":{"auditProbe":true}}');
           const cases=[()=>merge(Object.create(null),payload()),()=>merge(payload(),{}),()=>merge({nested:null},{nested:payload()}).nested,()=>merge({}, {nested:payload()}).nested];
           if(process.argv.includes('--baseline')) {
@@ -54,7 +54,7 @@ jobs:
           assert.deepEqual(merge({x:{a:1}},{x:{b:2}},{customMerge:key=>key==='x'?()=>({custom:true}):undefined}),{x:{custom:true}});
           assert.deepEqual(target,{items:[{a:1}],nested:{left:true}});assert.deepEqual(source,{items:[{b:2}],nested:{right:true}});
           const date=new Date(0),regexp=/safe/,symbol=Symbol('safe');assert.equal(merge({},{date}).date,date);assert.equal(merge({},{regexp}).regexp,regexp);assert.equal(merge({},{[symbol]:1})[symbol],1);
-          for(const consumer of ['@svgr/plugin-svgo','@rsbuild/plugin-svgr']) {const consumerRequire=createRequire(req.resolve(consumer));assert.equal(consumerRequire.resolve('deepmerge'),req.resolve('deepmerge'),consumer);}
+          for(const consumer of ['@svgr/plugin-svgo','@rsbuild/plugin-svgr']) {const consumerRequire=createRequire(req.resolve(consumer));const consumerMerge=consumerRequire('deepmerge');for(const result of [consumerMerge(Object.create(null),payload()),consumerMerge(payload(),{})]){assert.equal(result.auditProbe,undefined,consumer);assert.equal(Object.getPrototypeOf(result),Object.prototype,consumer);}}
           const {transform}=req('@svgr/core');
           const svgo=req('@svgr/plugin-svgo'),jsx=req('@svgr/plugin-jsx');
           const output=await transform('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 2h20v20H2z"/></svg>',{plugins:[svgo.default??svgo,jsx.default??jsx],svgoConfig:{plugins:[{name:'preset-default',params:{overrides:{removeViewBox:false}}}]},typescript:true},{componentName:'AuditSvg'});
