@@ -12,7 +12,7 @@ def test_background_success_logs_bounded_lifecycle_and_preserves_result(caplog):
     result = asyncio.run(run_background_job("job_123", succeed))
     assert result == {"result": "PRIVATE_ARTWORK_PAYLOAD"}
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started", "background_job_completed"]
+    assert [record["event"] for record in records] == ["background_runner_started", "background_runner_returned"]
     assert all(record["level"] == "INFO" and record["job_id"] == "job_123" for record in records)
     assert "PRIVATE_ARTWORK_PAYLOAD" not in caplog.text
 
@@ -24,7 +24,7 @@ def test_background_failure_never_logs_a_completion_or_private_exception_name(ca
         raise private_error("Bearer PRIVATE_TOKEN /private/customer.png")
     assert asyncio.run(run_background_job("job_456", fail)) is None
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started", "background_job_failed"]
+    assert [record["event"] for record in records] == ["background_runner_started", "background_job_failed"]
     assert records[-1]["exception_type"] == "Exception"
     assert records[-1]["level"] == "ERROR"
     assert records[-1]["category"] == "internal"
@@ -52,4 +52,4 @@ def test_background_cancellation_does_not_emit_success(caplog):
     else:
         raise AssertionError("cancellation must propagate")
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started"]
+    assert [record["event"] for record in records] == ["background_runner_started"]
