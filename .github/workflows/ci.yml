@@ -29,8 +29,16 @@ jobs:
         run: npm run verify:release
       - name: Check maintained JavaScript syntax
         run: npm run verify:syntax
-      - name: Lint root JS
+      - name: Install locked standalone frontend dependencies
+        run: |
+          npm --prefix apps/holoforge-canva ci --ignore-scripts
+          npm --prefix apps/depthpop-canva ci --ignore-scripts
+      - name: Lint maintained runtime and both standalone frontends
         run: npm run lint
+      - name: Check standalone frontend formatting
+        run: npm run format:check:ts
+      - name: Prove ESLint rejects invalid TypeScript in both apps
+        run: node scripts/verify-frontend-lint-negative.mjs
       - name: Run root JavaScript tests
         run: npm test
 
