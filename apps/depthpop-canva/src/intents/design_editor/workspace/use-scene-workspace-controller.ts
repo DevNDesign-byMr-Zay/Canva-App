@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import {
   type DepthPopExportRequest,
@@ -177,11 +185,16 @@ export function useSceneWorkspaceController({
     };
   }, [apiClient, assetKey]);
 
+  // Playback starts at the latest committed seek without restarting per frame.
+  const capturePlaybackAnchor = useEffectEvent(
+    () => performance.now() - scene.timeline.currentTimeMs,
+  );
+
   useEffect(() => {
     if (!isPlaying || scene.timeline.durationMs <= 0) return;
 
     const duration = Math.max(1, scene.timeline.durationMs);
-    const anchor = performance.now() - scene.timeline.currentTimeMs;
+    const anchor = capturePlaybackAnchor();
 
     const tick = (now: number) => {
       if (now - playbackLastPaint.current >= 32) {
@@ -209,10 +222,13 @@ export function useSceneWorkspaceController({
     });
   }, [scene.objects]);
 
-  const resolveUrl = (rawUrl: string): string => {
-    if (isInlineImageUrl(rawUrl)) return rawUrl;
-    return assetUrls[rawUrl] ?? "";
-  };
+  const resolveUrl = useCallback(
+    (rawUrl: string): string => {
+      if (isInlineImageUrl(rawUrl)) return rawUrl;
+      return assetUrls[rawUrl] ?? "";
+    },
+    [assetUrls],
+  );
 
   const viewportScene = useMemo<DepthScene>(
     () => ({
@@ -232,7 +248,7 @@ export function useSceneWorkspaceController({
         },
       })),
     }),
-    [scene, assetUrls],
+    [scene, resolveUrl],
   );
 
   const handleSave = async () => {
