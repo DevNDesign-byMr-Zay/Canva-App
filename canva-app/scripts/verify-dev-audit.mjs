@@ -15,7 +15,7 @@ export function verifyDevelopmentAudit(audit, manifest, lock) {
   }
   for (const [name, record] of Object.entries(audit.vulnerabilities)) {
     if (!['node-forge', '@canva/app-scripts'].includes(name) || record.severity !== 'high' || record.fixAvailable !== false) {
-      throw new Error(`Unreviewed or fixable development vulnerability: ${name}`);
+      throw new Error(`Unreviewed or fixable development vulnerability: ${name}; ${JSON.stringify({ severity: record.severity, fixAvailable: record.fixAvailable, via: record.via })}`);
     }
     if (!record.nodes?.length || record.nodes.some(node => lock.packages?.[node]?.dev !== true)) {
       throw new Error(`Vulnerability crosses the dev-only boundary: ${name}`);
@@ -36,6 +36,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     readFile('package.json', 'utf8').then(JSON.parse),
     readFile('package-lock.json', 'utf8').then(JSON.parse),
   ]);
+  console.log(JSON.stringify({ event: "npm_audit_summary", packages: Object.entries(audit.vulnerabilities || {}).map(([name, record]) => ({ name, severity: record.severity, range: record.range, fixAvailable: record.fixAvailable, via: record.via })) }));
   verifyDevelopmentAudit(audit, manifest, lock);
   console.log('Verified development audit: only the existing unfixable dev-only node-forge vendor boundary may remain.');
 }
