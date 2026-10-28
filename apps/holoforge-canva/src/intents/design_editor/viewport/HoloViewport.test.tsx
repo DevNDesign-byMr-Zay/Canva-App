@@ -65,7 +65,7 @@ it("plays continuously, pauses, resumes a seek and cancels on unmount", () => {
     '[aria-label="HoloForge timeline"]',
   )!;
   const clickButton = (name: string) => {
-    const button = [...container.querySelectorAll("button")].find(
+    const button = Array.from(container.querySelectorAll("button")).find(
       (candidate) => candidate.textContent?.trim() === name,
     );
     expect(button).toBeDefined();
