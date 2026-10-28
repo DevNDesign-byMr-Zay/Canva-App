@@ -15,7 +15,7 @@ export function verifyDevelopmentAudit(audit, manifest, lock) {
   }
   for (const [name, record] of Object.entries(audit.vulnerabilities)) {
     if (!['node-forge', '@canva/app-scripts'].includes(name) || record.severity !== 'high' || record.fixAvailable !== false) {
-      throw new Error(`Unreviewed or fixable development vulnerability: ${name}`);
+      throw new Error(`Unreviewed or fixable development vulnerability: ${name}; ${JSON.stringify({ severity: record.severity, fixAvailable: record.fixAvailable, via: record.via })}`);
     }
     if (!record.nodes?.length || record.nodes.some(node => lock.packages?.[node]?.dev !== true)) {
       throw new Error(`Vulnerability crosses the dev-only boundary: ${name}`);
