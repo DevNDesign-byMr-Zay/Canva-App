@@ -1,0 +1,43 @@
+name: Frontend DOM test readiness
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/frontend-test-readiness.yml"
+      - "apps/holoforge-canva/src/intents/design_editor/viewport/HoloViewport.test.tsx"
+permissions:
+  contents: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/holoforge-canva
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Generate pinned DOM environment lock
+        run: npm install --package-lock-only --ignore-scripts --save-dev --save-exact jsdom@26.1.0
+      - name: Verify locked install
+        run: npm ci --ignore-scripts
+      - name: ESLint
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Real component and full suite coverage
+        run: npm run test:coverage
+      - name: Production build
+        run: npm run build
+      - name: Preserve npm-generated manifest and lock
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: holoforge-dom-candidate
+          retention-days: 1
+          path: |
+            apps/holoforge-canva/package.json
+            apps/holoforge-canva/package-lock.json
