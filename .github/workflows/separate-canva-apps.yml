@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "apps/**"
+      - "package.json"
+      - "scripts/verify-frontend-lint-negative.mjs"
+      - "tests/js/root-frontend-lint-contract.test.mjs"
       - "scripts/package-independent-canva-apps.mjs"
       - "scripts/verify-standalone-canva-apps.mjs"
       - "scripts/verify-canva-handoff-integrity.mjs"
@@ -14,6 +17,9 @@ on:
       - "mrzay/**"
     paths:
       - "apps/**"
+      - "package.json"
+      - "scripts/verify-frontend-lint-negative.mjs"
+      - "tests/js/root-frontend-lint-contract.test.mjs"
       - "scripts/package-independent-canva-apps.mjs"
       - "scripts/verify-standalone-canva-apps.mjs"
       - ".github/workflows/separate-canva-apps.yml"
