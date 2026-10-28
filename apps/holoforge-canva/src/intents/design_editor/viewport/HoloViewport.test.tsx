@@ -9,6 +9,7 @@ vi.mock("@react-three/drei", () => ({ OrbitControls: () => null }));
 vi.mock("./HoloCamera", () => ({ HoloCamera: () => null }));
 vi.mock("./HoloScene", () => ({ HoloScene: () => null }));
 vi.mock("./StageEnvironment", () => ({ StageEnvironment: () => null }));
+vi.mock("../export/ExportPanel", () => ({ ExportPanel: () => null }));
 
 import { createEffectPlan } from "../holographic/effect-plan";
 import { createHoloScene } from "../scene/holo-scene";
