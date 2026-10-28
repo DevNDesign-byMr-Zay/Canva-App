@@ -12,7 +12,7 @@ def test_background_success_logs_bounded_lifecycle_and_preserves_result(caplog):
     result = asyncio.run(run_background_job("job_123", succeed))
     assert result == {"result": "PRIVATE_ARTWORK_PAYLOAD"}
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started", "background_job_completed"]
+    assert [record["event"] for record in records] == ["background_runner_started", "background_runner_returned"]
     assert all(record["level"] == "INFO" and record["job_id"] == "job_123" for record in records)
     assert "PRIVATE_ARTWORK_PAYLOAD" not in caplog.text
 
@@ -24,7 +24,7 @@ def test_background_failure_never_logs_a_completion_or_private_exception_name(ca
         raise private_error("Bearer PRIVATE_TOKEN /private/customer.png")
     assert asyncio.run(run_background_job("job_456", fail)) is None
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started", "background_job_failed"]
+    assert [record["event"] for record in records] == ["background_runner_started", "background_job_failed"]
     assert records[-1]["exception_type"] == "Exception"
     assert records[-1]["level"] == "ERROR"
     assert records[-1]["category"] == "internal"
@@ -52,4 +52,39 @@ def test_background_cancellation_does_not_emit_success(caplog):
     else:
         raise AssertionError("cancellation must propagate")
     records = [json.loads(record.message) for record in caplog.records if record.name == "canva.diagnostics"]
-    assert [record["event"] for record in records] == ["background_job_started"]
+    assert [record["event"] for record in records] == ["background_runner_started"]
+
+
+def test_segmentation_failure_keeps_request_job_stage_and_redacts_public_error(monkeypatch, caplog):
+    import io
+    from types import SimpleNamespace
+    from PIL import Image
+    from api import scenes
+    from diagnostics import _request_id
+    from models.scene import DepthPopSceneSettings
+    from services.scene_builder import SceneBuilderService
+    updates = []
+    async def update(job_id, **fields):
+        updates.append((job_id, fields))
+    async def fail(*args, **kwargs):
+        raise TimeoutError("PRIVATE_FAL_TOKEN private-user@example.com /private/artwork.png")
+    monkeypatch.setattr(scenes.job_repo, "update_job_stage", update)
+    monkeypatch.setattr(scenes.scene_asset_repo, "cleanup_scene_assets_sync", lambda scene_id: None)
+    builder = SceneBuilderService(segmentation_service=SimpleNamespace(segment_objects=fail), depth_service=SimpleNamespace(), inpainting_service=SimpleNamespace())
+    buffer = io.BytesIO()
+    Image.new("RGB", (4, 4)).save(buffer, format="PNG")
+    token = _request_id.set("a" * 32)
+    try:
+        asyncio.run(scenes.run_scene_decomposition_job(job_id="job_segment", scene_id="scene_segment", raw_image_bytes=buffer.getvalue(), source_asset_id="asset_segment", url_builder=lambda *_: "unused", max_objects=2, segmentation_mode="auto", depth_quality="high", inpaint=False, scene_settings=DepthPopSceneSettings(), inpaint_steps=14, user_id="private-user", brand_id="private-brand", builder_service=builder))
+    finally:
+        _request_id.reset(token)
+    record = json.loads(next(r.message for r in caplog.records if r.name == "canva.diagnostics"))
+    assert record["event"] == "scene_decomposition_failed"
+    assert record["request_id"] == "a" * 32
+    assert record["job_id"] == "job_segment"
+    assert record["stage"] == "segmenting_objects"
+    assert record["category"] == "timeout"
+    assert updates[-1][1]["status"] == "error"
+    assert updates[-1][1]["error"] == "Processing failed. Contact support with the job ID."
+    for secret in ["PRIVATE_FAL_TOKEN", "private-user", "private-brand", "/private/artwork.png"]:
+        assert secret not in caplog.text + updates[-1][1]["error"]
