@@ -147,12 +147,13 @@ export function DepthPopSetup({
               max={0.75}
               step={0.01}
               value={settings.depthStrength}
-              onChange={(event) =>
+              onChange={(event) => {
+                const depthStrength = Number(event.currentTarget.value);
                 setSettings((current) => ({
                   ...current,
-                  depthStrength: Number(event.currentTarget.value),
-                }))
-              }
+                  depthStrength,
+                }));
+              }}
             />
           </label>
           <label className="dp-control">
@@ -168,12 +169,13 @@ export function DepthPopSetup({
               max={100}
               step={1}
               value={settings.depthBlur}
-              onChange={(event) =>
+              onChange={(event) => {
+                const depthBlur = Number(event.currentTarget.value);
                 setSettings((current) => ({
                   ...current,
-                  depthBlur: Number(event.currentTarget.value),
-                }))
-              }
+                  depthBlur,
+                }));
+              }}
             />
           </label>
           <label className="dp-control">
@@ -189,12 +191,13 @@ export function DepthPopSetup({
               max={1}
               step={0.01}
               value={settings.depthFidelity}
-              onChange={(event) =>
+              onChange={(event) => {
+                const depthFidelity = Number(event.currentTarget.value);
                 setSettings((current) => ({
                   ...current,
-                  depthFidelity: Number(event.currentTarget.value),
-                }))
-              }
+                  depthFidelity,
+                }));
+              }}
             />
           </label>
           <div className="dp-control">
