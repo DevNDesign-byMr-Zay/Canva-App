@@ -264,8 +264,8 @@ Dependency ownership follows deployment boundaries. The seven graphs below stay 
 | HoloForge frontend | apps/holoforge-canva/package.json | adjacent package-lock.json | Separate Canva apps frontend, coverage-holoforge-canva, audit-holoforge-canva |
 | DepthPop frontend | apps/depthpop-canva/package.json | adjacent package-lock.json | Separate Canva apps frontend, coverage-depthpop-canva, audit-depthpop-canva |
 | Root Python verifier toolchain | pyproject.toml and requirements-dev.txt | requirements.lock.txt | engineering/ci toolchain parity, tests, Ruff/mypy, dependency audit |
-| HoloForge Python backend | apps/holoforge-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and audit-holoforge-canva |
-| DepthPop Python backend | apps/depthpop-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and audit-depthpop-canva |
+| HoloForge Python backend | apps/holoforge-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and python-audit-holoforge-canva |
+| DepthPop Python backend | apps/depthpop-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and python-audit-depthpop-canva |
 
 The root Python verifier uses the standard library at runtime, so `dependencies = []` in pyproject.toml is intentional. Its development tools do not represent the independently deployed FastAPI backends. Dependabot checks all seven package graphs plus GitHub Actions weekly. Review overlapping dependency PRs before changing a manifest or lock; do not merge a version bump independently of its lock.
 
@@ -301,7 +301,7 @@ For each backend, create a different fresh environment, install that backend's r
 
 Regeneration resolves the versions currently available within the declarations; it is a reviewed dependency update, not a promise that later resolutions produce identical bytes. Reproduction uses the committed exact pins. Record Python/platform and the reviewed lock diff in the PR. The existing Refresh Python lockfile workflow follows the root requirements-dev.txt resolution path and opens changes separately from main.
 
-pip check verifies installed dependency compatibility. pip-audit checks known vulnerabilities; neither substitutes for the other. Primary ci dependency-audit runs both for root Python; app-backend-dependency-audit audits both complete backend locks. Separate Canva apps and verify:fresh install backend locks in isolated environments and run pip check and unit tests. Vulnerability audits remain separate blocking jobs, not an implied part of verify:fresh.
+pip check verifies installed dependency compatibility. pip-audit checks known vulnerabilities; neither substitutes for the other. Primary ci dependency-audit runs both for root Python; backend-python-dependency-audit audits both complete backend locks independently of frontend npm results (the split introduced in PR #307). Separate Canva apps and verify:fresh install backend locks in isolated environments and run pip check and unit tests. Vulnerability audits remain separate blocking jobs, not an implied part of verify:fresh.
 
 ### Credential-free reproduction
 
