@@ -134,14 +134,25 @@ for (const marker of [
   "await asset.whenUploaded()",
   "content.ref = asset.ref",
   "await draft.save()",
-  "<DepthPopLogo />",
+  "<DepthPopSetup",
+  'from "./depthpop-setup"',
+  "settings={settings}",
+  "setSettings={setSettings}",
+  "executeScenePipeline={executeScenePipeline}",
 ]) {
   if (!depthApp.includes(marker)) {
     fail(`depthpop: execution/UI marker missing: ${marker}`);
   }
 }
 
-if (!/<LocalImageUpload\s+productName\s*=\s*["']DepthPop["']/.test(depthApp)) {
+const depthSetup = readText(full(APPS.depthpop.root, "src/intents/design_editor/depthpop-setup.tsx"));
+for (const marker of ["function DepthPopLogo", "<DepthPopLogo />", "export function DepthPopSetup"]) {
+  if (!depthSetup.includes(marker)) {
+    fail(`depthpop: setup UI marker missing: ${marker}`);
+  }
+}
+
+if (!/<LocalImageUpload\s+productName\s*=\s*["']DepthPop["']/.test(depthSetup)) {
   fail("depthpop: local image upload product name must remain DepthPop");
 }
 const backend = readText(full(APPS.depthpop.root, "backend/app.py"));
