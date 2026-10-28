@@ -127,7 +127,7 @@ Clean-clone setup and full suite verification command:
 make verify-fresh
 ```
 
-This single entrypoint installs Python packages strictly from pinned root `requirements.lock.txt`, installs Node packages from `package-lock.json` and `canva-app/package-lock.json`, and executes all Python and JavaScript linting, typechecking, tests, coverage gates, and production builds.
+This single entrypoint installs Python packages strictly from pinned root `requirements.lock.txt`, installs the root, compatibility editor and both standalone frontend Node graphs from their respective `package-lock.json` files, and executes all Python and JavaScript linting, typechecking, tests, coverage gates, and production builds.
 
 The verifier itself uses only the Python standard library. Development dependencies are pinned for pytest, coverage, Ruff, mypy, and pip-audit. The maintained Node runtime adapters keep their dependency surface narrow. The trusted review-context backend deliberately uses the pinned `@canva/app-middleware` package for server-side Canva token verification, and the committed npm lockfile keeps that boundary reproducible and machine-verifiable.
 
@@ -252,3 +252,73 @@ The engineering workflow keeps the existing blocking coverage/test gates and now
 
 Complete root/editor and independent-app verification: `npm run verify:fresh`.
 See [clean-clone commands and PowerShell setup](docs/CLEAN_CLONE_VERIFICATION.md).
+
+## Dependency Freshness
+
+Dependency ownership follows deployment boundaries. The seven graphs below stay separate; the compatibility editor is retained in addition to the two maintained products.
+
+| Graph | Declaration | Committed lock | Blocking verification |
+| --- | --- | --- | --- |
+| Root Node tooling and trusted backend | package.json | package-lock.json | ci/root-node-test, root-node-coverage, dependency-audit |
+| Compatibility Design Editor | canva-app/package.json | canva-app/package-lock.json | design-editor jobs and engineering/ci |
+| HoloForge frontend | apps/holoforge-canva/package.json | adjacent package-lock.json | Separate Canva apps frontend, coverage-holoforge-canva, audit-holoforge-canva |
+| DepthPop frontend | apps/depthpop-canva/package.json | adjacent package-lock.json | Separate Canva apps frontend, coverage-depthpop-canva, audit-depthpop-canva |
+| Root Python verifier toolchain | pyproject.toml and requirements-dev.txt | requirements.lock.txt | engineering/ci toolchain parity, tests, Ruff/mypy, dependency audit |
+| HoloForge Python backend | apps/holoforge-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and python-audit-holoforge-canva |
+| DepthPop Python backend | apps/depthpop-canva/backend/requirements.txt | adjacent requirements.lock.txt | Separate Canva apps backend and python-audit-depthpop-canva |
+
+The root Python verifier uses the standard library at runtime, so `dependencies = []` in pyproject.toml is intentional. Its development tools do not represent the independently deployed FastAPI backends. Dependabot checks all seven package graphs plus GitHub Actions weekly. Review overlapping dependency PRs before changing a manifest or lock; do not merge a version bump independently of its lock.
+
+### Updating and validating npm locks
+
+From the directory owning the package, change only the intended dependency range, then run:
+
+```sh
+npm install --package-lock-only --ignore-scripts
+npm ci --ignore-scripts
+npm audit --omit=dev --audit-level=moderate
+npm run typecheck
+npm run test:coverage
+npm run build
+```
+
+Use the package's existing lint/format commands where present. The root Node tooling graph has no TypeScript build of its own; use `npm test` and `npm run verify:syntax` for its isolated checks. Root `npm run lint` additionally enforces both maintained TypeScript/React apps and requires their locked installs first. Production audit severity and the narrow reviewed development-advisory validator remain defined by each workflow. Never replace a failing audit with an unconditional success. Script-only changes require no dependency resolution; npm ci and lock consistency tests still verify them.
+
+For full root-visible frontend lint and formatting, from the repository root:
+
+```sh
+npm --prefix apps/holoforge-canva ci --ignore-scripts
+npm --prefix apps/depthpop-canva ci --ignore-scripts
+npm run lint
+npm run format:check:ts
+node scripts/verify-frontend-lint-negative.mjs
+```
+
+Both apps use pinned ESLint, React Hooks rules and Prettier. The negative probe must reject unused variables, conditional Hooks and missing effect dependencies while accepting valid inputs. CI installs both frontend locks before these checks.
+
+All three frontend build graphs currently pin an npm alias for the independent `@stackline/deepmerge@1.1.0` implementation. It replaces the vulnerable upstream SVG configuration merge without changing imports. Review the exact version and integrity whenever updating the override. The `Build merge security` workflow tests returned-object prototype attacks, unsafe getters, merge compatibility and actual SVG consumer behavior against clean installs; a clean vulnerability report alone does not prove compatibility.
+
+### Updating Python locks with Python 3.12
+
+Use a new isolated Python 3.12 environment for each graph, never a shared backend environment. On the canonical Linux runner:
+
+```sh
+python3.12 -m venv .venv/lock-tooling
+.venv/lock-tooling/bin/python -m pip install --disable-pip-version-check -r requirements-dev.txt
+.venv/lock-tooling/bin/python -m pip freeze > requirements.lock.txt
+.venv/lock-tooling/bin/python scripts/verify_python_lock.py
+.venv/lock-tooling/bin/python -m pip check
+.venv/lock-tooling/bin/python -m pip_audit --no-deps --disable-pip -r requirements.lock.txt
+```
+
+For each backend, create a different fresh environment, install that backend's requirements.txt, and freeze only that environment into its adjacent requirements.lock.txt. Preserve platform markers such as the Windows exclusion on uvloop. Validate by installing the resulting lock in another empty environment, running pip check, the backend pytest suite, and the corresponding CI pip-audit command. The root npm test also checks exact backend pins, duplicates, missing direct requirements and frontend manifest/lock parity. Root Python range parity is checked by scripts/verify_python_lock.py in engineering/ci. Run full PR CI after every update.
+
+Regeneration resolves the versions currently available within the declarations; it is a reviewed dependency update, not a promise that later resolutions produce identical bytes. Reproduction uses the committed exact pins. Record Python/platform and the reviewed lock diff in the PR. The existing Refresh Python lockfile workflow follows the root requirements-dev.txt resolution path and opens changes separately from main.
+
+pip check verifies installed dependency compatibility. pip-audit checks known vulnerabilities; neither substitutes for the other. Primary ci dependency-audit runs both for root Python; backend-python-dependency-audit audits both complete backend locks independently of frontend npm results (the independent split originally reviewed in PR #307 and included in the combined remediation candidate). Separate Canva apps and verify:fresh install backend locks in isolated environments and run pip check and unit tests. Vulnerability audits remain separate blocking jobs, not an implied part of verify:fresh.
+
+### Credential-free reproduction
+
+Run npm run verify:fresh for all maintained verification surfaces, or node scripts/verify-fresh-clone.mjs --standalone for just the independent applications. Both paths install committed frontend locks, isolate Python backend environments, run unit tests, build production bundles, exercise Chrome preview smoke and verify independent packages/ZIPs. CHROME_BIN must identify an available Chrome installation; CI supplies it explicitly.
+
+Default backend tests block outbound network access. A mock fixture is test evidence, not proof of production segmentation. Missing Blender must remain an explicit unavailable/fallback result; unit and preview tests do not prove real Blender hardware rendering. The DepthPop paid-provider workflow has workflow_dispatch only and requires RUN_ONCE. It must never become a default push/PR call or receive production credentials during credential-free validation.
