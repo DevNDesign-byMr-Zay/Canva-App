@@ -36,6 +36,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     readFile('package.json', 'utf8').then(JSON.parse),
     readFile('package-lock.json', 'utf8').then(JSON.parse),
   ]);
+  console.log(JSON.stringify({ event: "npm_audit_summary", packages: Object.entries(audit.vulnerabilities || {}).map(([name, record]) => ({ name, severity: record.severity, range: record.range, fixAvailable: record.fixAvailable, via: record.via })) }));
   verifyDevelopmentAudit(audit, manifest, lock);
   console.log('Verified development audit: only the existing unfixable dev-only node-forge vendor boundary may remain.');
 }
