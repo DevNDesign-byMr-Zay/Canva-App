@@ -26,7 +26,7 @@
     "@canva/user": "^2.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-intl": "^7.1.11"
+    "react-intl": "^12.1.5"
   },
   "devDependencies": {
     "@canva/app-scripts": "^1.1.1",
