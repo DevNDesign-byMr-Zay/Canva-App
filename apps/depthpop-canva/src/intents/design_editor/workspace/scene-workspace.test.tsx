@@ -2,9 +2,11 @@
 
 import React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from "@testing-library/react";
@@ -42,8 +44,13 @@ vi.mock("../viewport/DepthViewport", () => ({
 import { DepthPopApiClient } from "../api/depthpop-api";
 import type { DepthScene } from "../scene/depth-scene";
 import { SceneWorkspace } from "./scene-workspace";
+import { useSceneWorkspaceController } from "./use-scene-workspace-controller";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const pixel =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFgwJ/lbRScAAAAABJRU5ErkJggg==";
@@ -324,5 +331,60 @@ describe("SceneWorkspace interactions", () => {
     expect(onSave.mock.calls[0]![0].objects[0]!.transform.position.x).toBe(
       0.77,
     );
+  });
+});
+
+describe("workspace Hook lifecycles", () => {
+  it("keeps authenticated URL resolution stable across panel changes", () => {
+    const initialScene = scene();
+    const { result } = renderHook(() =>
+      useSceneWorkspaceController({ initialScene }),
+    );
+    const resolve = result.current.resolveUrl;
+    expect(resolve(pixel)).toBe(pixel);
+    expect(resolve("https://api.test/private-image")).toBe("");
+    act(() => result.current.setActivePanel("ANIMATE"));
+    expect(result.current.resolveUrl).toBe(resolve);
+  });
+
+  it("preserves playback continuity and resumes from the latest seek", () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callbacks.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    const cancel = vi.fn((frame: number) => callbacks.delete(frame));
+    vi.stubGlobal("cancelAnimationFrame", cancel);
+    const initialScene = scene({
+      timeline: { durationMs: 1000, fps: 30, currentTimeMs: 200 },
+    });
+    const { result, unmount } = renderHook(() =>
+      useSceneWorkspaceController({ initialScene }),
+    );
+    const step = (now: number) => {
+      const [frame, callback] = [...callbacks.entries()][0]!;
+      callbacks.delete(frame);
+      act(() => callback(now));
+    };
+
+    act(() => result.current.setIsPlaying(true));
+    step(1100);
+    expect(result.current.scene.timeline.currentTimeMs).toBe(300);
+    step(1200);
+    expect(result.current.scene.timeline.currentTimeMs).toBe(400);
+    expect(cancel).not.toHaveBeenCalled();
+    act(() => result.current.setIsPlaying(false));
+    expect(callbacks.size).toBe(0);
+    act(() => {
+      result.current.dispatch({ type: "SET_TIME", currentTimeMs: 600 });
+    });
+    vi.spyOn(performance, "now").mockReturnValue(2000);
+    act(() => result.current.setIsPlaying(true));
+    step(2100);
+    expect(result.current.scene.timeline.currentTimeMs).toBe(700);
+    unmount();
+    expect(callbacks.size).toBe(0);
   });
 });

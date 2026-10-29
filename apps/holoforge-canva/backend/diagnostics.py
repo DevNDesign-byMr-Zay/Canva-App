@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
 from starlette.responses import JSONResponse
 
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar('request_id', default=None)
@@ -22,8 +23,10 @@ def _identifier(value: str | None) -> str | None:
 
 
 def log_failure(event: str, exc: Exception, *, job_id: str | None = None, stage: str | None = None, route: str | None = None, service: str | None = None) -> None:
-    name = type(exc).__name__
-    category = 'timeout' if 'timeout' in name.lower() else (
+    # Exception names may contain provider-controlled metadata. Emit only known bases.
+    safe_types = (TimeoutError, FileNotFoundError, PermissionError, OSError, ValueError, TypeError, RuntimeError, httpx.TimeoutException)
+    name = next((kind.__name__ for kind in safe_types if isinstance(exc, kind)), "Exception")
+    category = 'timeout' if isinstance(exc, (TimeoutError, httpx.TimeoutException)) else (
         'storage' if isinstance(exc, OSError) else 'internal'
     )
     # Traceback structure is useful; source lines, locals and messages are private.
@@ -32,7 +35,7 @@ def log_failure(event: str, exc: Exception, *, job_id: str | None = None, stage:
         for frame in traceback.extract_tb(exc.__traceback__)[-8:]
     ]
     record = {
-        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(), 'level': 'ERROR',
         'event': _identifier(event), 'service': _identifier(service),
         'request_id': _request_id.get(), 'job_id': _identifier(job_id),
         'stage': _identifier(stage), 'exception_type': name,
@@ -77,10 +80,25 @@ class DiagnosticMiddleware:
             _request_id.reset(token)
 
 
+def _log_runner_lifecycle(event: str, job_id: str) -> None:
+    # These fixed events describe runner execution, never provider/render success.
+    if event not in {"background_runner_started", "background_runner_returned"}:
+        return
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(), "level": "INFO",
+        "event": event, "request_id": _request_id.get(),
+        "job_id": _identifier(job_id), "stage": "runner",
+    }
+    logger.info(json.dumps(record, separators=(",", ":")))
+
+
 async def run_background_job(correlation_job_id, function, *args, **kwargs):
     """Consume failures outside a runner's normal persistence/cleanup boundary."""
+    _log_runner_lifecycle("background_runner_started", correlation_job_id)
     try:
-        return await function(*args, **kwargs)
+        result = await function(*args, **kwargs)
+        _log_runner_lifecycle("background_runner_returned", correlation_job_id)
+        return result
     except Exception as exc:
         log_failure('background_job_failed', exc, job_id=correlation_job_id, stage='runner')
         return None

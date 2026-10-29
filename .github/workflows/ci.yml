@@ -29,8 +29,16 @@ jobs:
         run: npm run verify:release
       - name: Check maintained JavaScript syntax
         run: npm run verify:syntax
-      - name: Lint root JS
+      - name: Install locked standalone frontend dependencies
+        run: |
+          npm --prefix apps/holoforge-canva ci --ignore-scripts
+          npm --prefix apps/depthpop-canva ci --ignore-scripts
+      - name: Lint maintained runtime and both standalone frontends
         run: npm run lint
+      - name: Check standalone frontend formatting
+        run: npm run format:check:ts
+      - name: Prove ESLint rejects invalid TypeScript in both apps
+        run: node scripts/verify-frontend-lint-negative.mjs
       - name: Run root JavaScript tests
         run: npm test
 
@@ -232,6 +240,18 @@ jobs:
           trap 'rm -f npm-audit.json' EXIT
           npm audit --json > npm-audit.json || audit_status=$?
           node ../../canva-app/scripts/verify-dev-audit.mjs npm-audit.json
+
+  backend-python-dependency-audit:
+    name: python-audit-${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [holoforge-canva, depthpop-canva]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v7
         with:

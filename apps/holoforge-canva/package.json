@@ -12,7 +12,7 @@
     "build": "npx --yes @canva/cli@2.13.0 apps build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test:coverage": "vitest run --coverage"
@@ -36,12 +36,14 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@types/webpack-env": "^1.18.8",
+    "@vitest/coverage-v8": "5.0.3",
     "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "jsdom": "26.1.0",
     "prettier": "3.6.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "8.72.0",
-    "vitest": "^5.0.0",
-    "@vitest/coverage-v8": "5.0.3"
+    "vitest": "^5.0.0"
   },
   "description": "HoloForge standalone Canva Design Editor app for real-time 3D holographic authoring with authenticated Blender/FFmpeg rendering.",
   "keywords": [
@@ -55,6 +57,7 @@
     "3d-authoring"
   ],
   "overrides": {
-    "uuid": "11.1.1"
+    "uuid": "11.1.1",
+    "deepmerge": "npm:@stackline/deepmerge@1.1.0"
   }
 }

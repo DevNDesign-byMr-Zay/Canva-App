@@ -9,10 +9,19 @@ for (const marker of [
   'productName="HoloForge"',
   "executeHolographicEffectPlan",
   "createHoloScene",
-  "<HoloViewport",
+  "<SpatialPreview",
+  "<VerifyPanel",
+  'from "./studio-panels"',
 ]) {
   if (!holoApp.includes(marker)) {
     fail(`holoforge: runtime/UI marker missing: ${marker}`);
+  }
+}
+
+const studioPanels = readText(full(APPS.holoforge.root, "src/intents/design_editor/studio-panels.tsx"));
+for (const marker of ["export function SpatialPreview", "export function VerifyPanel", "<HoloViewport", "scene={scene}", "onSceneChange={onSceneChange}"]) {
+  if (!studioPanels.includes(marker)) {
+    fail(`holoforge: studio panel marker missing: ${marker}`);
   }
 }
 

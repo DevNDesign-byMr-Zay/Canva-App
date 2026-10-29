@@ -1,0 +1,35 @@
+name: Build merge security
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/build-merge-security.yml'
+      - 'canva-app/scripts/verify-build-merge-security.mjs'
+      - '**/package.json'
+      - '**/package-lock.json'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-merge-security.yml'
+      - 'canva-app/scripts/verify-build-merge-security.mjs'
+      - '**/package.json'
+      - '**/package-lock.json'
+permissions:
+  contents: read
+jobs:
+  installed-consumer-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [canva-app, apps/holoforge-canva, apps/depthpop-canva]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install reviewed lock
+        working-directory: ${{ matrix.app }}
+        run: npm ci --ignore-scripts
+      - name: Reject prototype poisoning and verify real SVG transformation
+        working-directory: ${{ matrix.app }}
+        run: node "$GITHUB_WORKSPACE/canva-app/scripts/verify-build-merge-security.mjs"

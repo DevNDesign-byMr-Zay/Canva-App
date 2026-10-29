@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import React, {
   Suspense,
   useEffect,
+  useEffectEvent,
   useReducer,
   useRef,
   useState,
@@ -72,13 +73,18 @@ export function HoloViewport({
       (object) => object.id === state.selectedObjectId,
     ) ?? null;
 
+  // Capture a seek when playback starts, without restarting the loop per frame.
+  const capturePlaybackAnchor = useEffectEvent(
+    () => performance.now() - state.scene.timeline.currentTimeMs,
+  );
+
   useEffect(() => {
     if (!state.scene.timeline.playing) return;
 
     let frame = 0;
     let lastPaint = 0;
     const duration = Math.max(1, state.scene.timeline.durationMs);
-    const anchorTime = performance.now() - state.scene.timeline.currentTimeMs;
+    const anchorTime = capturePlaybackAnchor();
 
     const tick = (now: number) => {
       if (now - lastPaint >= 32) {

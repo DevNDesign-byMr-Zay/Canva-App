@@ -12,6 +12,8 @@ export const APPS = {
       "src/index.tsx",
       "src/intents/design_editor/index.tsx",
       "src/intents/design_editor/app.tsx",
+      "src/intents/design_editor/studio-panels.tsx",
+      "src/intents/design_editor/studio-panels.test.tsx",
       "src/intents/design_editor/app.css",
       "src/intents/design_editor/local-image-upload.tsx",
       "src/intents/design_editor/local-image-upload.test.tsx",
@@ -96,6 +98,8 @@ export const APPS = {
       "src/index.tsx",
       "src/intents/design_editor/index.tsx",
       "src/intents/design_editor/app.tsx",
+      "src/intents/design_editor/depthpop-setup.tsx",
+      "src/intents/design_editor/depthpop-setup.test.tsx",
       "src/intents/design_editor/app.css",
       "src/intents/design_editor/local-image-upload.tsx",
       "src/intents/design_editor/local-image-upload.test.tsx",
@@ -149,4 +153,3 @@ export const APPS = {
     ],
   },
 };
-
