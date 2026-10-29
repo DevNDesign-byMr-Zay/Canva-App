@@ -1,7 +1,10 @@
 import React from "react";
 import type { DepthPopSettings } from "../../depthpop/depthpop-model";
 import type { JobProcessingStage } from "./api/depthpop-api";
-import { LocalImageUpload, type UploadedImageResult } from "./local-image-upload";
+import {
+  LocalImageUpload,
+  type UploadedImageResult,
+} from "./local-image-upload";
 
 export type RunStage = "idle" | "reading" | JobProcessingStage;
 
@@ -75,7 +78,9 @@ type DepthPopSetupProps = Readonly<{
   isBusy: boolean;
   reset: () => void;
   localSource: UploadedImageResult | null;
-  setLocalSource: React.Dispatch<React.SetStateAction<UploadedImageResult | null>>;
+  setLocalSource: React.Dispatch<
+    React.SetStateAction<UploadedImageResult | null>
+  >;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   hasSource: boolean;
   selectedImageCount: number;

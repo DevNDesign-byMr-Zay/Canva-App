@@ -31,7 +31,6 @@ function backendOrigin(): string {
   return BACKEND_HOST.trim().replace(/\/+$/u, "");
 }
 
-
 function ensureSupportedInput(blob: Blob): string {
   if (
     blob.type === "image/png" ||

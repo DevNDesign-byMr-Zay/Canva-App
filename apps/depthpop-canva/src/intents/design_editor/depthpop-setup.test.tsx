@@ -8,15 +8,21 @@ import type { UploadedImageResult } from "./local-image-upload";
 import { DepthPopSetup } from "./depthpop-setup";
 
 vi.mock("./local-image-upload", () => ({
-  LocalImageUpload: ({ onUploaded }: {
+  LocalImageUpload: ({
+    onUploaded,
+  }: {
     onUploaded: (result: UploadedImageResult) => void;
   }) => (
-    <button onClick={() => onUploaded({
-      ref: "local-ref" as UploadedImageResult["ref"],
-      fileName: "local.png",
-      mimeType: "image/png",
-      dataUrl: "data:image/png;base64,test",
-    })}>
+    <button
+      onClick={() =>
+        onUploaded({
+          ref: "local-ref" as UploadedImageResult["ref"],
+          fileName: "local.png",
+          mimeType: "image/png",
+          dataUrl: "data:image/png;base64,test",
+        })
+      }
+    >
       Stage local source
     </button>
   ),
@@ -53,17 +59,39 @@ it("preserves branding, slider ranges and independent settings updates", () => {
   const initial = { ...DEFAULT_DEPTHPOP_SETTINGS };
   function SettingsHarness() {
     const [settings, setSettings] = useState(initial);
-    return <DepthPopSetup {...makeProps()} settings={settings} setSettings={setSettings} />;
+    return (
+      <DepthPopSetup
+        {...makeProps()}
+        settings={settings}
+        setSettings={setSettings}
+      />
+    );
   }
   render(<SettingsHarness />);
   expect(screen.getByRole("heading", { name: "DEPTHPOP" })).toBeDefined();
-  expect(screen.getByRole("img", { name: "DepthPop layered square depth emblem" })).toBeDefined();
-  const strength = screen.getByRole("slider", { name: "Depth Strength" }) as HTMLInputElement;
-  const blur = screen.getByRole("slider", { name: "Depth Blur" }) as HTMLInputElement;
-  const fidelity = screen.getByRole("slider", { name: "Depth Fidelity" }) as HTMLInputElement;
-  expect([strength.min, strength.max, strength.step]).toEqual(["0.05", "0.75", "0.01"]);
+  expect(
+    screen.getByRole("img", { name: "DepthPop layered square depth emblem" }),
+  ).toBeDefined();
+  const strength = screen.getByRole("slider", {
+    name: "Depth Strength",
+  }) as HTMLInputElement;
+  const blur = screen.getByRole("slider", {
+    name: "Depth Blur",
+  }) as HTMLInputElement;
+  const fidelity = screen.getByRole("slider", {
+    name: "Depth Fidelity",
+  }) as HTMLInputElement;
+  expect([strength.min, strength.max, strength.step]).toEqual([
+    "0.05",
+    "0.75",
+    "0.01",
+  ]);
   expect([blur.min, blur.max, blur.step]).toEqual(["0", "100", "1"]);
-  expect([fidelity.min, fidelity.max, fidelity.step]).toEqual(["0.05", "1", "0.01"]);
+  expect([fidelity.min, fidelity.max, fidelity.step]).toEqual([
+    "0.05",
+    "1",
+    "0.01",
+  ]);
   fireEvent.change(strength, { target: { value: "0.4" } });
   fireEvent.change(blur, { target: { value: "60" } });
   fireEvent.change(fidelity, { target: { value: "0.8" } });
@@ -71,7 +99,11 @@ it("preserves branding, slider ranges and independent settings updates", () => {
   expect(strength.value).toBe("0.4");
   expect(blur.value).toBe("60");
   expect(fidelity.value).toBe("0.8");
-  expect(screen.getByRole("button", { name: "Cinematic" }).getAttribute("aria-pressed")).toBe("true");
+  expect(
+    screen
+      .getByRole("button", { name: "Cinematic" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
   expect(initial).toEqual(DEFAULT_DEPTHPOP_SETTINGS);
 });
 
@@ -82,12 +114,18 @@ it("preserves execution gating, busy progress and cancellation", () => {
     stage: "building_scene",
     progress: 42,
   });
-  const execute = screen.getByRole("button", { name: "BUILDING DEPTHSCENE…" }) as HTMLButtonElement;
+  const execute = screen.getByRole("button", {
+    name: "BUILDING DEPTHSCENE…",
+  }) as HTMLButtonElement;
   expect(execute.disabled).toBe(true);
   fireEvent.click(execute);
   expect(props.executeScenePipeline).not.toHaveBeenCalled();
   expect(screen.getByText("42%")).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: "Cancel current DepthPop run and reset" }));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Cancel current DepthPop run and reset",
+    }),
+  );
   expect(props.reset).toHaveBeenCalledOnce();
   rerender(<DepthPopSetup {...props} isBusy={false} canExecute={true} />);
   fireEvent.click(screen.getByRole("button", { name: "CREATE DEPTHSCENE" }));
@@ -110,13 +148,21 @@ it("preserves local-source binding, clearing and visible failures", () => {
     mimeType: "image/png",
     dataUrl: "data:image/png;base64,artwork",
   };
-  const { props } = renderSetup({ localSource, host: "", error: "Pipeline unavailable" });
+  const { props } = renderSetup({
+    localSource,
+    host: "",
+    error: "Pipeline unavailable",
+  });
   expect(screen.getByText("artwork.png")).toBeDefined();
   expect(screen.getByText("Pipeline unavailable")).toBeDefined();
-  expect(screen.getByText("Backend host is not configured for this build.")).toBeDefined();
+  expect(
+    screen.getByText("Backend host is not configured for this build."),
+  ).toBeDefined();
   fireEvent.click(screen.getByRole("button", { name: "USE CANVA SELECTION" }));
   expect(props.setLocalSource).toHaveBeenCalledWith(null);
   fireEvent.click(screen.getByRole("button", { name: "Stage local source" }));
-  expect(props.setLocalSource).toHaveBeenLastCalledWith(expect.objectContaining({ fileName: "local.png" }));
+  expect(props.setLocalSource).toHaveBeenLastCalledWith(
+    expect.objectContaining({ fileName: "local.png" }),
+  );
   expect(props.setError).toHaveBeenCalledWith(null);
 });
