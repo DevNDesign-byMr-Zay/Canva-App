@@ -26,7 +26,7 @@
     "@canva/user": "^2.2.1",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
-    "react": "^19.2.7",
+    "react": "^19.3.1",
     "react-dom": "^19.2.7",
     "react-intl": "^7.1.11",
     "three": "^0.186.1"
